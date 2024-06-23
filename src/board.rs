@@ -1,26 +1,13 @@
-use std::fmt::Display;
+use core::panic;
+use std::{ any::Any, fmt::Display };
 
-use crate::{ piece::{ Color, Piece, PieceVariation }, position::match_piece };
+use crate::{ piece::{ Color, Piece, PieceVariation }, position::{ match_piece, to_board_bit } };
+
+const PIECES_BOARD: usize = 6;
 
 pub struct Board {
-    black_pawn: u64,
-    black_knight: u64,
-    black_rook: u64,
-    black_bishop: u64,
-    black_queen: u64,
-    black_king: u64,
-
-    black_pieces: u64,
-
-    white_pawn: u64,
-    white_knight: u64,
-    white_rook: u64,
-    white_bishop: u64,
-    white_queen: u64,
-    white_king: u64,
-
-    white_pieces: u64,
-
+    black_boards: [u64; 7],
+    white_boards: [u64; 7],
     white_can_castled: bool,
     black_can_castled: bool,
     en_passant: u8, //notes the square on which an en passant can happen next move
@@ -28,23 +15,24 @@ pub struct Board {
 
 impl Board {
     pub fn new() -> Self {
+        let pawn = 0xff00;
+        let bishop = 0x24;
+        let knight = 0x42;
+        let rook = 0x81;
+        let queen = 0x8;
+        let king = 0x10;
+        let all = pawn | knight | bishop | rook | queen | king;
         Board {
-            black_pawn: 0xff000000000000,
-            black_bishop: 0x2400000000000000,
-            black_knight: 0x4200000000000000,
-            black_rook: 0x8100000000000000,
-            black_queen: 0x800000000000000,
-            black_king: 0x1000000000000000,
-            white_pawn: 0xff00,
-            white_bishop: 0x24,
-            white_knight: 0x42,
-            white_rook: 0x81,
-            white_queen: 0x8,
-            white_king: 0x10,
-
-            black_pieces: 0xffff000000000000,
-            white_pieces: 0xffff,
-
+            white_boards: [pawn, knight, bishop, rook, queen, king, all],
+            black_boards: [
+                pawn << 40,
+                knight << 56,
+                bishop << 56,
+                rook << 56,
+                queen << 56,
+                king << 56,
+                all << 48,
+            ],
             black_can_castled: true,
             white_can_castled: true,
 
@@ -53,9 +41,9 @@ impl Board {
     }
 
     fn get_field_color(&self, pos: u8) -> Option<Color> {
-        if match_piece(pos, self.black_pieces) {
+        if match_piece(pos, self.black_boards[PIECES_BOARD]) {
             Some(Color::BLACK)
-        } else if match_piece(pos, self.white_pieces) {
+        } else if match_piece(pos, self.white_boards[PIECES_BOARD]) {
             Some(Color::WHITE)
         } else {
             None
@@ -63,21 +51,12 @@ impl Board {
     }
 
     fn get_field_piece_variation(&self, pos: u8) -> Option<PieceVariation> {
-        if match_piece(pos, self.black_king | self.white_king) {
-            Some(PieceVariation::KING)
-        } else if match_piece(pos, self.black_queen | self.white_queen) {
-            Some(PieceVariation::QUEEN)
-        } else if match_piece(pos, self.black_rook | self.white_rook) {
-            Some(PieceVariation::ROOK)
-        } else if match_piece(pos, self.black_bishop | self.white_bishop) {
-            Some(PieceVariation::BISHOP)
-        } else if match_piece(pos, self.black_knight | self.white_knight) {
-            Some(PieceVariation::KNIGHT)
-        } else if match_piece(pos, self.black_pawn | self.white_pawn) {
-            Some(PieceVariation::PAWN)
-        } else {
-            None
+        for (piece, index) in PieceVariation::iter() {
+            if match_piece(pos, self.black_boards[index] | self.white_boards[index]) {
+                return Some(piece);
+            }
         }
+        None
     }
 
     pub fn get_piece(&self, pos: u8) -> Option<Piece> {
@@ -95,11 +74,38 @@ impl Board {
             None => None,
         }
     }
+
+    pub fn move_piece(&mut self, source: u8, dest: u8) {
+        let piece = self.get_piece(source);
+
+        match piece {
+            Some(piece) if matches!(piece.1, Color::WHITE) => {
+                self.white_boards[piece.0 as usize] ^= to_board_bit(source);
+                self.white_boards[piece.0 as usize] |= to_board_bit(dest);
+                self.white_boards[PIECES_BOARD] ^= to_board_bit(source);
+                self.white_boards[PIECES_BOARD] |= to_board_bit(dest);
+            }
+            Some(piece) if matches!(piece.1, Color::BLACK) => {
+                self.black_boards[piece.0 as usize] ^= to_board_bit(source);
+                self.black_boards[piece.0 as usize] |= to_board_bit(dest);
+                self.black_boards[PIECES_BOARD] ^= to_board_bit(source);
+                self.black_boards[PIECES_BOARD] |= to_board_bit(dest);
+            }
+            None => (),
+            _ => panic!("Invalid state"),
+        }
+    }
 }
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut repr = String::new();
+
+        repr.push_str(" ");
+        for x in 'A'..'I' {
+            repr.push_str(&format!(" {x}"));
+        }
+        repr.push_str("\n");
 
         for y in 0..8 {
             let y = 7 - y;
@@ -114,6 +120,10 @@ impl Display for Board {
             repr.push_str(&format!("  {}\n", y + 1));
         }
 
+        repr.push_str(" ");
+        for x in 'A'..'I' {
+            repr.push_str(&format!(" {x}"));
+        }
         write!(f, "{}", repr)
     }
 }
