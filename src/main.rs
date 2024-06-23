@@ -8,6 +8,8 @@ mod moves;
 mod position;
 
 fn main() {
-    let board = Board::new();
+    let mut board = Board::new();
     println!("{}", board);
+    board.move_piece(8, 56);
+    println!(" {}", board);
 }

@@ -1,6 +1,5 @@
 use std::fmt;
 
-use num_enum::TryFromPrimitive;
 use num_traits::FromPrimitive;
 
 #[derive(Debug)]
@@ -23,7 +22,7 @@ impl PieceVariation {
     }
 }
 
-#[derive(Debug, FromPrimitive, Clone, Copy)]
+#[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
 pub enum Color {
     WHITE = 0,
     BLACK = 1,
