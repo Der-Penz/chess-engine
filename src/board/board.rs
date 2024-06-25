@@ -1,10 +1,7 @@
 use core::panic;
-use std::{ any::Any, fmt::Display };
+use std::fmt::Display;
 
-use crate::{
-    piece::{ self, Color, Piece, PieceVariation },
-    position::{ match_piece, to_board_bit },
-};
+use super::{match_piece, to_board_bit, Color, Piece, PieceVariation};
 
 const PIECES_BOARD: usize = 6;
 
@@ -102,11 +99,11 @@ impl Board {
                 match op {
                     BitBoardOperation::SET => {
                         self.white_boards[PIECES_BOARD] |= to_board_bit(pos);
-                        self.white_boards[piece.0 as usize] |= to_board_bit(pos);
+                        self.white_boards[piece.0] |= to_board_bit(pos);
                     }
                     BitBoardOperation::RESET => {
                         self.white_boards[PIECES_BOARD] &= !to_board_bit(pos);
-                        self.white_boards[piece.0 as usize] &= !to_board_bit(pos);
+                        self.white_boards[piece.0] &= !to_board_bit(pos);
                     }
                 }
             }
@@ -114,11 +111,11 @@ impl Board {
                 match op {
                     BitBoardOperation::SET => {
                         self.black_boards[PIECES_BOARD] |= to_board_bit(pos);
-                        self.black_boards[piece.1 as usize] |= to_board_bit(pos);
+                        self.black_boards[piece.0] |= to_board_bit(pos);
                     }
                     BitBoardOperation::RESET => {
                         self.black_boards[PIECES_BOARD] &= !to_board_bit(pos);
-                        self.black_boards[piece.0 as usize] &= !to_board_bit(pos);
+                        self.black_boards[piece.0] &= !to_board_bit(pos);
                     }
                 }
             }
@@ -127,20 +124,25 @@ impl Board {
     }
 
     pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<Piece> {
-        let Some(source_piece) = self.get_piece(source) else {
-            return None;
-        };
+        let source_piece = self.get_piece(source)?;
         let dest_piece = self.get_piece(dest);
-
-        if let Some(dest_piece) = dest_piece {
-            //can't move if the dest square is occupied by a piece of the same color
-            if source_piece.1 == dest_piece.1 {
-                return None;
-            }
-        }
+        println!("Moving {}", source_piece);
         self.update_bit_board(&source_piece, source, BitBoardOperation::RESET);
         self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
+        
+        if let Some(dest_piece) = dest_piece {
+            println!("To {}", dest_piece);
+            self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);
+        }
+
         None
+    }
+
+    pub fn get_boards(&self, color: Color) -> [u64; 7] {
+        match color {
+            Color::WHITE => self.white_boards,
+            Color::BLACK => self.black_boards,
+        }
     }
 }
 

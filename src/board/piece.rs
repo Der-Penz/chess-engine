@@ -1,32 +1,9 @@
 use std::fmt;
 
-use num_traits::FromPrimitive;
+use super::{ Color, PieceVariation };
 
 #[derive(Debug)]
 pub struct Piece(pub PieceVariation, pub Color);
-
-#[derive(Debug, FromPrimitive, Clone, Copy)]
-#[repr(usize)]
-pub enum PieceVariation {
-    PAWN,
-    KNIGHT,
-    BISHOP,
-    ROOK,
-    QUEEN,
-    KING,
-}
-
-impl PieceVariation {
-    pub fn iter() -> impl Iterator<Item = (PieceVariation, usize)> {
-        (0..=5usize).map(|i| (PieceVariation::from_usize(i).unwrap(), i))
-    }
-}
-
-#[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
-pub enum Color {
-    WHITE = 0,
-    BLACK = 1,
-}
 
 impl Piece {
     pub fn black_rook() -> Piece {

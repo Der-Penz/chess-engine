@@ -19,6 +19,6 @@ const fn calculate_pawn_attack_pattern(white: bool) -> [u64; 64] {
     res
 }
 
-const ATTACK_PATTERN_PAWN_WHITE: [u64; 64] = calculate_pawn_attack_pattern(true);
+pub const ATTACK_PATTERN_PAWN_WHITE: [u64; 64] = calculate_pawn_attack_pattern(true);
 const ATTACK_PATTERN_PAWN_BLACK: [u64; 64] = calculate_pawn_attack_pattern(false);
 pub const ATTACK_PATTERN_PAWN: [[u64; 64]; 2] = [ATTACK_PATTERN_PAWN_WHITE, ATTACK_PATTERN_PAWN_BLACK];

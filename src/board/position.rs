@@ -30,3 +30,12 @@ pub fn to_board_bit(pos: u8) -> u64{
 pub fn match_piece(pos: u8, bit_board: u64) -> bool{
     (bit_board & to_board_bit(pos)) > 0
 }
+
+pub fn next_set_bit(pos: u64) -> Option<usize> {
+    for i in 0..64 {
+        if (pos & (1 << i)) != 0 {
+            return Some(i);
+        }
+    }
+    None
+}

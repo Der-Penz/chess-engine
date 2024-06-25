@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
-use crate::{ piece::{ Color, Piece, PieceVariation }, position::{to_field_repr, valid_position} };
 use num_derive::FromPrimitive;
 use num_traits::{ FromPrimitive as FromPrim, Zero };
+
+use super::{ valid_position, to_field_repr, Color, Piece, PieceVariation };
 
 #[derive(Debug)]
 pub struct Move(u32);
