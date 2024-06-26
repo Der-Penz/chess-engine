@@ -46,19 +46,6 @@ impl Board {
         }
     }
 
-    /*
-        Just for visualization of attack patterns
-     */
-    pub fn only_pawns(position_white: u64, position_black: u64) -> Self {
-        Board {
-            white_boards: [position_white, 0, 0, 0, 0, 0, position_white],
-            black_boards: [position_black, 0, 0, 0, 0, 0, position_black],
-            black_can_castled: true,
-            white_can_castled: true,
-            en_passant: 0xff,
-        }
-    }
-
     fn get_field_color(&self, pos: u8) -> Option<Color> {
         if match_piece(pos, self.black_boards[PIECES_BOARD]) {
             Some(Color::BLACK)
