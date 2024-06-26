@@ -47,14 +47,27 @@ pub fn match_piece(pos: u8, bit_board: u64) -> bool {
 /**
    Returns the index of the next set bit in the u64 if any
 */
-pub fn next_set_bit(pos: u64) -> Option<usize> {
+pub fn next_set_bit(bit_board: u64) -> Option<usize> {
     for i in 0..64 {
-        if (pos & (1 << i)) != 0 {
+        if (bit_board & (1 << i)) != 0 {
             return Some(i);
         }
     }
 
     None
+}
+
+/**
+  Returns a Iterator over all indices of set bits in the bit board
+ */
+pub fn iter_set_bits(bit_board: u64) -> impl Iterator<Item = u8>{
+    (0..64).filter_map(move |pos|{
+        if (bit_board & (1 << pos)) != 0 {
+            Some(pos)
+        }else{
+            None
+        }
+    })
 }
 
 /**

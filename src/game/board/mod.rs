@@ -1,5 +1,7 @@
 use core::panic;
 use std::fmt::Display;
+use crate::game::to_field_repr;
+
 use super::{ match_piece, to_board_bit, Color, Piece, PieceVariation };
 
 mod move_generation;
@@ -114,7 +116,7 @@ impl Board {
     pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<Piece> {
         let source_piece = self.get_piece(source)?;
         let dest_piece = self.get_piece(dest);
-        println!("Moving {}", source_piece);
+        
         self.update_bit_board(&source_piece, source, BitBoardOperation::RESET);
         self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
 
@@ -122,15 +124,19 @@ impl Board {
             println!("To {}", dest_piece);
             self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);
         }
-
+        println!("Move: {} from {} to {}", source_piece, to_field_repr(source), to_field_repr(dest));
         None
     }
 
-    pub fn get_boards(&self, color: Color) -> [u64; 7] {
+    pub fn get_boards(&self, color: &Color) -> [u64; 7] {
         match color {
             Color::WHITE => self.white_boards,
             Color::BLACK => self.black_boards,
         }
+    }
+
+    pub fn get_pieces_board(&self, color: &Color) -> u64 {
+        self.get_boards(color)[6]
     }
 }
 

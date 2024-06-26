@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::{ Color, PieceVariation };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Piece(pub PieceVariation, pub Color);
 
 impl Piece {
