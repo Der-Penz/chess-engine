@@ -10,8 +10,8 @@ pub struct Move(u32);
 
 #[derive(Debug, FromPrimitive)]
 pub enum PromotionPiece {
-    KNIGHT,
     BISHOP,
+    KNIGHT,
     QUEEN,
     ROOK,
 }
@@ -25,14 +25,14 @@ pub enum MoveType {
 }
 
 static SOURCE_OFFSET: u32 = 0;
-static DEST_OFFSET: u32 = 6;
-static PIECE_OFFSET: u32 = 12;
+static DEST_OFFSET: u32 = 7;
+static PIECE_OFFSET: u32 = 13;
 static COLOR_OFFSET: u32 = 16;
 static PROMOTION_PIECE_OFFSET: u32 = 17;
 static MOVE_TYPE_OFFSET: u32 = 19;
 
-static SOURCE_MASK: u32 = 0b11111 << SOURCE_OFFSET;
-static DEST_MASK: u32 = 0b11111 << DEST_OFFSET;
+static SOURCE_MASK: u32 = 0b111111 << SOURCE_OFFSET;
+static DEST_MASK: u32 = 0b111111 << DEST_OFFSET;
 static PIECE_MASK: u32 = 0b111 << PIECE_OFFSET;
 static COLOR_MASK: u32 = 0b1 << COLOR_OFFSET;
 static PROMOTION_PIECE_MASK: u32 = 0b11 << PROMOTION_PIECE_OFFSET;
@@ -152,7 +152,7 @@ impl Display for Move {
             MoveType::NORMAL =>
                 write!(
                     f,
-                    "{}->{} {}",
+                    "{}->{} {} | Normal",
                     to_field_repr(self.source()),
                     to_field_repr(self.dest()),
                     self.piece()
@@ -160,7 +160,7 @@ impl Display for Move {
             MoveType::PROMOTION =>
                 write!(
                     f,
-                    "{}->{} {} -> {:?}",
+                    "{}->{} {} | Promotion -> {:?}",
                     to_field_repr(self.source()),
                     to_field_repr(self.dest()),
                     self.piece(),
@@ -169,7 +169,7 @@ impl Display for Move {
             MoveType::ENPASSANT =>
                 write!(
                     f,
-                    "{}->{} {} En Passant",
+                    "{}->{} {} | En Passant",
                     to_field_repr(self.source()),
                     to_field_repr(self.dest()),
                     self.piece()
@@ -177,7 +177,7 @@ impl Display for Move {
             MoveType::CASTLING =>
                 write!(
                     f,
-                    "{}->{} {} O-O",
+                    "{}->{} {}| Castling",
                     to_field_repr(self.source()),
                     to_field_repr(self.dest()),
                     self.piece()
