@@ -1,7 +1,8 @@
 use core::panic;
 use std::fmt::Display;
+use super::{ match_piece, to_board_bit, Color, Piece, PieceVariation };
 
-use super::{match_piece, to_board_bit, Color, Piece, PieceVariation};
+mod move_generation;
 
 const PIECES_BOARD: usize = 6;
 
@@ -129,7 +130,7 @@ impl Board {
         println!("Moving {}", source_piece);
         self.update_bit_board(&source_piece, source, BitBoardOperation::RESET);
         self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
-        
+
         if let Some(dest_piece) = dest_piece {
             println!("To {}", dest_piece);
             self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);

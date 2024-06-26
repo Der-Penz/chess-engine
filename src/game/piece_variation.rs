@@ -1,10 +1,9 @@
 use num_traits::FromPrimitive;
 use std::ops::{Index, IndexMut};
 
-use crate::attack_pattern::{ATTACK_PATTERN_KING, ATTACK_PATTERN_KNIGHT, ATTACK_PATTERN_PAWN, ATTACK_PATTERN_ROOK};
+use crate::attack_pattern::{ATTACK_PATTERN_BISHOP, ATTACK_PATTERN_KING, ATTACK_PATTERN_KNIGHT, ATTACK_PATTERN_PAWN, ATTACK_PATTERN_QUEEN, ATTACK_PATTERN_ROOK};
 
 use super::Color;
-
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
 pub enum PieceVariation {
     PAWN,
@@ -24,9 +23,9 @@ impl PieceVariation {
         match self {
             PieceVariation::PAWN => ATTACK_PATTERN_PAWN[color],
             PieceVariation::KNIGHT => ATTACK_PATTERN_KNIGHT,
-            PieceVariation::BISHOP => todo!(),
+            PieceVariation::BISHOP => ATTACK_PATTERN_BISHOP,
             PieceVariation::ROOK => ATTACK_PATTERN_ROOK,
-            PieceVariation::QUEEN => todo!(),
+            PieceVariation::QUEEN => ATTACK_PATTERN_QUEEN,
             PieceVariation::KING => ATTACK_PATTERN_KING,
         }
     }
