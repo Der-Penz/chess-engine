@@ -3,7 +3,7 @@ use std::fmt::Display;
 use num_derive::FromPrimitive;
 use num_traits::{ FromPrimitive as FromPrim, Zero };
 
-use super::{ valid_position, to_field_repr, Color, Piece, PieceVariation };
+use super::{ Color, Piece, PieceVariation, Square };
 
 #[derive(Debug)]
 pub struct Move(u32);
@@ -46,8 +46,8 @@ impl Move {
         move_type: MoveType,
         promotion_piece: PromotionPiece
     ) -> Self {
-        assert!(valid_position(source));
-        assert!(valid_position(dest));
+        assert!(Square::valid(source));
+        assert!(Square::valid(dest));
 
         let mut m: u32 = 0x0;
         m = m | ((source as u32) << SOURCE_OFFSET);
@@ -153,16 +153,16 @@ impl Display for Move {
                 write!(
                     f,
                     "{}->{} {} | Normal",
-                    to_field_repr(self.source()),
-                    to_field_repr(self.dest()),
+                    Square::from(self.source()),
+                    Square::from(self.dest()),
                     self.piece()
                 ),
             MoveType::PROMOTION =>
                 write!(
                     f,
                     "{}->{} {} | Promotion -> {:?}",
-                    to_field_repr(self.source()),
-                    to_field_repr(self.dest()),
+                    Square::from(self.source()),
+                    Square::from(self.dest()),
                     self.piece(),
                     self.promotion_piece()
                 ),
@@ -170,16 +170,16 @@ impl Display for Move {
                 write!(
                     f,
                     "{}->{} {} | En Passant",
-                    to_field_repr(self.source()),
-                    to_field_repr(self.dest()),
+                    Square::from(self.source()),
+                    Square::from(self.dest()),
                     self.piece()
                 ),
             MoveType::CASTLING =>
                 write!(
                     f,
                     "{}->{} {}| Castling",
-                    to_field_repr(self.source()),
-                    to_field_repr(self.dest()),
+                    Square::from(self.source()),
+                    Square::from(self.dest()),
                     self.piece()
                 ),
         }

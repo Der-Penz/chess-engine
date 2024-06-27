@@ -1,10 +1,11 @@
 use core::panic;
-use std::fmt::Display;
-use crate::game::to_field_repr;
 
-use super::{ match_piece, to_board_bit, Color, Piece, PieceVariation };
+use crate::game::Square;
+
+use super::{ match_piece, Color, Piece, PieceVariation };
 
 mod move_generation;
+mod representation;
 
 const PIECES_BOARD: usize = 6;
 
@@ -85,27 +86,27 @@ impl Board {
 
     fn update_bit_board(&mut self, piece: &Piece, pos: u8, op: BitBoardOperation) {
         match piece {
-            piece if matches!(piece.1, Color::WHITE) => {
+            piece if piece.1 == Color::WHITE => {
                 match op {
                     BitBoardOperation::SET => {
-                        self.white_boards[PIECES_BOARD] |= to_board_bit(pos);
-                        self.white_boards[piece.0] |= to_board_bit(pos);
+                        self.white_boards[PIECES_BOARD] |= Square::to_board_bit(pos);
+                        self.white_boards[piece.0] |= Square::to_board_bit(pos);
                     }
                     BitBoardOperation::RESET => {
-                        self.white_boards[PIECES_BOARD] &= !to_board_bit(pos);
-                        self.white_boards[piece.0] &= !to_board_bit(pos);
+                        self.white_boards[PIECES_BOARD] &= !Square::to_board_bit(pos);
+                        self.white_boards[piece.0] &= !Square::to_board_bit(pos);
                     }
                 }
             }
-            piece if matches!(piece.1, Color::BLACK) => {
+            piece if piece.1 == Color::BLACK => {
                 match op {
                     BitBoardOperation::SET => {
-                        self.black_boards[PIECES_BOARD] |= to_board_bit(pos);
-                        self.black_boards[piece.0] |= to_board_bit(pos);
+                        self.black_boards[PIECES_BOARD] |= Square::to_board_bit(pos);
+                        self.black_boards[piece.0] |= Square::to_board_bit(pos);
                     }
                     BitBoardOperation::RESET => {
-                        self.black_boards[PIECES_BOARD] &= !to_board_bit(pos);
-                        self.black_boards[piece.0] &= !to_board_bit(pos);
+                        self.black_boards[PIECES_BOARD] &= !Square::to_board_bit(pos);
+                        self.black_boards[piece.0] &= !Square::to_board_bit(pos);
                     }
                 }
             }
@@ -116,7 +117,7 @@ impl Board {
     pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<Piece> {
         let source_piece = self.get_piece(source)?;
         let dest_piece = self.get_piece(dest);
-        
+
         self.update_bit_board(&source_piece, source, BitBoardOperation::RESET);
         self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
 
@@ -124,7 +125,7 @@ impl Board {
             println!("To {}", dest_piece);
             self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);
         }
-        println!("Move: {} from {} to {}", source_piece, to_field_repr(source), to_field_repr(dest));
+        println!("Move: {} from {} to {}", source_piece, Square::from(source), Square::from(dest));
         None
     }
 
@@ -137,36 +138,5 @@ impl Board {
 
     pub fn get_pieces_board(&self, color: &Color) -> u64 {
         self.get_boards(color)[6]
-    }
-}
-
-impl Display for Board {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut repr = String::new();
-
-        repr.push_str(" ");
-        for x in 'A'..'I' {
-            repr.push_str(&format!(" {x}"));
-        }
-        repr.push_str("\n");
-
-        for y in 0..8 {
-            let y = 7 - y;
-            repr.push_str(&format!("{}", y + 1));
-            for x in 0..8 {
-                let piece = self.get_piece(x + y * 8);
-                match piece {
-                    Some(piece) => repr.push_str(&format!(" {}", piece)),
-                    None => repr.push_str(&format!(" {}", " ")),
-                }
-            }
-            repr.push_str(&format!("  {}\n", y + 1));
-        }
-
-        repr.push_str(" ");
-        for x in 'A'..'I' {
-            repr.push_str(&format!(" {x}"));
-        }
-        write!(f, "{}", repr)
     }
 }

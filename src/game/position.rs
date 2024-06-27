@@ -1,47 +1,70 @@
-/**
-    Returns the string representation of a given board position
-  * Example: position 0 -> A1
- */
-pub fn to_field_repr(pos: u8) -> String {
-    let row = (pos % 8) + 1;
-    let col = pos / 8;
+use num_traits::FromPrimitive;
 
-    if !valid_position(pos) {
-        panic!("Invalid Board Position");
-    }
+#[derive(Clone, Copy, PartialEq, Debug, FromPrimitive)]
+#[rustfmt::skip]
+pub enum Square {
+    A1, A2, A3, A4, A5, A6, A7, A8,
+    B1, B2, B3, B4, B5, B6, B7, B8,
+    C1, C2, C3, C4, C5, C6, C7, C8,
+    D1, D2, D3, D4, D5, D6, D7, D8,
+    E1, E2, E3, E4, E5, E6, E7, E8,
+    F1, F2, F3, F4, F5, F6, F7, F8,
+    G1, G2, G3, G4, G5, G6, G7, G8,
+    H1, H2, H3, H4, H5, H6, H7, H8,
+}
 
-    match col {
-        0 => format!("A{}", row),
-        1 => format!("B{}", row),
-        2 => format!("C{}", row),
-        3 => format!("D{}", row),
-        4 => format!("E{}", row),
-        5 => format!("F{}", row),
-        6 => format!("G{}", row),
-        7 => format!("H{}", row),
-        _ => panic!("Invalid Board Position"),
+impl From<Square> for u8 {
+    fn from(square: Square) -> u8 {
+        square as u8
     }
 }
 
-/**
-    Validates a given position index to be in the inclusive range of 0 to 63
- */
-pub fn valid_position(pos: u8) -> bool {
-    pos > 0 && pos < 64
+impl From<u8> for Square {
+    fn from(value: u8) -> Self {
+        Square::from_u8(value).expect("Tried parsing invalid board position as a square")
+    }
 }
 
-/**
-    bit shifts a position to the corresponding u64 mask
- */
-pub fn to_board_bit(pos: u8) -> u64 {
-    0b1 << pos
+impl std::fmt::Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let row = ((*self as u8) % 8) + 1;
+        let col = (*self as u8) / 8;
+
+        let name = match col {
+            0 => format!("A{}", row),
+            1 => format!("B{}", row),
+            2 => format!("C{}", row),
+            3 => format!("D{}", row),
+            4 => format!("E{}", row),
+            5 => format!("F{}", row),
+            6 => format!("G{}", row),
+            7 => format!("H{}", row),
+            _ => panic!("Invalid Board Position"),
+        };
+        write!(f, "{}", name)
+    }
+}
+
+impl Square {
+    /**
+        Validates a given position index to be in the inclusive range of 0 to 63
+    */
+    pub fn valid(square: u8) -> bool {
+        square > 0 && square < 64
+    }
+    /**
+        bit shifts a position to the corresponding u64 mask
+    */
+    pub fn to_board_bit(pos: u8) -> u64 {
+        0b1 << pos
+    }
 }
 
 /**
     checks if a given position of a bit board is set
 */
 pub fn match_piece(pos: u8, bit_board: u64) -> bool {
-    bit_board & to_board_bit(pos) > 0
+    bit_board & Square::to_board_bit(pos) > 0
 }
 
 /**
@@ -60,13 +83,9 @@ pub fn next_set_bit(bit_board: u64) -> Option<usize> {
 /**
   Returns a Iterator over all indices of set bits in the bit board
  */
-pub fn iter_set_bits(bit_board: u64) -> impl Iterator<Item = u8>{
-    (0..64).filter_map(move |pos|{
-        if (bit_board & (1 << pos)) != 0 {
-            Some(pos)
-        }else{
-            None
-        }
+pub fn iter_set_bits(bit_board: u64) -> impl Iterator<Item = u8> {
+    (0..64).filter_map(move |pos| {
+        if (bit_board & (1 << pos)) != 0 { Some(pos) } else { None }
     })
 }
 

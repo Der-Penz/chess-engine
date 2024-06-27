@@ -1,11 +1,8 @@
-use crate::game::{
-    display_position, iter_set_bits, next_set_bit, to_board_bit, valid_position, Color, Move, PieceVariation
-};
+use crate::game::{ iter_set_bits, Move, PieceVariation, Square };
 
 use super::Board;
 
 impl Board {
-
     /**
         Generates all the pseudo legal moves for a given board index.
         Pseudo legal moves do not consider moves that get your king into check
@@ -23,16 +20,16 @@ impl Board {
                 // check for 2 square moves
                 if pos / 8 == 1 {
                     if self.get_field_color(pos + 8).is_some_and(|c| c == piece.1) {
-                        possible_moves &= !to_board_bit(pos + 16);
+                        possible_moves &= !Square::to_board_bit(pos + 16);
                     }
                 }
 
-                moves.extend(iter_set_bits(possible_moves).map(|dest| {
-                    Move::normal(pos, dest, piece)
-                }));
+                moves.extend(
+                    iter_set_bits(possible_moves).map(|dest| { Move::normal(pos, dest, piece) })
+                );
 
                 // if the position is valid it
-                if valid_position(self.en_passant) {
+                if Square::valid(self.en_passant) {
                     //en passant can only happen on the 4th or 5th rank. This constrain should
                     //already be inferred while setting the square
                     assert!([4, 5].contains(&(self.en_passant / 8)));
@@ -46,7 +43,6 @@ impl Board {
                     }
                 }
 
-                // display_position(possible_moves, to_board_bit(pos));
                 return Some(moves);
             }
             PieceVariation::KNIGHT => todo!("Knight moves not yet implemented"),
