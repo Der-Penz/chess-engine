@@ -12,6 +12,7 @@ impl Board {
         let mut moves = Vec::new();
         match piece.0 {
             PieceVariation::PAWN => {
+                //TODO: redo pawn moves currently invalid calculation
                 let attack_pattern = PieceVariation::PAWN.attack_pattern(piece.1);
                 let mut possible_moves = attack_pattern[pos as usize];
 

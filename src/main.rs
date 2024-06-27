@@ -1,5 +1,4 @@
-use game::{Board, Color};
-
+use game::Board;
 
 #[macro_use]
 extern crate num_derive;
@@ -8,6 +7,6 @@ mod game;
 mod attack_pattern;
 
 fn main() {
-    let mut board = Board::new();
+    let board = Board::base();
     println!("{}", board);
 }

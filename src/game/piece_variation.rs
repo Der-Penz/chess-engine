@@ -1,7 +1,14 @@
 use num_traits::FromPrimitive;
-use std::ops::{Index, IndexMut};
+use std::ops::{ Index, IndexMut };
 
-use crate::attack_pattern::{ATTACK_PATTERN_BISHOP, ATTACK_PATTERN_KING, ATTACK_PATTERN_KNIGHT, ATTACK_PATTERN_PAWN, ATTACK_PATTERN_QUEEN, ATTACK_PATTERN_ROOK};
+use crate::attack_pattern::{
+    ATTACK_PATTERN_BISHOP,
+    ATTACK_PATTERN_KING,
+    ATTACK_PATTERN_KNIGHT,
+    ATTACK_PATTERN_PAWN,
+    ATTACK_PATTERN_QUEEN,
+    ATTACK_PATTERN_ROOK,
+};
 
 use super::Color;
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
@@ -41,5 +48,19 @@ impl<T, const N: usize> Index<PieceVariation> for [T; N] {
 impl<T, const N: usize> IndexMut<PieceVariation> for [T; N] {
     fn index_mut(&mut self, index: PieceVariation) -> &mut Self::Output {
         &mut self[index as usize]
+    }
+}
+
+impl From<char> for PieceVariation {
+    fn from(c: char) -> Self {
+        match c.to_ascii_lowercase() {
+            'p' => PieceVariation::PAWN,
+            'n' => PieceVariation::KNIGHT,
+            'b' => PieceVariation::BISHOP,
+            'r' => PieceVariation::ROOK,
+            'q' => PieceVariation::QUEEN,
+            'k' => PieceVariation::KING,
+            _ => panic!("Invalid char for piece variation"),
+        }
     }
 }

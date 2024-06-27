@@ -1,4 +1,3 @@
-use num_traits::FromPrimitive;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
