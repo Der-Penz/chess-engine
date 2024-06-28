@@ -27,18 +27,15 @@ impl From<u8> for Square {
 
 impl std::fmt::Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let col = (*self as u8) % 8;
-        let row = ((*self as u8) / 8) + 1;
-
-        let name = match col {
-            0 => format!("A{}", row),
-            1 => format!("B{}", row),
-            2 => format!("C{}", row),
-            3 => format!("D{}", row),
-            4 => format!("E{}", row),
-            5 => format!("F{}", row),
-            6 => format!("G{}", row),
-            7 => format!("H{}", row),
+        let name = match self.col() {
+            0 => format!("A{}", self.row()),
+            1 => format!("B{}", self.row()),
+            2 => format!("C{}", self.row()),
+            3 => format!("D{}", self.row()),
+            4 => format!("E{}", self.row()),
+            5 => format!("F{}", self.row()),
+            6 => format!("G{}", self.row()),
+            7 => format!("H{}", self.row()),
             _ => panic!("Invalid Board Position"),
         };
         write!(f, "{}", name)
@@ -57,6 +54,36 @@ impl Square {
     */
     pub fn to_board_bit(pos: u8) -> u64 {
         0b1 << pos
+    }
+
+    /**
+        Returns an iterator over all squares on the board
+        from A8 to H8, A7 to H7, ..., A1 to H1
+     */
+    pub fn iter_ah_81() -> impl Iterator<Item = Square> {
+        (0..64).map(|square| {
+            let square = 63 - (square as u8);
+            let col = 7 - (square % 8);
+            let row = square / 8;
+            let square = col + row * 8;
+            Square::from(square)
+        })
+    }
+
+    /**
+        Returns an iterator over all squares on the board
+        from A1 to H1, A2 to H2, ..., A8 to H8
+     */
+    pub fn iter_ah_18() -> impl Iterator<Item = Square> {
+        (0..64).map(|pos| Square::from(pos))
+    }
+
+    pub fn row(&self) -> u8 {
+        (*self as u8) / 8
+    }
+
+    pub fn col(&self) -> u8 {
+        (*self as u8) % 8
     }
 }
 

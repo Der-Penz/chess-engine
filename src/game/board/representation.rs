@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{ Debug, Display };
 
 use crate::game::{ Color, Piece, PieceVariation, Square };
 
@@ -35,6 +35,8 @@ impl Display for Board {
         for x in 'A'..'I' {
             repr.push_str(&format!(" {x}"));
         }
+
+        repr.push_str(&format!("\n\nFEN: {}\n", self.to_fen()));
         write!(f, "{}", repr)
     }
 }
@@ -86,8 +88,12 @@ impl Board {
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
 
         match fen_group {
-            "w" => board.set_color_to_move(Color::WHITE),
-            "b" => board.set_color_to_move(Color::BLACK),
+            "w" => {
+                board.color_to_move = Color::WHITE;
+            }
+            "b" => {
+                board.color_to_move = Color::BLACK;
+            }
             _ => {
                 return Err(FENError::ParsingError);
             }
@@ -95,12 +101,22 @@ impl Board {
 
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
 
+        board.black_castle = (false, false);
+        board.white_castle = (false, false);
         for char in fen_group.chars() {
             match char {
-                'K' => board.set_castle(Color::WHITE, true, true),
-                'Q' => board.set_castle(Color::WHITE, true, false),
-                'k' => board.set_castle(Color::BLACK, true, true),
-                'q' => board.set_castle(Color::BLACK, true, false),
+                'K' => {
+                    board.white_castle.0 = true;
+                }
+                'Q' => {
+                    board.white_castle.1 = true;
+                }
+                'k' => {
+                    board.black_castle.0 = true;
+                }
+                'q' => {
+                    board.black_castle.1 = true;
+                }
                 '-' => (),
                 _ => {
                     return Err(FENError::ParsingError);
@@ -111,7 +127,9 @@ impl Board {
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
 
         match fen_group {
-            "-" => board.set_en_passant(0xff),
+            "-" => {
+                board.en_passant = 0xff;
+            }
             _ => {
                 let mut chars = fen_group.chars();
                 let en_passant = (chars.next().ok_or(FENError::ParsingError)? as u8) - ('a' as u8);
@@ -128,11 +146,90 @@ impl Board {
                     en_passant;
                 Square::valid(en_passant).then_some(0).ok_or(FENError::ParsingError)?;
 
-                board.set_en_passant(en_passant);
+                board.en_passant = en_passant;
             }
         }
 
-        //TODO: Implement half move clock and move number
+        let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
+        let moves: usize = fen_group.parse().ok().ok_or(FENError::ParsingError)?;
+        board.half_move_clock = moves;
+
+        let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
+        let moves: usize = fen_group.parse().ok().ok_or(FENError::ParsingError)?;
+        board.move_number = moves;
+
         Ok(board)
+    }
+
+    pub fn to_fen(&self) -> String {
+        let mut s = String::new();
+
+        let mut empty = 0;
+        Square::iter_ah_81().for_each(|square| {
+            let piece = self.get_piece(square.into());
+            match piece {
+                Some(piece) => {
+                    if empty > 0 {
+                        s.push_str(&format!("{}", empty));
+                        empty = 0;
+                    }
+                    let mut char = match piece.0 {
+                        PieceVariation::PAWN => 'p',
+                        PieceVariation::KNIGHT => 'n',
+                        PieceVariation::BISHOP => 'b',
+                        PieceVariation::ROOK => 'r',
+                        PieceVariation::QUEEN => 'q',
+                        PieceVariation::KING => 'k',
+                    };
+                    if piece.1 == Color::WHITE {
+                        char = char.to_uppercase().next().unwrap();
+                    }
+                    s.push_str(&format!("{}", char));
+                }
+                None => {
+                    empty += 1;
+                }
+            }
+            if square.col() == 7 {
+                if empty > 0 {
+                    s.push_str(&format!("{}", empty));
+                }
+                empty = 0;
+                if (square as u8) != 7 {
+                    s.push('/');
+                }
+            }
+        });
+
+        s.push_str(&format!(" {} ", if self.color_to_move == Color::WHITE { "w" } else { "b" }));
+
+        if self.white_castle.0 {
+            s.push('K');
+        }
+        if self.white_castle.1 {
+            s.push('Q');
+        }
+        if self.black_castle.0 {
+            s.push('k');
+        }
+        if self.black_castle.1 {
+            s.push('q');
+        }
+
+        if !self.black_castle.0 || !self.black_castle.1 || !self.white_castle.0 || !self.white_castle.1 {
+            s.push_str("-");
+        }
+
+        if Square::valid(self.en_passant) {
+            s.push_str(
+                &format!(" {} ", Square::from(self.en_passant).to_string().to_ascii_lowercase())
+            );
+        } else {
+            s.push_str(" - ");
+        }
+
+        s.push_str(&format!("{} {}", self.half_move_clock, self.move_number));
+
+        s
     }
 }

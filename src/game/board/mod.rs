@@ -23,6 +23,8 @@ pub struct Board {
     en_passant: u8, //notes the square behind the pawn that can be captured en passant.
                     // a value over 63 means no en passant
                     // e.g if pawn moves from F2 to F4, F3 is the en passant square
+    half_move_clock: usize, //number of half moves since the last capture or pawn advance
+    move_number: usize,
 }
 
 impl Board {
@@ -34,11 +36,13 @@ impl Board {
             white_castle: (true, true),
             black_castle: (true, true),
             en_passant: 0xff,
+            half_move_clock: 0,
+            move_number: 1,
         }
     }
 
     pub fn base() -> Self {
-        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e4 0 1").expect(
+        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").expect(
             "Invalid base FEN String"
         )
     }
@@ -62,9 +66,9 @@ impl Board {
         None
     }
 
-    pub fn get_piece(&self, pos: u8) -> Option<Piece> {
-        let color = self.get_field_color(pos);
-        let piece_variation = self.get_field_piece_variation(pos);
+    pub fn get_piece(&self, square: u8) -> Option<Piece> {
+        let color = self.get_field_color(square);
+        let piece_variation = self.get_field_piece_variation(square);
 
         match color {
             Some(color) =>
@@ -132,32 +136,5 @@ impl Board {
 
     pub fn get_pieces_board(&self, color: &Color) -> u64 {
         self.get_boards(color)[6]
-    }
-
-    fn set_en_passant(&mut self, square: u8) {
-        self.en_passant = square;
-    }
-
-    fn set_color_to_move(&mut self, color: Color) {
-        self.color_to_move = color;
-    }
-
-    fn set_castle(&mut self, color: Color, value: bool, king_side: bool) {
-        match color {
-            Color::WHITE => {
-                if king_side {
-                    self.white_castle.0 = value;
-                } else {
-                    self.white_castle.1 = value;
-                }
-            }
-            Color::BLACK => {
-                if king_side {
-                    self.black_castle.0 = value;
-                } else {
-                    self.black_castle.1 = value;
-                }
-            }
-        }
     }
 }
