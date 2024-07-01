@@ -38,7 +38,7 @@ pub fn iter_set_bits(mut board: u64) -> impl Iterator<Item = u8> {
  or taking the log2 of the number
  */
 pub fn bit_scan_lsb(board: u64) -> u8 {
-    return DEBRUIJN_INDEX_64[(((board & board.wrapping_neg()) * DEBRUIJN_64) >> 58) as usize];
+    return DEBRUIJN_INDEX_64[(((board & board.wrapping_neg()).overflowing_mul(DEBRUIJN_64)).0 >> 58) as usize];
 }
 
 const DEBRUIJN_64: u64 = 0x07edd5e59a4e28c2;
