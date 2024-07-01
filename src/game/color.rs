@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::{ Index, IndexMut };
 
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
 pub enum Color {
@@ -17,5 +17,14 @@ impl<T, const N: usize> Index<Color> for [T; N] {
 impl<T, const N: usize> IndexMut<Color> for [T; N] {
     fn index_mut(&mut self, index: Color) -> &mut Self::Output {
         &mut self[index as usize]
+    }
+}
+
+impl Color {
+    pub fn opposite(&self) -> Color {
+        match self {
+            Color::WHITE => Color::BLACK,
+            Color::BLACK => Color::WHITE,
+        }
     }
 }

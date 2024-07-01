@@ -16,7 +16,7 @@ pub enum PromotionPiece {
     ROOK,
 }
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Debug, FromPrimitive, PartialEq, Eq)]
 pub enum MoveType {
     NORMAL,
     PROMOTION,
@@ -25,11 +25,11 @@ pub enum MoveType {
 }
 
 static SOURCE_OFFSET: u32 = 0;
-static DEST_OFFSET: u32 = 7;
-static PIECE_OFFSET: u32 = 13;
-static COLOR_OFFSET: u32 = 16;
-static PROMOTION_PIECE_OFFSET: u32 = 17;
-static MOVE_TYPE_OFFSET: u32 = 19;
+static DEST_OFFSET: u32 = 6;
+static PIECE_OFFSET: u32 = 12;
+static COLOR_OFFSET: u32 = 15;
+static PROMOTION_PIECE_OFFSET: u32 = 16;
+static MOVE_TYPE_OFFSET: u32 = 18;
 
 static SOURCE_MASK: u32 = 0b111111 << SOURCE_OFFSET;
 static DEST_MASK: u32 = 0b111111 << DEST_OFFSET;
@@ -137,6 +137,14 @@ impl Move {
         )
     }
 
+    pub fn castle_kingside(&self) -> bool {
+        self.move_type() == MoveType::CASTLING && self.dest() == Square::G1.into()
+    }
+
+    pub fn castle_queenside(&self) -> bool {
+        self.move_type() == MoveType::CASTLING && self.dest() == Square::B1.into()
+    }
+
     pub fn is_null(&self) -> bool {
         self.0.is_zero()
     }
@@ -148,40 +156,19 @@ impl Move {
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {}->{} | ",
+            self.piece(),
+            Square::from(self.source()),
+            Square::from(self.dest())
+        )?;
         match self.move_type() {
-            MoveType::NORMAL =>
-                write!(
-                    f,
-                    "{}->{} {} | Normal",
-                    Square::from(self.source()),
-                    Square::from(self.dest()),
-                    self.piece()
-                ),
-            MoveType::PROMOTION =>
-                write!(
-                    f,
-                    "{}->{} {} | Promotion -> {:?}",
-                    Square::from(self.source()),
-                    Square::from(self.dest()),
-                    self.piece(),
-                    self.promotion_piece()
-                ),
-            MoveType::ENPASSANT =>
-                write!(
-                    f,
-                    "{}->{} {} | En Passant",
-                    Square::from(self.source()),
-                    Square::from(self.dest()),
-                    self.piece()
-                ),
+            MoveType::NORMAL => write!(f, "Normal"),
+            MoveType::PROMOTION => write!(f, "Promotion -> {:?}", self.promotion_piece()),
+            MoveType::ENPASSANT => write!(f, "En Passant"),
             MoveType::CASTLING =>
-                write!(
-                    f,
-                    "{}->{} {}| Castling",
-                    Square::from(self.source()),
-                    Square::from(self.dest()),
-                    self.piece()
-                ),
+                write!(f, "Castling {}", if self.castle_kingside() { "O-O" } else { "O-O-O" }),
         }
     }
 }

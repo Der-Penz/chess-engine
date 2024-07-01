@@ -1,4 +1,7 @@
-use crate::game::{ iter_set_bits, Move, PieceVariation, Square };
+use crate::{
+    attack_pattern::{ ATTACK_PATTERN_PAWN, MOVE_PATTERN_PAWN },
+    game::{ iter_set_bits, Color, Move, PieceVariation },
+};
 
 use super::Board;
 
@@ -12,38 +15,30 @@ impl Board {
         let mut moves = Vec::new();
         match piece.0 {
             PieceVariation::PAWN => {
-                //TODO: redo pawn moves currently invalid calculation
-                let attack_pattern = PieceVariation::PAWN.attack_pattern(piece.1);
-                let mut possible_moves = attack_pattern[pos as usize];
+                let mut possible_moves = MOVE_PATTERN_PAWN[piece.1][pos as usize];
 
-                possible_moves ^= possible_moves & self.get_pieces_board(&piece.1);
+                possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
 
                 // check for 2 square moves
-                if pos / 8 == 1 {
-                    if self.get_field_color(pos + 8).is_some_and(|c| c == piece.1) {
-                        possible_moves &= !Square::to_board_bit(pos + 16);
-                    }
+                if pos / 8 == 1 && possible_moves != 0 && piece.1 == Color::WHITE {
+                    let moves = MOVE_PATTERN_PAWN[piece.1][(pos + 8) as usize];
+                    possible_moves |= moves ^ (moves & self.get_all_pieces_bb());
+                }
+                if pos / 8 == 6 && possible_moves != 0 && piece.1 == Color::BLACK {
+                    let moves = MOVE_PATTERN_PAWN[piece.1][(pos - 8) as usize];
+                    possible_moves |= moves ^ (moves & self.get_all_pieces_bb());
                 }
 
+                let mut attack_moves = ATTACK_PATTERN_PAWN[piece.1][pos as usize];
+                attack_moves ^= attack_moves & self.get_pieces_bb(&piece.1);
+                attack_moves &= self.get_pieces_bb(&piece.1.opposite());
+                possible_moves |= attack_moves;
                 moves.extend(
                     iter_set_bits(possible_moves).map(|dest| { Move::normal(pos, dest, piece) })
                 );
 
-                // if the position is valid it
-                if Square::valid(self.en_passant) {
-                    //en passant can only happen on the 4th or 5th rank. This constrain should
-                    //already be inferred while setting the square
-                    assert!([4, 5].contains(&(self.en_passant / 8)));
-
-                    let col = self.en_passant % 8;
-                    if col > 0 && col - 1 == pos % 8 {
-                        moves.push(Move::en_passant(pos, pos + 9, piece.1));
-                    }
-                    if col < 7 && col + 1 == pos % 8 {
-                        moves.push(Move::en_passant(pos, pos + 7, piece.1));
-                    }
-                }
-
+                //TODO: en passant
+                //TODO: handle promotion moves (if it should return a single move or multiple moves or if it should be handled later on)
                 return Some(moves);
             }
             PieceVariation::KNIGHT => todo!("Knight moves not yet implemented"),
