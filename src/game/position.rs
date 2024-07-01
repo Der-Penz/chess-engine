@@ -1,5 +1,7 @@
 use num_traits::FromPrimitive;
 
+use super::Board;
+
 #[derive(Clone, Copy, PartialEq, Debug, FromPrimitive)]
 #[rustfmt::skip]
 pub enum Square {
@@ -119,6 +121,44 @@ pub fn display_position(x_board: u64, o_fields: u64) {
                 repr.push_str(&format!(" {}", "o"));
             } else {
                 repr.push_str(&format!(" {}", " "));
+            }
+        }
+        repr.push_str(&format!("  {}\n", y + 1));
+    }
+
+    repr.push_str(" ");
+    for x in 'A'..'I' {
+        repr.push_str(&format!(" {x}"));
+    }
+
+    println!("{repr}");
+}
+
+/**
+    Creates a chess board with x markers and the underlying board. Markers will take precedence over the board.
+    Can be used for debugging and displaying moves
+ */
+pub fn display_position_with_bb(x_board: u64, board: &Board) {
+    let mut repr = String::new();
+
+    repr.push_str(" ");
+    for x in 'A'..'I' {
+        repr.push_str(&format!(" {x}"));
+    }
+    repr.push_str("\n");
+
+    for y in 0..8 {
+        let y = 7 - y;
+        repr.push_str(&format!("{}", y + 1));
+        for x in 0..8 {
+            let square = x + y * 8;
+            if match_piece(square, x_board) {
+                repr.push_str(&format!(" {}", "x"));
+            } else {
+                match board.get_piece(square) {
+                    Some(piece) => repr.push_str(&format!(" {}", piece)),
+                    None => repr.push_str("  "),
+                }
             }
         }
         repr.push_str(&format!("  {}\n", y + 1));
