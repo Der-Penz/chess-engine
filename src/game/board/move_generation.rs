@@ -52,7 +52,5 @@ impl Board {
             PieceVariation::QUEEN => todo!("Queen moves not yet implemented"),
             PieceVariation::KING => todo!("King moves not yet implemented"),
         }
-
-        None
     }
 }

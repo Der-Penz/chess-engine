@@ -52,8 +52,8 @@ impl Square {
     /**
         bit shifts a position to the corresponding u64 mask
     */
-    pub fn to_board_bit(pos: u8) -> u64 {
-        0b1 << pos
+    pub fn to_board_bit(square: u8) -> u64 {
+        0b1 << square
     }
 
     /**
@@ -75,7 +75,7 @@ impl Square {
         from A1 to H1, A2 to H2, ..., A8 to H8
      */
     pub fn iter_ah_18() -> impl Iterator<Item = Square> {
-        (0..64).map(|pos| Square::from(pos))
+        (0..64).map(|square| Square::from(square))
     }
 
     pub fn row(&self) -> u8 {
@@ -92,28 +92,6 @@ impl Square {
 */
 pub fn match_piece(pos: u8, bit_board: u64) -> bool {
     bit_board & Square::to_board_bit(pos) > 0
-}
-
-/**
-   Returns the index of the next set bit in the u64 if any
-*/
-pub fn next_set_bit(bit_board: u64) -> Option<usize> {
-    for i in 0..64 {
-        if (bit_board & (1 << i)) != 0 {
-            return Some(i);
-        }
-    }
-
-    None
-}
-
-/**
-  Returns a Iterator over all indices of set bits in the bit board
- */
-pub fn iter_set_bits(bit_board: u64) -> impl Iterator<Item = u8> {
-    (0..64).filter_map(move |pos| {
-        if (bit_board & (1 << pos)) != 0 { Some(pos) } else { None }
-    })
 }
 
 /**
