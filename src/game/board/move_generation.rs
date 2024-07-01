@@ -1,5 +1,5 @@
 use crate::{
-    attack_pattern::{ ATTACK_PATTERN_PAWN, MOVE_PATTERN_PAWN },
+    attack_pattern::{ ATTACK_PATTERN_KNIGHT, ATTACK_PATTERN_PAWN, MOVE_PATTERN_PAWN },
     game::{ iter_set_bits, Color, Move, PieceVariation, Square },
 };
 
@@ -47,13 +47,23 @@ impl Board {
                         Move::normal(square, dest, piece, None)
                     })
                 );
-                return Some(moves);
             }
-            PieceVariation::KNIGHT => todo!("Knight moves not yet implemented"),
+            PieceVariation::KNIGHT => {
+                let mut possible_moves = ATTACK_PATTERN_KNIGHT[square as usize];
+                
+                possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
+
+                moves.extend(
+                    iter_set_bits(possible_moves).map(|dest| {
+                        Move::normal(square, dest, piece, None)
+                    })
+                );
+            }
             PieceVariation::BISHOP => todo!("Bishop moves not yet implemented"),
             PieceVariation::ROOK => todo!("Rook moves not yet implemented"),
             PieceVariation::QUEEN => todo!("Queen moves not yet implemented"),
             PieceVariation::KING => todo!("King moves not yet implemented"),
         }
+        return Some(moves);
     }
 }
