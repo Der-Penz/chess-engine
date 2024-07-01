@@ -19,7 +19,7 @@ impl Board {
             PieceVariation::PAWN => {
                 let mut possible_moves = MOVE_PATTERN_PAWN[piece.1][square as usize];
 
-                possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
+                possible_moves ^= possible_moves & self.get_all_pieces_bb();
 
                 // check for 2 square moves
                 if square / 8 == 1 && possible_moves != 0 && piece.1 == Color::WHITE {
