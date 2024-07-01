@@ -8,7 +8,9 @@ use super::Board;
 impl Board {
     /**
         Generates all the pseudo legal moves for a given square index.
-        Pseudo legal moves do not consider moves that get your king into check
+        Pseudo legal moves do not consider moves that get your king into check.
+        All moves are normale moves. After taking the move, it must be transformed into a different move
+        type if it is a promotion, en passant or castling move.
      */
     pub fn get_pseudo_legal_moves(&self, square: u8) -> Option<Vec<Move>> {
         let piece = self.get_piece(square)?;
@@ -42,15 +44,9 @@ impl Board {
 
                 moves.extend(
                     iter_set_bits(possible_moves).map(|dest| {
-                        if dest == self.en_passant {
-                            Move::en_passant(square, dest, piece.1)
-                        } else {
-                            Move::normal(square, dest, piece)
-                        }
+                        Move::normal(square, dest, piece, None)
                     })
                 );
-
-                //TODO: handle promotion moves (if it should return a single move or multiple moves or if it should be handled later on)
                 return Some(moves);
             }
             PieceVariation::KNIGHT => todo!("Knight moves not yet implemented"),
