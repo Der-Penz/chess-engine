@@ -1,5 +1,10 @@
 use crate::{
-    attack_pattern::{ ATTACK_PATTERN_KNIGHT, ATTACK_PATTERN_PAWN, MOVE_PATTERN_PAWN },
+    attack_pattern::{
+        ATTACK_PATTERN_KING,
+        ATTACK_PATTERN_KNIGHT,
+        ATTACK_PATTERN_PAWN,
+        MOVE_PATTERN_PAWN,
+    },
     game::{ iter_set_bits, Color, Move, PieceVariation, Square },
 };
 
@@ -15,7 +20,7 @@ impl Board {
     pub fn get_pseudo_legal_moves(&self, square: u8) -> Option<Vec<Move>> {
         let piece = self.get_piece(square)?;
         let mut moves = Vec::new();
-        match piece.0 {
+        let possible_moves = match piece.0 {
             PieceVariation::PAWN => {
                 let mut possible_moves = MOVE_PATTERN_PAWN[piece.1][square as usize];
 
@@ -42,28 +47,31 @@ impl Board {
                 }
                 possible_moves |= attack_moves;
 
-                moves.extend(
-                    iter_set_bits(possible_moves).map(|dest| {
-                        Move::normal(square, dest, piece, None)
-                    })
-                );
+                possible_moves
             }
             PieceVariation::KNIGHT => {
                 let mut possible_moves = ATTACK_PATTERN_KNIGHT[square as usize];
-                
+
                 possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
 
-                moves.extend(
-                    iter_set_bits(possible_moves).map(|dest| {
-                        Move::normal(square, dest, piece, None)
-                    })
-                );
+                possible_moves
             }
             PieceVariation::BISHOP => todo!("Bishop moves not yet implemented"),
             PieceVariation::ROOK => todo!("Rook moves not yet implemented"),
             PieceVariation::QUEEN => todo!("Queen moves not yet implemented"),
-            PieceVariation::KING => todo!("King moves not yet implemented"),
-        }
+            PieceVariation::KING => {
+                let mut possible_moves = ATTACK_PATTERN_KING[square as usize];
+
+                possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
+
+                possible_moves
+            }
+        };
+
+        moves.extend(
+            iter_set_bits(possible_moves).map(|dest| { Move::normal(square, dest, piece, None) })
+        );
+
         return Some(moves);
     }
 }
