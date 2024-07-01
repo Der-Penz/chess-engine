@@ -1,37 +1,20 @@
+use crate::game::{ east, north, north_east, north_west, south, south_east, south_west, west };
+
 const fn calculate_king_attack_pattern() -> [u64; 64] {
     let mut res = [0; 64];
     let mut i = 0;
     while i < 64 {
         let pos = 1 << i;
-        let col = i % 8;
-        let row = i / 8;
 
         let mut pattern = 0;
-        if col < 7 {
-            pattern |= pos << 1;
-        }
-        if col > 0 {
-            pattern |= pos >> 1;
-        }
-        if row > 0 {
-            pattern |= pos >> 8;
-            if col < 7 {
-                pattern |= pos >> 7;
-            }
-            if col > 0 {
-                pattern |= pos >> 9;
-            }
-        }
-        if row < 7 {
-            pattern |= pos << 8;
-
-            if col > 0 {
-                pattern |= pos << 7;
-            }
-            if col < 7 {
-                pattern |= pos << 9;
-            }
-        }
+        pattern |= north(pos, 1);
+        pattern |= north_east(pos, 1);
+        pattern |= east(pos, 1);
+        pattern |= south_east(pos, 1);
+        pattern |= south(pos, 1);
+        pattern |= south_west(pos, 1);
+        pattern |= west(pos, 1);
+        pattern |= north_west(pos, 1);
 
         res[i] = pattern;
         i += 1;
