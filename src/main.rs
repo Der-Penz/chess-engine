@@ -1,4 +1,6 @@
-use game::{ board::Board, display_position, display_position_with_bb, iter_set_bits, Color, Piece, PieceVariation, Square };
+#![allow(dead_code)]
+
+use game::{ board::Board, display_position_with_bb, iter_set_bits, Piece, Square };
 #[macro_use]
 extern crate num_derive;
 

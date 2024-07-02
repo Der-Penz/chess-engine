@@ -190,7 +190,7 @@ impl Display for Move {
             Square::from(self.dest())
         )?;
         self.captured_piece().inspect(|c| {
-            write!(f, "Captured: {}", Piece(*c, self.color().opposite()));
+            write!(f, "Captured: {}", Piece(*c, self.color().opposite())).ok();
         });
         match self.move_type() {
             MoveType::NORMAL => write!(f, "Normal"),
