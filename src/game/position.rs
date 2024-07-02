@@ -45,23 +45,18 @@ impl std::fmt::Display for Square {
 }
 
 impl Square {
-    /**
-        Validates a given position index to be in the inclusive range of 0 to 63
-    */
+    /// Validates a given position index to be in the inclusive range of 0 to 63
     pub fn valid(square: u8) -> bool {
         square > 0 && square < 64
     }
-    /**
-        bit shifts a position to the corresponding u64 mask
-    */
+
+    /// Bit shifts a position to the corresponding u64 mask
     pub fn to_board_bit(square: u8) -> u64 {
         0b1 << square
     }
 
-    /**
-        Returns an iterator over all squares on the board
-        from A8 to H8, A7 to H7, ..., A1 to H1
-     */
+    /// Returns an iterator over all squares on the board
+    /// from A8 to H8, A7 to H7, ..., A1 to H1
     pub fn iter_ah_81() -> impl Iterator<Item = Square> {
         (0..64).map(|square| {
             let square = 63 - (square as u8);
@@ -72,36 +67,30 @@ impl Square {
         })
     }
 
-    /**
-        Returns an iterator over all squares on the board
-        from A1 to H1, A2 to H2, ..., A8 to H8
-     */
+    /// Returns an iterator over all squares on the board
+    /// from A1 to H1, A2 to H2, ..., A8 to H8
     pub fn iter_ah_18() -> impl Iterator<Item = Square> {
         (0..64).map(|square| Square::from(square))
     }
 
-    /** zero indexed row */
+    /// zero indexed row
     pub fn row(&self) -> u8 {
         (*self as u8) / 8
     }
 
-    /** zero indexed column */
+    /// zero indexed column
     pub fn col(&self) -> u8 {
         (*self as u8) % 8
     }
 }
 
-/**
-    checks if a given position of a bit board is set
-*/
+/// checks if a given position of a bit board is set
 pub fn match_piece(pos: u8, bit_board: u64) -> bool {
     bit_board & Square::to_board_bit(pos) > 0
 }
 
-/**
-    Creates a chess board with x and o as markers.
-    Can be used for debugging and displaying moves
- */
+/// Creates a chess board with x and o as markers.
+/// Can be used for debugging and displaying moves
 pub fn display_position(x_board: u64, o_fields: u64) {
     let mut repr = String::new();
 
@@ -134,10 +123,8 @@ pub fn display_position(x_board: u64, o_fields: u64) {
     println!("{repr}");
 }
 
-/**
-    Creates a chess board with x markers and the underlying board. Markers will take precedence over the board.
-    Can be used for debugging and displaying moves
- */
+/// Creates a chess board with x markers and the underlying board. Markers will take precedence over the board.  
+/// Can be used for debugging and displaying moves
 pub fn display_position_with_bb(x_board: u64, board: &Board) {
     let mut repr = String::new();
 

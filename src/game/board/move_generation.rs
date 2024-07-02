@@ -11,12 +11,10 @@ use crate::{
 use super::Board;
 
 impl Board {
-    /**
-        Generates all the pseudo legal moves for a given square index.
-        Pseudo legal moves do not consider moves that get your king into check.
-        All moves are normale moves. After taking the move, it must be transformed into a different move
-        type if it is a promotion, en passant or castling move.
-     */
+    /// Generates all the pseudo legal moves for a given square index.
+    /// Pseudo legal moves do not consider moves that get your king into check.
+    /// All moves are normale moves. After taking the move, it must be transformed into a different move
+    /// type if it is a promotion, en passant or castling move.
     pub fn get_pseudo_legal_moves(&self, square: u8) -> Option<Vec<Move>> {
         let piece = self.get_piece(square)?;
         let mut moves = Vec::new();

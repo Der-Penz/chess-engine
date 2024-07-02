@@ -2,24 +2,18 @@ mod constants;
 
 pub use constants::*;
 
-/**
-    Returns the least significant bit of the u64
-    Consider using bit_scan_lsb instead as it is faster
- */
+/// Returns the least significant bit of the u64
+/// Consider using bit_scan_lsb instead as it is faster
 pub fn ls_bit_isolation(board: u64) -> u64 {
     board & board.wrapping_neg()
 }
 
-/**
-    Resets the least significant bit of the u64
- */
+/// Resets the least significant bit of the u64
 pub fn ls_bit_reset(board: u64) -> u64 {
     board & (board - 1)
 }
 
-/**
-    Returns an iterator over all set bits in the u64
- */
+/// Returns an iterator over all set bits in the u64
 pub fn iter_set_bits(mut board: u64) -> impl Iterator<Item = u8> {
     std::iter::from_fn(move || {
         if board == 0 {
@@ -31,14 +25,12 @@ pub fn iter_set_bits(mut board: u64) -> impl Iterator<Item = u8> {
     })
 }
 
-/**
- From https://www.chessprogramming.org/BitScan.
- De Bruijn Multiplication.
- Faster Bit Scan than using ls_bit_isolation and then counting the trailing zeros
- or taking the log2 of the number
- */
+/// From https://www.chessprogramming.org/BitScan  De Bruijn Multiplication.
+/// Faster Bit Scan than using ls_bit_isolation and then counting the trailing zeros
+/// or taking the log2 of the number
 pub fn bit_scan_lsb(board: u64) -> u8 {
-    return DEBRUIJN_INDEX_64[(((board & board.wrapping_neg()).overflowing_mul(DEBRUIJN_64)).0 >> 58) as usize];
+    return DEBRUIJN_INDEX_64
+        [((board & board.wrapping_neg()).overflowing_mul(DEBRUIJN_64).0 >> 58) as usize];
 }
 
 const DEBRUIJN_64: u64 = 0x07edd5e59a4e28c2;
@@ -48,16 +40,12 @@ const DEBRUIJN_INDEX_64: [u8; 64] = [
     25, 31, 35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5,
 ];
 
-/**
- Maps the A File to the 1 rank
- */
+/// Maps the A File to the 1 rank
 pub fn a_file_to_1_rank(board: u64) -> u64 {
     (board & A_FILE).overflowing_mul(MAIN_DIAGONAL).0 >> 56
 }
 
-/**
- Maps the Main diagonal to the 1 rank
- */
+/// Maps the Main diagonal to the 1 rank
 pub fn main_diagonal_to_1_rank(board: u64) -> u64 {
     (board & MAIN_DIAGONAL).overflowing_mul(A_FILE).0 >> 56
 }
