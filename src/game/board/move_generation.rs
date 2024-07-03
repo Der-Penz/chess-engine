@@ -62,6 +62,27 @@ impl Board {
 
                 possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
 
+                // Castling
+                let (king_side, queen_side) = match piece.1 {
+                    Color::WHITE => self.white_castle,
+                    Color::BLACK => self.black_castle,
+                };
+                if
+                    king_side &&
+                    self.get_piece(Square::F1.into()).is_none() &&
+                    self.get_piece(Square::G1.into()).is_none()
+                {
+                    possible_moves |= Square::to_board_bit(Square::G1.into());
+                }
+                if
+                    queen_side &&
+                    self.get_piece(Square::D1.into()).is_none() &&
+                    self.get_piece(Square::C1.into()).is_none() &&
+                    self.get_piece(Square::B1.into()).is_none()
+                {
+                    possible_moves |= Square::to_board_bit(Square::B1.into());
+                }
+
                 possible_moves
             }
         };

@@ -123,7 +123,7 @@ pub fn display_position(x_board: u64, o_fields: u64) {
     println!("{repr}");
 }
 
-/// Creates a chess board with x markers and the underlying board. Markers will take precedence over the board.  
+/// Creates a chess board with x markers and the underlying board. Markers will take precedence over the board.
 /// Can be used for debugging and displaying moves
 pub fn display_position_with_bb(x_board: u64, board: &Board) {
     let mut repr = String::new();
@@ -139,12 +139,21 @@ pub fn display_position_with_bb(x_board: u64, board: &Board) {
         repr.push_str(&format!("{}", y + 1));
         for x in 0..8 {
             let square = x + y * 8;
-            if match_piece(square, x_board) {
-                repr.push_str(&format!(" {}", "x"));
-            } else {
-                match board.get_piece(square) {
-                    Some(piece) => repr.push_str(&format!(" {}", piece)),
-                    None => repr.push_str("  "),
+
+            match board.get_piece(square) {
+                Some(piece) => {
+                    if match_piece(square, x_board) {
+                        repr.push_str(&format!("|{}", piece));
+                    } else {
+                        repr.push_str(&format!(" {}", piece));
+                    }
+                }
+                None => {
+                    if match_piece(square, x_board) {
+                        repr.push_str(&format!(" {}", "x"));
+                    } else {
+                        repr.push_str(&format!(" {}", " "));
+                    }
                 }
             }
         }
