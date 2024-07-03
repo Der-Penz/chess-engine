@@ -45,9 +45,19 @@ pub fn a_file_to_1_rank(board: u64) -> u64 {
     (board & A_FILE).overflowing_mul(MAIN_DIAGONAL).0 >> 56
 }
 
+/// Maps the 1 rank to the A File
+pub fn rev_a_file_to_1_rank(board: u64) -> u64 {
+    (board.overflowing_mul(MAIN_DIAGONAL).0 >> 7) & A_FILE
+}
+
 /// Maps the Main diagonal to the 1 rank
 pub fn main_diagonal_to_1_rank(board: u64) -> u64 {
     (board & MAIN_DIAGONAL).overflowing_mul(A_FILE).0 >> 56
+}
+
+/// Maps the 1 rank to the Main diagonal
+pub fn rev_main_diagonal_to_1_rank(board: u64) -> u64 {
+    (board.overflowing_mul(A_FILE).0) & MAIN_DIAGONAL
 }
 
 pub const fn north(board: u64, shifts: u8) -> u64 {
