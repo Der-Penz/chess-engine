@@ -190,7 +190,7 @@ impl Board {
                     empty += 1;
                 }
             }
-            if square.col() == 7 {
+            if square.file() == 7 {
                 if empty > 0 {
                     s.push_str(&format!("{}", empty));
                 }

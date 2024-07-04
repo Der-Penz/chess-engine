@@ -29,15 +29,15 @@ impl From<u8> for Square {
 
 impl std::fmt::Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let name = match self.col() {
-            0 => format!("A{}", self.row() + 1),
-            1 => format!("B{}", self.row() + 1),
-            2 => format!("C{}", self.row() + 1),
-            3 => format!("D{}", self.row() + 1),
-            4 => format!("E{}", self.row() + 1),
-            5 => format!("F{}", self.row() + 1),
-            6 => format!("G{}", self.row() + 1),
-            7 => format!("H{}", self.row() + 1),
+        let name = match self.file() {
+            0 => format!("A{}", self.rank() + 1),
+            1 => format!("B{}", self.rank() + 1),
+            2 => format!("C{}", self.rank() + 1),
+            3 => format!("D{}", self.rank() + 1),
+            4 => format!("E{}", self.rank() + 1),
+            5 => format!("F{}", self.rank() + 1),
+            6 => format!("G{}", self.rank() + 1),
+            7 => format!("H{}", self.rank() + 1),
             _ => panic!("Invalid Board Position"),
         };
         write!(f, "{}", name)
@@ -74,12 +74,12 @@ impl Square {
     }
 
     /// zero indexed row
-    pub fn row(&self) -> u8 {
+    pub fn rank(&self) -> u8 {
         (*self as u8) / 8
     }
 
     /// zero indexed column
-    pub fn col(&self) -> u8 {
+    pub fn file(&self) -> u8 {
         (*self as u8) % 8
     }
 }

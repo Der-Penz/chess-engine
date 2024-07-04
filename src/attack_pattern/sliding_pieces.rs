@@ -32,7 +32,7 @@ const fn generate_sliding_piece_lookup_table() -> [[u8; 8]; 64] {
 ///
 /// Lookup table for sliding piece attacks
 ///* First index is the occupied squares in a file
-///* Second index is the index of the sliding piece
+///* Second index is the file of the sliding piece  
 /// Returns a file mask of the squares that are attacked by the sliding piece.
 /// **For pieces of the same color, the mask is inclusive of the sliding piece's square,
 /// so the same color pieces must be masked out.**

@@ -2,6 +2,8 @@ mod constants;
 
 pub use constants::*;
 
+use super::Square;
+
 /// Returns the least significant bit of the u64
 /// Consider using bit_scan_lsb instead as it is faster
 pub fn ls_bit_isolation(board: u64) -> u64 {
@@ -57,7 +59,15 @@ pub fn main_diagonal_to_1_rank(board: u64) -> u64 {
 
 /// Maps the 1 rank to the Main diagonal
 pub fn rev_main_diagonal_to_1_rank(board: u64) -> u64 {
-    (board.overflowing_mul(A_FILE).0) & MAIN_DIAGONAL
+    board.overflowing_mul(A_FILE).0 & MAIN_DIAGONAL
+}
+
+pub fn to_a_file(board: u64, file: Square) -> u64 {
+    (board >> file.file()) & A_FILE
+}
+
+pub fn from_a_file(board: u64, file: Square) -> u64 {
+    (board & A_FILE) << file.file()
 }
 
 pub const fn north(board: u64, shifts: u8) -> u64 {
