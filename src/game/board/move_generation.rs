@@ -4,8 +4,19 @@ use crate::{
         ATTACK_PATTERN_KNIGHT,
         ATTACK_PATTERN_PAWN,
         MOVE_PATTERN_PAWN,
+        SLIDING_ATTACK_LOOKUP_TABLE,
     },
-    game::{ iter_set_bits, Color, Move, PieceVariation, Square },
+    game::{
+        a_file_to_1_rank,
+        from_a_file,
+        iter_set_bits,
+        rev_a_file_to_1_rank,
+        to_a_file,
+        Color,
+        Move,
+        PieceVariation,
+        Square,
+    },
 };
 
 use super::Board;

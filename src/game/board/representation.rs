@@ -1,43 +1,18 @@
 use std::fmt::{ Debug, Display };
 
-use crate::game::{ Color, Piece, PieceVariation, Square };
+use crate::game::{ bb_to_string, Color, Piece, PieceVariation, Square };
 
 use super::{ BitBoardOperation, Board };
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut repr = String::new();
-
-        repr.push_str(" ");
-        for x in 'A'..'I' {
-            repr.push_str(&format!(" {x}"));
-        }
-        if self.color_to_move == Color::WHITE {
-            repr.push_str("  ⬤\n");
-        } else {
-            repr.push_str("  ◯\n");
-        }
-
-        for y in 0..8 {
-            let y = 7 - y;
-            repr.push_str(&format!("{}", y + 1));
-            for x in 0..8 {
-                let piece = self.get_piece(x + y * 8);
-                match piece {
-                    Some(piece) => repr.push_str(&format!(" {}", piece)),
-                    None => repr.push_str(&format!(" {}", " ")),
-                }
-            }
-            repr.push_str(&format!("  {}\n", y + 1));
-        }
-
-        repr.push_str(" ");
-        for x in 'A'..'I' {
-            repr.push_str(&format!(" {x}"));
-        }
-
-        repr.push_str(&format!("\n\nFEN: {}\n", self.to_fen()));
-        write!(f, "{}", repr)
+        write!(
+            f,
+            "{}{} FEN: {}\n",
+            bb_to_string(|sq| { self.get_piece(sq.into()).map(|p| p.to_string()) }),
+            self.color_to_move,
+            self.to_fen()
+        )
     }
 }
 
@@ -216,7 +191,12 @@ impl Board {
             s.push('q');
         }
 
-        if !self.black_castle.0 || !self.black_castle.1 || !self.white_castle.0 || !self.white_castle.1 {
+        if
+            !self.black_castle.0 ||
+            !self.black_castle.1 ||
+            !self.white_castle.0 ||
+            !self.white_castle.1
+        {
             s.push_str("-");
         }
 

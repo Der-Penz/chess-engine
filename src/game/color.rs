@@ -1,4 +1,4 @@
-use std::ops::{ Index, IndexMut };
+use std::{fmt::Display, ops::{ Index, IndexMut }};
 
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
 pub enum Color {
@@ -26,5 +26,15 @@ impl Color {
             Color::WHITE => Color::BLACK,
             Color::BLACK => Color::WHITE,
         }
+    }
+}
+
+impl Display for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let color = match self {
+            Color::WHITE => "⬤",
+            Color::BLACK => "◯",
+        };
+        write!(f, "{}", color)
     }
 }

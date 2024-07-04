@@ -82,88 +82,14 @@ impl Square {
     pub fn file(&self) -> u8 {
         (*self as u8) % 8
     }
+
+    /// checks if the given bit board contains the square
+    pub fn matches(&self, bb: u64) -> bool {
+        bb & Square::to_board_bit((*self).into()) > 0
+    }
 }
 
 /// checks if a given position of a bit board is set
 pub fn match_piece(pos: u8, bit_board: u64) -> bool {
     bit_board & Square::to_board_bit(pos) > 0
-}
-
-/// Creates a chess board with x and o as markers.
-/// Can be used for debugging and displaying moves
-pub fn display_position(x_board: u64, o_fields: u64) {
-    let mut repr = String::new();
-
-    repr.push_str(" ");
-    for x in 'A'..'I' {
-        repr.push_str(&format!(" {x}"));
-    }
-    repr.push_str("\n");
-
-    for y in 0..8 {
-        let y = 7 - y;
-        repr.push_str(&format!("{}", y + 1));
-        for x in 0..8 {
-            if match_piece(x + y * 8, x_board) {
-                repr.push_str(&format!(" {}", "x"));
-            } else if match_piece(x + y * 8, o_fields) {
-                repr.push_str(&format!(" {}", "o"));
-            } else {
-                repr.push_str(&format!(" {}", " "));
-            }
-        }
-        repr.push_str(&format!("  {}\n", y + 1));
-    }
-
-    repr.push_str(" ");
-    for x in 'A'..'I' {
-        repr.push_str(&format!(" {x}"));
-    }
-
-    println!("{repr}");
-}
-
-/// Creates a chess board with x markers and the underlying board. Markers will take precedence over the board.
-/// Can be used for debugging and displaying moves
-pub fn display_position_with_bb(x_board: u64, board: &Board) {
-    let mut repr = String::new();
-
-    repr.push_str(" ");
-    for x in 'A'..'I' {
-        repr.push_str(&format!(" {x}"));
-    }
-    repr.push_str("\n");
-
-    for y in 0..8 {
-        let y = 7 - y;
-        repr.push_str(&format!("{}", y + 1));
-        for x in 0..8 {
-            let square = x + y * 8;
-
-            match board.get_piece(square) {
-                Some(piece) => {
-                    if match_piece(square, x_board) {
-                        repr.push_str(&format!("|{}", piece));
-                    } else {
-                        repr.push_str(&format!(" {}", piece));
-                    }
-                }
-                None => {
-                    if match_piece(square, x_board) {
-                        repr.push_str(&format!(" {}", "x"));
-                    } else {
-                        repr.push_str(&format!(" {}", " "));
-                    }
-                }
-            }
-        }
-        repr.push_str(&format!("  {}\n", y + 1));
-    }
-
-    repr.push_str(" ");
-    for x in 'A'..'I' {
-        repr.push_str(&format!(" {x}"));
-    }
-
-    println!("{repr}");
 }
