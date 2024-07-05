@@ -1,5 +1,7 @@
 use crate::{
     attack_pattern::{
+        rook_attacks_horizontal,
+        rook_attacks_vertical,
         ATTACK_PATTERN_KING,
         ATTACK_PATTERN_KNIGHT,
         ATTACK_PATTERN_PAWN,
@@ -10,6 +12,8 @@ use crate::{
         a_file_to_1_rank,
         from_a_file,
         iter_set_bits,
+        print_bb_bbx,
+        print_bb_ox,
         rev_a_file_to_1_rank,
         to_a_file,
         Color,
@@ -17,6 +21,7 @@ use crate::{
         PieceVariation,
         Square,
     },
+    lookup_sliding_piece,
 };
 
 use super::Board;
@@ -28,6 +33,7 @@ impl Board {
     /// type if it is a promotion, en passant or castling move.
     pub fn get_pseudo_legal_moves(&self, square: u8) -> Option<Vec<Move>> {
         let piece = self.get_piece(square)?;
+        let sq = Square::from(square);
         let mut moves = Vec::new();
         let possible_moves = match piece.0 {
             PieceVariation::PAWN => {
@@ -46,13 +52,13 @@ impl Board {
                 }
 
                 let mut attack_moves = ATTACK_PATTERN_PAWN[piece.1][square as usize];
-                attack_moves ^= attack_moves & self.get_pieces_bb(&piece.1);
+                attack_moves ^= attack_moves & self.get_color_pieces_bb(&piece.1);
                 if Square::valid(self.en_passant) {
                     attack_moves &=
-                        self.get_pieces_bb(&piece.1.opposite()) |
+                        self.get_color_pieces_bb(&piece.1.opposite()) |
                         Square::to_board_bit(self.en_passant);
                 } else {
-                    attack_moves &= self.get_pieces_bb(&piece.1.opposite());
+                    attack_moves &= self.get_color_pieces_bb(&piece.1.opposite());
                 }
                 possible_moves |= attack_moves;
 
@@ -61,17 +67,26 @@ impl Board {
             PieceVariation::KNIGHT => {
                 let mut possible_moves = ATTACK_PATTERN_KNIGHT[square as usize];
 
-                possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
+                possible_moves ^= possible_moves & self.get_color_pieces_bb(&piece.1);
 
                 possible_moves
             }
+            PieceVariation::ROOK => {
+                let mut possible_moves = 0;
+
+                let enemy = self.get_color_pieces_bb(&piece.1.opposite());
+                let ally = self.get_color_pieces_bb(&piece.1);
+                
+                possible_moves |= rook_attacks_vertical(enemy, ally, sq);
+                possible_moves |= rook_attacks_horizontal(enemy, ally, sq);
+                possible_moves
+            }
             PieceVariation::BISHOP => todo!("Bishop moves not yet implemented"),
-            PieceVariation::ROOK => todo!("Rook moves not yet implemented"),
             PieceVariation::QUEEN => todo!("Queen moves not yet implemented"),
             PieceVariation::KING => {
                 let mut possible_moves = ATTACK_PATTERN_KING[square as usize];
 
-                possible_moves ^= possible_moves & self.get_pieces_bb(&piece.1);
+                possible_moves ^= possible_moves & self.get_color_pieces_bb(&piece.1);
 
                 // Castling
                 let (king_side, queen_side) = match piece.1 {

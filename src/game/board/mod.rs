@@ -21,8 +21,8 @@ pub struct Board {
     white_castle: (bool, bool), //(king side, queen side)
     black_castle: (bool, bool), // (king side, queen side)
     en_passant: u8, //notes the square behind the pawn that can be captured en passant.
-                    // a value over 63 means no en passant
-                    // e.g if pawn moves from F2 to F4, F3 is the en passant square
+    // a value over 63 means no en passant
+    // e.g if pawn moves from F2 to F4, F3 is the en passant square
     half_move_clock: usize, //number of half moves since the last capture or pawn advance
     move_number: usize,
 }
@@ -134,8 +134,12 @@ impl Board {
         }
     }
 
-    pub fn get_pieces_bb(&self, color: &Color) -> u64 {
+    pub fn get_color_pieces_bb(&self, color: &Color) -> u64 {
         self.get_bbs(color)[6]
+    }
+
+    pub fn get_pieces_bb(&self, piece: &PieceVariation) -> u64 {
+        self.white_boards[*piece] | self.black_boards[*piece]
     }
 
     pub fn get_all_pieces_bb(&self) -> u64 {

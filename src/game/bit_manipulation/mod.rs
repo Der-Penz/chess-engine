@@ -62,12 +62,20 @@ pub fn rev_main_diagonal_to_1_rank(board: u64) -> u64 {
     board.overflowing_mul(A_FILE).0 & MAIN_DIAGONAL
 }
 
-pub fn to_a_file(board: u64, file: Square) -> u64 {
-    (board >> file.file()) & A_FILE
+pub fn to_a_file(board: u64, sq: Square) -> u64 {
+    (board >> sq.file()) & A_FILE
 }
 
-pub fn from_a_file(board: u64, file: Square) -> u64 {
-    (board & A_FILE) << file.file()
+pub fn from_a_file(board: u64, sq: Square) -> u64 {
+    (board & A_FILE) << sq.file()
+}
+
+pub fn to_1_rank(board: u64, sq: Square) -> u64 {
+    (board >> (sq.rank() * 8)) & FIRST_RANK
+}
+
+pub fn from_1_rank(board: u64, sq: Square) -> u64 {
+    (board & FIRST_RANK) << (sq.rank() * 8)
 }
 
 pub const fn north(board: u64, shifts: u8) -> u64 {

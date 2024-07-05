@@ -29,11 +29,22 @@ const fn generate_sliding_piece_lookup_table() -> [[u8; 8]; 64] {
     lookup_table
 }
 
-///
+
 /// Lookup table for sliding piece attacks
 ///* First index is the occupied squares in a file
-///* Second index is the file of the sliding piece  
+///* Second index is the file of the sliding piece
 /// Returns a file mask of the squares that are attacked by the sliding piece.
-/// **For pieces of the same color, the mask is inclusive of the sliding piece's square,
+/// **For pieces of the same color, the mask includes attacks on them,
 /// so the same color pieces must be masked out.**
 pub const SLIDING_ATTACK_LOOKUP_TABLE: [[u8; 8]; 64] = generate_sliding_piece_lookup_table();
+
+/// Performs a lookup on the sliding piece lookup table (cuts of edges of the board for the indexing)  
+/// with a 8 bit occupied squares and a file of the sliding piece 
+/// Returns the attack mask of the sliding piece as a full bit board on the first rank
+#[macro_export]
+macro_rules! lookup_sliding_piece {
+    ($occupied:expr, $file:expr) => {
+        crate::SLIDING_ATTACK_LOOKUP_TABLE[((($occupied) >> 1) & 0b111111) as usize]
+            [($file & 0b111) as usize] as u64
+    };
+}

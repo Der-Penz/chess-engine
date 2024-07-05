@@ -1,26 +1,31 @@
-const fn calculate_rook_attack_pattern() -> [u64; 64] {
-    let mut res = [0; 64];
-    let mut i = 0;
-    while i < 64 {
-        let pos = 1 << i;
-        let col = i % 8;
-        let row = i / 8;
+use crate::{ game::{ bit_manipulation, Square }, lookup_sliding_piece };
 
-        let mut pattern = 0;
+/// Calculates the rook attacks for a given square the rook is on in vertical direction.
+pub fn rook_attacks_vertical(enemy_occupied: u64, ally_occupied: u64, sq: Square) -> u64 {
+    let mut occupied = enemy_occupied | ally_occupied;
+    occupied = bit_manipulation::to_a_file(occupied, sq);
+    occupied = bit_manipulation::a_file_to_1_rank(occupied);
 
-        
-        let vertical = 0xff;
-        let vertical = vertical << (row * 8);
-        pattern |= vertical;
+    let mut attacks = lookup_sliding_piece!(occupied, 7 - sq.rank());
 
-        let horizontal = 0x101010101010101;
-        let horizontal = horizontal << (col);
-        pattern |= horizontal;
+    attacks = bit_manipulation::rev_a_file_to_1_rank(attacks);
+    attacks = bit_manipulation::from_a_file(attacks, sq);
 
-        res[i] = pattern ^ pos;
-        i += 1;
-    }
-    res
+    // Mask out the same color pieces
+    attacks ^= attacks & ally_occupied;
+    attacks
 }
 
-pub const ATTACK_PATTERN_ROOK: [u64; 64] = calculate_rook_attack_pattern();
+/// Calculates the rook attacks for a given square the rook is on in vertical direction.
+pub fn rook_attacks_horizontal(enemy_occupied: u64, ally_occupied: u64, sq: Square) -> u64 {
+    let mut occupied = enemy_occupied | ally_occupied;
+    occupied = bit_manipulation::to_1_rank(occupied, sq);
+
+    let mut attacks = lookup_sliding_piece!(occupied, sq.file());
+
+    attacks = bit_manipulation::from_1_rank(attacks, sq);
+
+    // Mask out the same color pieces
+    attacks ^= attacks & ally_occupied;
+    attacks
+}
