@@ -47,7 +47,7 @@ impl std::fmt::Display for Square {
 impl Square {
     /// Validates a given position index to be in the inclusive range of 0 to 63
     pub fn valid(square: u8) -> bool {
-        square > 0 && square < 64
+        square < 64
     }
 
     /// Bit shifts a position to the corresponding u64 mask

@@ -34,7 +34,6 @@ pub fn print_bb_ox(o_bb: u64, x_bb: u64) {
     println!(
         "{}",
         bb_to_string(|s| {
-            println!("{}", s);
             if s.matches(o_bb) {
                 Some("o".to_string())
             } else if s.matches(x_bb) {
@@ -50,7 +49,6 @@ pub fn print_bb_oxd(o_bb: u64, x_bb: u64, d_bb: u64) {
     println!(
         "{}",
         bb_to_string(|s| {
-            println!("{}", s);
             if s.matches(o_bb) {
                 Some("o".to_string())
             } else if s.matches(x_bb) && s.matches(d_bb) {
@@ -71,9 +69,7 @@ pub fn print_bb_bbx(bb: &Board, x_bb: u64) {
     println!(
         "{}",
         bb_to_string(|s| {
-            let piece = bb.get_piece(s.into());
-
-            match piece {
+            match bb.get_piece(s.into()) {
                 Some(p) => if s.matches(x_bb) {
                     Some(format!("{}{}", "\u{035C}", p.to_string()))
                 } else {
