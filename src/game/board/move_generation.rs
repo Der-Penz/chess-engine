@@ -6,22 +6,14 @@ use crate::{
         ATTACK_PATTERN_KNIGHT,
         ATTACK_PATTERN_PAWN,
         MOVE_PATTERN_PAWN,
-        SLIDING_ATTACK_LOOKUP_TABLE,
     },
     game::{
-        a_file_to_1_rank,
-        from_a_file,
         iter_set_bits,
-        print_bb_bbx,
-        print_bb_ox,
-        rev_a_file_to_1_rank,
-        to_a_file,
         Color,
         Move,
         PieceVariation,
         Square,
     },
-    lookup_sliding_piece,
 };
 
 use super::Board;
@@ -76,7 +68,7 @@ impl Board {
 
                 let enemy = self.get_color_pieces_bb(&piece.1.opposite());
                 let ally = self.get_color_pieces_bb(&piece.1);
-                
+
                 possible_moves |= rook_attacks_vertical(enemy, ally, sq);
                 possible_moves |= rook_attacks_horizontal(enemy, ally, sq);
                 possible_moves

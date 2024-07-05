@@ -1,7 +1,5 @@
 use num_traits::FromPrimitive;
 
-use super::Board;
-
 #[derive(Clone, Copy, PartialEq, Debug, FromPrimitive)]
 #[rustfmt::skip]
 pub enum Square {
