@@ -1,35 +1,37 @@
-const fn calculate_bishop_attack_pattern() -> [u64; 64] {
-    let mut res = [0; 64];
-    let mut i: usize = 0;
-    while i < 64 {
-        let pos = 1 << i;
-        let col = i % 8;
-        let row = i / 8;
+use crate::{ game::{ bit_manipulation, Square }, lookup_sliding_piece };
 
-        let mut pattern = 0;
+/// Calculate the bishop attacks for a given square in the main diagonal direction.
+pub fn bishop_attacks_main(enemy_occupied: u64, ally_occupied: u64, sq: Square) -> u64 {
+    let mut occupied = enemy_occupied | ally_occupied;
 
-        let bottom_left_top_right = 0x8040201008040201u64;
-        let top_left_bottom_right = 0x102040810204080u64;
+    occupied = bit_manipulation::to_main_diagonal(occupied, sq);
+    occupied = bit_manipulation::main_diagonal_to_1_rank(occupied);
 
-        let dir = (col as isize) - (row as isize);
-        if dir > 0 {
-            pattern |= bottom_left_top_right >> (dir * 8);
-        } else {
-            pattern |= bottom_left_top_right << (-dir * 8);
-        }
+    let mut attacks = lookup_sliding_piece!(occupied, sq.file());
 
-        let dir = -(col as isize) - (row as isize) + 7;
-        if dir > 0 && dir < 7 {
-            pattern |= top_left_bottom_right >> (dir * 8);
-        }
-        if dir <= 0 && dir > -7 {
-            pattern |= top_left_bottom_right << (-dir * 8);
-        }
+    attacks = bit_manipulation::rev_main_diagonal_to_1_rank(attacks);
+    attacks = bit_manipulation::from_main_diagonal(attacks, sq);
 
-        res[i] = pattern ^ pos;
-        i += 1;
-    }
-    res
+    // Mask out the same color pieces
+    attacks ^= attacks & ally_occupied;
+    attacks
 }
 
-pub const ATTACK_PATTERN_BISHOP: [u64; 64] = calculate_bishop_attack_pattern();
+/// Calculate the bishop attacks for a given square in the anti diagonal direction.
+pub fn bishop_attacks_anti(enemy_occupied: u64, ally_occupied: u64, sq: Square) -> u64 {
+    let mut occupied = enemy_occupied | ally_occupied;
+
+    occupied = bit_manipulation::to_anti_diagonal(occupied, sq);
+    occupied = bit_manipulation::mirror_horizontal(occupied);
+    occupied = bit_manipulation::main_diagonal_to_1_rank(occupied);
+
+    let mut attacks = lookup_sliding_piece!(occupied, 7 - sq.file());
+
+    attacks = bit_manipulation::rev_main_diagonal_to_1_rank(attacks);
+    attacks = bit_manipulation::mirror_horizontal(attacks);
+    attacks = bit_manipulation::from_anti_diagonal(attacks, sq);
+
+    // Mask out the same color pieces
+    attacks ^= attacks & ally_occupied;
+    attacks
+}

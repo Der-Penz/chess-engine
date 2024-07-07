@@ -13,6 +13,9 @@ pub const NOT_FIRST_RANK: u64 = !FIRST_RANK;
 pub const MAIN_DIAGONAL: u64 = 0x8040201008040201;
 pub const ANTI_DIAGONAL: u64 = 0x0102040810204080;
 
+pub const NOT_MAIN_DIAGONAL: u64 = !MAIN_DIAGONAL;
+pub const NOT_ANTI_DIAGONAL: u64 = !ANTI_DIAGONAL;
+
 pub const DIR_NW: i8 = 7;
 pub const DIR_N: i8 = 8;
 pub const DIR_NE: i8 = 9;

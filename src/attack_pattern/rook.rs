@@ -16,7 +16,7 @@ pub fn rook_attacks_vertical(enemy_occupied: u64, ally_occupied: u64, sq: Square
     attacks
 }
 
-/// Calculates the rook attacks for a given square the rook is on in vertical direction.
+/// Calculates the rook attacks for a given square the rook is on in horizontal direction.
 pub fn rook_attacks_horizontal(enemy_occupied: u64, ally_occupied: u64, sq: Square) -> u64 {
     let mut occupied = enemy_occupied | ally_occupied;
     occupied = bit_manipulation::to_1_rank(occupied, sq);

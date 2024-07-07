@@ -1,5 +1,7 @@
 use crate::{
     attack_pattern::{
+        bishop_attacks_anti,
+        bishop_attacks_main,
         rook_attacks_horizontal,
         rook_attacks_vertical,
         ATTACK_PATTERN_KING,
@@ -7,13 +9,7 @@ use crate::{
         ATTACK_PATTERN_PAWN,
         MOVE_PATTERN_PAWN,
     },
-    game::{
-        iter_set_bits,
-        Color,
-        Move,
-        PieceVariation,
-        Square,
-    },
+    game::{ iter_set_bits, Color, Move, PieceVariation, Square },
 };
 
 use super::Board;
@@ -73,7 +69,16 @@ impl Board {
                 possible_moves |= rook_attacks_horizontal(enemy, ally, sq);
                 possible_moves
             }
-            PieceVariation::BISHOP => todo!("Bishop moves not yet implemented"),
+            PieceVariation::BISHOP => {
+                let mut possible_moves = 0;
+
+                let enemy = self.get_color_pieces_bb(&piece.1.opposite());
+                let ally = self.get_color_pieces_bb(&piece.1);
+
+                possible_moves |= bishop_attacks_main(enemy, ally, sq);
+                possible_moves |= bishop_attacks_anti(enemy, ally, sq);
+                possible_moves
+            }
             PieceVariation::QUEEN => todo!("Queen moves not yet implemented"),
             PieceVariation::KING => {
                 let mut possible_moves = ATTACK_PATTERN_KING[square as usize];

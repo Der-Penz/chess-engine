@@ -42,6 +42,19 @@ const DEBRUIJN_INDEX_64: [u8; 64] = [
     25, 31, 35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5,
 ];
 
+/// Mirrors the bit board horizontally
+pub fn mirror_horizontal(bb: u64) -> u64 {
+    let mut bb = bb;
+    bb = ((bb >> 1) & K1) | ((bb & K1) << 1);
+    bb = ((bb >> 2) & K2) | ((bb & K2) << 2);
+    bb = ((bb >> 4) & K3) | ((bb & K3) << 4);
+    bb
+}
+
+const K1: u64 = 0x5555555555555555;
+const K2: u64 = 0x3333333333333333;
+const K3: u64 = 0x0f0f0f0f0f0f0f0f;
+
 /// Maps the A File to the 1 rank
 pub fn a_file_to_1_rank(board: u64) -> u64 {
     (board & A_FILE).overflowing_mul(MAIN_DIAGONAL).0 >> 56
@@ -76,6 +89,42 @@ pub fn to_1_rank(board: u64, sq: Square) -> u64 {
 
 pub fn from_1_rank(board: u64, sq: Square) -> u64 {
     (board & FIRST_RANK) << (sq.rank() * 8)
+}
+
+pub fn to_main_diagonal(board: u64, sq: Square) -> u64 {
+    let amount = (sq.file() as i8) - (sq.rank() as i8);
+    if amount > 0 {
+        (board << (amount * 8)) & MAIN_DIAGONAL
+    } else {
+        (board >> (-amount * 8)) & MAIN_DIAGONAL
+    }
+}
+
+pub fn from_main_diagonal(board: u64, sq: Square) -> u64 {
+    let amount = (sq.file() as i8) - (sq.rank() as i8);
+    if amount > 0 {
+        (board & MAIN_DIAGONAL) >> (amount * 8)
+    } else {
+        (board & MAIN_DIAGONAL) << (-amount * 8)
+    }
+}
+
+pub fn to_anti_diagonal(board: u64, sq: Square) -> u64 {
+    let amount = 7 - ((sq.file() as i8) + (sq.rank() as i8));
+    if amount > 0 {
+        (board << (amount * 8)) & ANTI_DIAGONAL
+    } else {
+        (board >> (-amount * 8)) & ANTI_DIAGONAL
+    }
+}
+
+pub fn from_anti_diagonal(board: u64, sq: Square) -> u64 {
+    let amount = 7 - ((sq.file() as i8) + (sq.rank() as i8));
+    if amount > 0 {
+        (board & ANTI_DIAGONAL) >> (amount * 8)
+    } else {
+        (board & ANTI_DIAGONAL) << (-amount * 8)
+    }
 }
 
 pub const fn north(board: u64, shifts: u8) -> u64 {
