@@ -3,7 +3,6 @@ pub mod pawn;
 pub mod king;
 pub mod rook;
 pub mod bishop;
-pub mod queen;
 pub mod sliding_pieces;
 
 pub use king::*;
@@ -11,5 +10,4 @@ pub use knight::*;
 pub use pawn::*;
 pub use rook::*;
 pub use bishop::*;
-pub use queen::*;
 pub use sliding_pieces::*;

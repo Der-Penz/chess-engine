@@ -79,7 +79,18 @@ impl Board {
                 possible_moves |= bishop_attacks_anti(enemy, ally, sq);
                 possible_moves
             }
-            PieceVariation::QUEEN => todo!("Queen moves not yet implemented"),
+            PieceVariation::QUEEN => {
+                let mut possible_moves = 0;
+
+                let enemy = self.get_color_pieces_bb(&piece.1.opposite());
+                let ally = self.get_color_pieces_bb(&piece.1);
+
+                possible_moves |= rook_attacks_vertical(enemy, ally, sq);
+                possible_moves |= rook_attacks_horizontal(enemy, ally, sq);
+                possible_moves |= bishop_attacks_main(enemy, ally, sq);
+                possible_moves |= bishop_attacks_anti(enemy, ally, sq);
+                possible_moves
+            }
             PieceVariation::KING => {
                 let mut possible_moves = ATTACK_PATTERN_KING[square as usize];
 
