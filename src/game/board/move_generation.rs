@@ -1,4 +1,4 @@
-use crate::{ attack_pattern, game::{ iter_set_bits, Color, Move, PieceVariation, Square } };
+use crate::{ attack_pattern, game::{ iter_set_bits, Color, Move, Piece, PieceVariation, Square } };
 
 use super::Board;
 
@@ -117,5 +117,68 @@ impl Board {
         attacks |= attack_moves;
 
         attacks
+    }
+
+    /// Whether a square is attacked by a color or not.
+    pub fn square_attacked(&self, square: Square, attacked_by: Color) -> bool {
+        let sq = square.into();
+        let ally = self.get_bb_color_occupied(&attacked_by.opposite());
+        let enemy = self.get_bb_color_occupied(&attacked_by);
+
+        let pawns = self.get_bb_for(&Piece(PieceVariation::PAWN, attacked_by));
+        if
+            (Board::attacks_pawn(sq, enemy, ally, &attacked_by.opposite(), self.en_passant) &
+                pawns) != 0
+        {
+            return true;
+        }
+
+        let knight = self.get_bb_for(&Piece(PieceVariation::KNIGHT, attacked_by));
+        if (Board::attacks_knight(sq, ally) & knight) != 0 {
+            return true;
+        }
+
+        let king = self.get_bb_for(&Piece(PieceVariation::KING, attacked_by));
+        if (Board::attacks_king(sq, ally, &attacked_by.opposite(), &self) & king) != 0 {
+            return true;
+        }
+
+        let square = Square::from(sq);
+        let bishop_queen =
+            self.get_bb_for(&Piece(PieceVariation::BISHOP, attacked_by)) |
+            self.get_bb_for(&Piece(PieceVariation::QUEEN, attacked_by));
+        if (Board::attacks_bishop(&square, enemy, ally) & bishop_queen) != 0 {
+            return true;
+        }
+
+        let rook_queen =
+            self.get_bb_for(&Piece(PieceVariation::ROOK, attacked_by)) |
+            self.get_bb_for(&Piece(PieceVariation::QUEEN, attacked_by));
+        if (Board::attacks_rook(&square, enemy, ally) & rook_queen) != 0 {
+            return true;
+        }
+
+        false
+    }
+
+    /// Whether a player is in check or not. (white_check, black_check).  
+    /// If no king is found, the Option will be None.
+    pub fn in_check(&self) -> (Option<bool>, Option<bool>) {
+        let mut white_check = None;
+        let mut black_check = None;
+
+        let king: u64 = self.white_boards[PieceVariation::KING];
+        let king_sq = iter_set_bits(king).next();
+        if let Some(king_sq) = king_sq {
+            white_check = self.square_attacked(king_sq.into(), Color::BLACK).into();
+        }
+
+        let king: u64 = self.black_boards[PieceVariation::KING];
+        let king_sq = iter_set_bits(king).next();
+        if let Some(king_sq) = king_sq {
+            black_check = self.square_attacked(king_sq.into(), Color::WHITE).into();
+        }
+
+        (white_check, black_check)
     }
 }

@@ -127,22 +127,22 @@ impl Board {
         None
     }
 
-    pub fn get_bbs(&self, color: &Color) -> [u64; 7] {
+    pub fn get_bbs_color(&self, color: &Color) -> [u64; 7] {
         match color {
             Color::WHITE => self.white_boards,
             Color::BLACK => self.black_boards,
         }
     }
 
-    pub fn get_color_pieces_bb(&self, color: &Color) -> u64 {
-        self.get_bbs(color)[6]
+    pub fn get_bb_color_occupied(&self, color: &Color) -> u64 {
+        self.get_bbs_color(color)[6]
     }
 
-    pub fn get_pieces_bb(&self, piece: &PieceVariation) -> u64 {
-        self.white_boards[*piece] | self.black_boards[*piece]
+    pub fn get_bb_for(&self, piece: &Piece) -> u64 {
+        self.get_bbs_color(&piece.1)[piece.0]
     }
 
-    pub fn get_all_pieces_bb(&self) -> u64 {
+    pub fn get_bb_all_occupied(&self) -> u64 {
         self.white_boards[6] | self.black_boards[6]
     }
 }
