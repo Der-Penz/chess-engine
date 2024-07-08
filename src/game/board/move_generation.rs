@@ -1,16 +1,4 @@
-use crate::{
-    attack_pattern::{
-        bishop_attacks_anti,
-        bishop_attacks_main,
-        rook_attacks_horizontal,
-        rook_attacks_vertical,
-        ATTACK_PATTERN_KING,
-        ATTACK_PATTERN_KNIGHT,
-        ATTACK_PATTERN_PAWN,
-        MOVE_PATTERN_PAWN,
-    },
-    game::{ iter_set_bits, Color, Move, PieceVariation, Square },
-};
+use crate::{ attack_pattern, game::{ iter_set_bits, Color, Move, PieceVariation, Square } };
 
 use super::Board;
 
@@ -22,103 +10,19 @@ impl Board {
     pub fn get_pseudo_legal_moves(&self, square: u8) -> Option<Vec<Move>> {
         let piece = self.get_piece(square)?;
         let sq = Square::from(square);
+
+        let ally = self.get_bb_color_occupied(&piece.1);
+        let enemy = self.get_bb_color_occupied(&piece.1.opposite());
+
         let mut moves = Vec::new();
         let possible_moves = match piece.0 {
-            PieceVariation::PAWN => {
-                let mut possible_moves = MOVE_PATTERN_PAWN[piece.1][square as usize];
-
-                possible_moves ^= possible_moves & self.get_all_pieces_bb();
-
-                // check for 2 square moves
-                if square / 8 == 1 && possible_moves != 0 && piece.1 == Color::WHITE {
-                    let moves = MOVE_PATTERN_PAWN[piece.1][(square + 8) as usize];
-                    possible_moves |= moves ^ (moves & self.get_all_pieces_bb());
-                }
-                if square / 8 == 6 && possible_moves != 0 && piece.1 == Color::BLACK {
-                    let moves = MOVE_PATTERN_PAWN[piece.1][(square - 8) as usize];
-                    possible_moves |= moves ^ (moves & self.get_all_pieces_bb());
-                }
-
-                let mut attack_moves = ATTACK_PATTERN_PAWN[piece.1][square as usize];
-                attack_moves ^= attack_moves & self.get_color_pieces_bb(&piece.1);
-                if Square::valid(self.en_passant) {
-                    attack_moves &=
-                        self.get_color_pieces_bb(&piece.1.opposite()) |
-                        Square::to_board_bit(self.en_passant);
-                } else {
-                    attack_moves &= self.get_color_pieces_bb(&piece.1.opposite());
-                }
-                possible_moves |= attack_moves;
-
-                possible_moves
-            }
-            PieceVariation::KNIGHT => {
-                let mut possible_moves = ATTACK_PATTERN_KNIGHT[square as usize];
-
-                possible_moves ^= possible_moves & self.get_color_pieces_bb(&piece.1);
-
-                possible_moves
-            }
-            PieceVariation::ROOK => {
-                let mut possible_moves = 0;
-
-                let enemy = self.get_color_pieces_bb(&piece.1.opposite());
-                let ally = self.get_color_pieces_bb(&piece.1);
-
-                possible_moves |= rook_attacks_vertical(enemy, ally, sq);
-                possible_moves |= rook_attacks_horizontal(enemy, ally, sq);
-                possible_moves
-            }
-            PieceVariation::BISHOP => {
-                let mut possible_moves = 0;
-
-                let enemy = self.get_color_pieces_bb(&piece.1.opposite());
-                let ally = self.get_color_pieces_bb(&piece.1);
-
-                possible_moves |= bishop_attacks_main(enemy, ally, sq);
-                possible_moves |= bishop_attacks_anti(enemy, ally, sq);
-                possible_moves
-            }
-            PieceVariation::QUEEN => {
-                let mut possible_moves = 0;
-
-                let enemy = self.get_color_pieces_bb(&piece.1.opposite());
-                let ally = self.get_color_pieces_bb(&piece.1);
-
-                possible_moves |= rook_attacks_vertical(enemy, ally, sq);
-                possible_moves |= rook_attacks_horizontal(enemy, ally, sq);
-                possible_moves |= bishop_attacks_main(enemy, ally, sq);
-                possible_moves |= bishop_attacks_anti(enemy, ally, sq);
-                possible_moves
-            }
-            PieceVariation::KING => {
-                let mut possible_moves = ATTACK_PATTERN_KING[square as usize];
-
-                possible_moves ^= possible_moves & self.get_color_pieces_bb(&piece.1);
-
-                // Castling
-                let (king_side, queen_side) = match piece.1 {
-                    Color::WHITE => self.white_castle,
-                    Color::BLACK => self.black_castle,
-                };
-                if
-                    king_side &&
-                    self.get_piece(Square::F1.into()).is_none() &&
-                    self.get_piece(Square::G1.into()).is_none()
-                {
-                    possible_moves |= Square::to_board_bit(Square::G1.into());
-                }
-                if
-                    queen_side &&
-                    self.get_piece(Square::D1.into()).is_none() &&
-                    self.get_piece(Square::C1.into()).is_none() &&
-                    self.get_piece(Square::B1.into()).is_none()
-                {
-                    possible_moves |= Square::to_board_bit(Square::B1.into());
-                }
-
-                possible_moves
-            }
+            PieceVariation::PAWN =>
+                Board::attacks_pawn(square, enemy, ally, &piece.1, self.en_passant),
+            PieceVariation::KNIGHT => Board::attacks_knight(square, ally),
+            PieceVariation::ROOK => Board::attacks_rook(&sq, enemy, ally),
+            PieceVariation::BISHOP => Board::attacks_bishop(&sq, enemy, ally),
+            PieceVariation::QUEEN => Board::attacks_queen(&sq, enemy, ally),
+            PieceVariation::KING => Board::attacks_king(square, ally, &piece.1, self),
         };
 
         moves.extend(
@@ -126,5 +30,92 @@ impl Board {
         );
 
         return Some(moves);
+    }
+
+    fn attacks_rook(sq: &Square, enemy: u64, ally: u64) -> u64 {
+        let mut attacks = 0;
+
+        attacks |= attack_pattern::rook_attacks_vertical(enemy, ally, *sq);
+        attacks |= attack_pattern::rook_attacks_horizontal(enemy, ally, *sq);
+        attacks
+    }
+
+    fn attacks_bishop(sq: &Square, enemy: u64, ally: u64) -> u64 {
+        let mut attacks = 0;
+
+        attacks |= attack_pattern::bishop_attacks_main(enemy, ally, *sq);
+        attacks |= attack_pattern::bishop_attacks_anti(enemy, ally, *sq);
+        attacks
+    }
+
+    fn attacks_queen(sq: &Square, enemy: u64, ally: u64) -> u64 {
+        let mut attacks = 0;
+
+        attacks |= Board::attacks_rook(sq, enemy, ally);
+        attacks |= Board::attacks_bishop(sq, enemy, ally);
+        attacks
+    }
+
+    fn attacks_king(sq: u8, ally: u64, color: &Color, board: &Board) -> u64 {
+        let mut attacks = attack_pattern::ATTACK_PATTERN_KING[sq as usize];
+
+        attacks ^= attacks & ally;
+
+        // Castling
+        let (king_side, queen_side) = match color {
+            Color::WHITE => board.white_castle,
+            Color::BLACK => board.black_castle,
+        };
+        if
+            king_side &&
+            board.get_piece(Square::F1.into()).is_none() &&
+            board.get_piece(Square::G1.into()).is_none()
+        {
+            attacks |= Square::to_board_bit(Square::G1.into());
+        }
+        if
+            queen_side &&
+            board.get_piece(Square::D1.into()).is_none() &&
+            board.get_piece(Square::C1.into()).is_none() &&
+            board.get_piece(Square::B1.into()).is_none()
+        {
+            attacks |= Square::to_board_bit(Square::B1.into());
+        }
+        attacks
+    }
+
+    fn attacks_knight(sq: u8, ally: u64) -> u64 {
+        let mut attacks = attack_pattern::ATTACK_PATTERN_KNIGHT[sq as usize];
+
+        attacks ^= attacks & ally;
+        attacks
+    }
+
+    fn attacks_pawn(sq: u8, enemy: u64, ally: u64, color: &Color, en_passant: u8) -> u64 {
+        let mut attacks = attack_pattern::MOVE_PATTERN_PAWN[*color][sq as usize];
+
+        let all = enemy | ally;
+        attacks ^= attacks & all;
+
+        // check for 2 square moves
+        if sq / 8 == 1 && attacks != 0 && *color == Color::WHITE {
+            let moves = attack_pattern::MOVE_PATTERN_PAWN[*color][(sq + 8) as usize];
+            attacks |= moves ^ (moves & all);
+        }
+        if sq / 8 == 6 && attacks != 0 && *color == Color::BLACK {
+            let moves = attack_pattern::MOVE_PATTERN_PAWN[*color][(sq - 8) as usize];
+            attacks |= moves ^ (moves & all);
+        }
+
+        let mut attack_moves = attack_pattern::ATTACK_PATTERN_PAWN[*color][sq as usize];
+        attack_moves ^= attack_moves & ally;
+        if Square::valid(en_passant) {
+            attack_moves &= enemy | Square::to_board_bit(en_passant);
+        } else {
+            attack_moves &= enemy;
+        }
+        attacks |= attack_moves;
+
+        attacks
     }
 }
