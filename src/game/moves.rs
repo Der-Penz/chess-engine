@@ -178,6 +178,38 @@ impl Move {
     pub fn valid(&self) -> bool {
         (self.0 & PIECE_MASK) >> PIECE_OFFSET < 7
     }
+
+    /// Converts a move to algebraic notation
+    /// Only supports long algebraic notation for now
+    pub fn to_algebraic(&self) -> Option<String> {
+        if !self.valid() {
+            return None;
+        }
+
+        let mut algebraic = String::new();
+        let piece = match self.piece_variation() {
+            PieceVariation::PAWN => 'p',
+            PieceVariation::KNIGHT => 'n',
+            PieceVariation::BISHOP => 'b',
+            PieceVariation::ROOK => 'r',
+            PieceVariation::QUEEN => 'q',
+            PieceVariation::KING => 'k',
+        };
+        match self.color() {
+            Color::WHITE => algebraic.push(piece.to_ascii_uppercase()),
+            Color::BLACK => algebraic.push(piece),
+        }
+
+        algebraic.push_str(&Square::from(self.source()).to_string().to_ascii_lowercase());
+
+        if self.is_capture() {
+            algebraic.push('x');
+        }
+
+        algebraic.push_str(&Square::from(self.dest()).to_string().to_ascii_lowercase());
+
+        Some(algebraic)
+    }
 }
 
 impl Display for Move {
