@@ -1,5 +1,7 @@
 use core::panic;
 
+use log::info;
+
 use crate::game::Square;
 
 use super::{ match_piece, Color, Piece, PieceVariation };
@@ -120,10 +122,10 @@ impl Board {
         self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
 
         if let Some(dest_piece) = dest_piece {
-            println!("To {}", dest_piece);
+            info!("To {}", dest_piece);
             self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);
         }
-        println!("Move: {} from {} to {}", source_piece, Square::from(source), Square::from(dest));
+        info!("Move: {} from {} to {}", source_piece, Square::from(source), Square::from(dest));
         None
     }
 

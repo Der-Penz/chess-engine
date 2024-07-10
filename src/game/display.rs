@@ -1,3 +1,6 @@
+
+use log::info;
+
 use super::{ Board, Square };
 
 pub fn bb_to_string(f: impl Fn(Square) -> Option<String>) -> String {
@@ -31,7 +34,7 @@ pub fn bb_to_string(f: impl Fn(Square) -> Option<String>) -> String {
 }
 
 pub fn print_bb_ox(o_bb: u64, x_bb: u64) {
-    println!(
+    info!(
         "{}",
         bb_to_string(|s| {
             if s.matches(o_bb) {
@@ -46,7 +49,7 @@ pub fn print_bb_ox(o_bb: u64, x_bb: u64) {
 }
 
 pub fn print_bb_oxd(o_bb: u64, x_bb: u64, d_bb: u64) {
-    println!(
+    info!(
         "{}",
         bb_to_string(|s| {
             if s.matches(o_bb) {
@@ -66,7 +69,7 @@ pub fn print_bb_oxd(o_bb: u64, x_bb: u64, d_bb: u64) {
 
 /// print the board with the x_bb bit board. Pieces are marked if overlapping with x_bb
 pub fn print_bb_bbx(bb: &Board, x_bb: u64) {
-    println!(
+    info!(
         "{}",
         bb_to_string(|s| {
             match bb.get_piece(s.into()) {

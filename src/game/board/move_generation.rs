@@ -3,6 +3,18 @@ use crate::{ attack_pattern, game::{ iter_set_bits, Color, Move, Piece, PieceVar
 use super::Board;
 
 impl Board {
+    /// Returns all possible moves for the current player.
+    pub fn get_all_possible_moves(&self) -> Vec<Move> {
+        let mut moves = Vec::new();
+        let pieces = self.get_bb_color_occupied(&self.color_to_move);
+        for square in iter_set_bits(pieces) {
+            if let Some(m) = self.get_pseudo_legal_moves(square) {
+                moves.extend(m);
+            }
+        }
+        moves
+    }
+
     /// Generates all the pseudo legal moves for a given square index.
     /// Pseudo legal moves do not consider moves that get your king into check.
     /// All moves are normale moves. After taking the move, it must be transformed into a different move
@@ -161,7 +173,7 @@ impl Board {
         false
     }
 
-    /// Whether a player is in check or not. (white_check, black_check).  
+    /// Whether a player is in check or not. (white_check, black_check).
     /// If no king is found, the Option will be None.
     pub fn in_check(&self) -> (Option<bool>, Option<bool>) {
         let mut white_check = None;

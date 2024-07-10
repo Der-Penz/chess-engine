@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-use game::{ board::Board, display_position_with_bb, iter_set_bits, Piece, Square };
+use std::io::Write;
+use log::{ info, LevelFilter };
 #[macro_use]
 extern crate num_derive;
 
@@ -8,7 +9,25 @@ mod game;
 mod attack_pattern;
 
 fn main() {
-    test_move_generation("4N3/2NqqQ2/2N1P3/1N3N2/4NPp1/P1r4P/PPPPP3/8 b - - 0 11", Piece::white_knight());
+    #[cfg(not(feature = "log_to_file"))]
+    {
+        env_logger
+            ::builder()
+            .format(|buf, record| writeln!(buf, "{}", record.args()))
+            .filter(None, LevelFilter::Info)
+            .init();
+    }
+
+    #[cfg(feature = "log_to_file")]
+    {
+        let log_file = std::fs::File::create("log.log").unwrap();
+        env_logger::Builder
+            ::from_default_env()
+            .format(|buf, record| { writeln!(buf, "[{}] - {}", record.level(), record.args()) })
+            .target(env_logger::Target::Pipe(Box::new(log_file)))
+            .filter(None, LevelFilter::Info)
+            .init();
+    }
 }
 
 fn test_move_generation(fen: &str, for_piece: Piece) {
