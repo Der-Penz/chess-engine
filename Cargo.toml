@@ -2,6 +2,7 @@
 name = "chess-bot"
 version = "0.1.0"
 edition = "2021"
+
 [features]
 log_to_file = []
 uci = ["log_to_file"]

@@ -1,5 +1,7 @@
 use std::fmt::{ Debug, Display };
 
+use thiserror::Error;
+
 use crate::game::{ bb_to_string, Color, Piece, PieceVariation, Square };
 
 use super::{ BitBoardOperation, Board };
@@ -16,9 +18,11 @@ impl Display for Board {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FENError {
+    #[error("Error Parsing FEN String")]
     ParsingError,
+    #[error("Missing Group in FEN String")]
     MissingGroup,
 }
 

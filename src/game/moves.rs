@@ -1,5 +1,6 @@
-use std::fmt::Display;
+use std::{ fmt::Display, io::ErrorKind };
 
+use itertools::PeekingNext;
 use num_derive::FromPrimitive;
 use num_traits::{ FromPrimitive as FromPrim, Zero };
 
@@ -179,25 +180,28 @@ impl Move {
         (self.0 & PIECE_MASK) >> PIECE_OFFSET < 7
     }
 
-    /// Converts a move to algebraic notation
-    /// Only supports long algebraic notation for now
-    pub fn to_algebraic(&self) -> Option<String> {
+    /// Converts a move to long algebraic notation
+    pub fn to_long_algebraic(&self) -> Option<String> {
         if !self.valid() {
             return None;
         }
 
+        if self.is_null() {
+            return Some("0000".to_string());
+        }
+
         let mut algebraic = String::new();
         let piece = match self.piece_variation() {
-            PieceVariation::PAWN => 'p',
-            PieceVariation::KNIGHT => 'n',
-            PieceVariation::BISHOP => 'b',
-            PieceVariation::ROOK => 'r',
-            PieceVariation::QUEEN => 'q',
-            PieceVariation::KING => 'k',
+            PieceVariation::KNIGHT => "n",
+            PieceVariation::BISHOP => "b",
+            PieceVariation::ROOK => "r",
+            PieceVariation::QUEEN => "q",
+            PieceVariation::KING => "k",
+            PieceVariation::PAWN => "",
         };
         match self.color() {
-            Color::WHITE => algebraic.push(piece.to_ascii_uppercase()),
-            Color::BLACK => algebraic.push(piece),
+            Color::WHITE => algebraic.push_str(&piece.to_ascii_uppercase()),
+            Color::BLACK => algebraic.push_str(&piece),
         }
 
         algebraic.push_str(&Square::from(self.source()).to_string().to_ascii_lowercase());
@@ -209,6 +213,71 @@ impl Move {
         algebraic.push_str(&Square::from(self.dest()).to_string().to_ascii_lowercase());
 
         Some(algebraic)
+    }
+
+    pub fn from_long_algebraic(al: &str) -> Result<Self, ()> {
+        if al == "0000" {
+            return Ok(Move::null());
+        }
+        let chars = &mut al.chars().peekable();
+        let char = chars.peek();
+        let mut piece = match char {
+            Some('N') => Piece::white_knight(),
+            Some('n') => Piece::black_knight(),
+            Some('B') => Piece::white_bishop(),
+            Some('b') => Piece::black_bishop(),
+            Some('R') => Piece::white_rook(),
+            Some('r') => Piece::black_rook(),
+            Some('Q') => Piece::white_queen(),
+            Some('q') => Piece::black_queen(),
+            Some('K') => Piece::white_king(),
+            Some('k') => Piece::black_king(),
+            Some(_) => Piece::white_pawn(),
+            None => {
+                return Err(());
+            }
+        };
+
+        if piece.0 != PieceVariation::PAWN {
+            chars.next();
+        }
+
+        let mut source = String::new();
+        source.push(chars.next().unwrap());
+        source.push(chars.next().unwrap());
+        let source = Square::from(source);
+
+        let capture = match chars.peek() {
+            Some(&'x') => {
+                chars.next();
+                true
+            }
+            _ => false,
+        };
+
+        let mut dest = String::new();
+        dest.push(chars.next().unwrap());
+        dest.push(chars.next().unwrap());
+        let dest = Square::from(dest);
+
+        if piece.0 == PieceVariation::PAWN && source.rank() > dest.rank() {
+            piece = Piece::black_pawn();
+        }
+
+        if chars.peek().is_some() {
+            let promotion = match chars.next().unwrap().to_ascii_lowercase() {
+                'n' => PromotionPiece::KNIGHT,
+                'b' => PromotionPiece::BISHOP,
+                'r' => PromotionPiece::ROOK,
+                'q' => PromotionPiece::QUEEN,
+                _ => {
+                    return Err(());
+                }
+            };
+            return Ok(Move::promotion(source.into(), dest.into(), piece.1, promotion, None));
+        }
+        //TODO castling and en passant
+        Ok(Move::normal(source.into(), dest.into(), piece, None))
     }
 }
 

@@ -7,7 +7,7 @@ use crate::game::Square;
 use super::{ match_piece, Color, Piece, PieceVariation };
 
 mod move_generation;
-mod representation;
+pub mod representation;
 
 const PIECES_BOARD: usize = 6;
 
@@ -127,6 +127,14 @@ impl Board {
         }
         info!("Move: {} from {} to {}", source_piece, Square::from(source), Square::from(dest));
         None
+    }
+
+    pub fn update_color_to_move(&mut self) -> Color {
+        self.color_to_move = match self.color_to_move {
+            Color::WHITE => Color::BLACK,
+            Color::BLACK => Color::WHITE,
+        };
+        self.color_to_move
     }
 
     pub fn get_bbs_color(&self, color: &Color) -> [u64; 7] {
