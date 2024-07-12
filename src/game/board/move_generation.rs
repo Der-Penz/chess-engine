@@ -37,9 +37,7 @@ impl Board {
             PieceVariation::KING => Board::attacks_king(square, ally, &piece.1, self),
         };
 
-        moves.extend(
-            iter_set_bits(possible_moves).map(|dest| { Move::source_dest(square, dest) })
-        );
+        moves.extend(iter_set_bits(possible_moves).map(|dest| { Move::source_dest(square, dest) }));
 
         return Some(moves);
     }
@@ -80,18 +78,37 @@ impl Board {
         };
         if
             king_side &&
+            color == &Color::WHITE &&
             board.get_piece(Square::F1.into()).is_none() &&
             board.get_piece(Square::G1.into()).is_none()
         {
             attacks |= Square::to_board_bit(Square::G1.into());
         }
         if
+            king_side &&
+            color == &Color::BLACK &&
+            board.get_piece(Square::F8.into()).is_none() &&
+            board.get_piece(Square::G8.into()).is_none()
+        {
+            attacks |= Square::to_board_bit(Square::G8.into());
+        }
+        if
             queen_side &&
+            color == &Color::WHITE &&
             board.get_piece(Square::D1.into()).is_none() &&
             board.get_piece(Square::C1.into()).is_none() &&
             board.get_piece(Square::B1.into()).is_none()
         {
-            attacks |= Square::to_board_bit(Square::B1.into());
+            attacks |= Square::to_board_bit(Square::C1.into());
+        }
+        if
+            queen_side &&
+            color == &Color::BLACK &&
+            board.get_piece(Square::D8.into()).is_none() &&
+            board.get_piece(Square::C8.into()).is_none() &&
+            board.get_piece(Square::B8.into()).is_none()
+        {
+            attacks |= Square::to_board_bit(Square::C8.into());
         }
         attacks
     }
