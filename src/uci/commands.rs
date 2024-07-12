@@ -49,12 +49,10 @@ impl FromStr for Command {
                         return Err(CommandParseError::MissingParameter("position".to_string()));
                     }
                 };
-
+                
                 if parts.next() == Some("moves") {
                     let moves = parts
-                        .map(String::from)
-                        .map(|s| Move::from_long_algebraic(&s))
-                        .flatten()
+                        .map(|s| Move::from_source_dest(&s.into()))
                         .collect_vec();
                     Ok(Command::Position(fen, moves))
                 } else {

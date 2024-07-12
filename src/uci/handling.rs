@@ -1,4 +1,4 @@
-use crate::game::{Board, Move};
+use crate::game::{ Board, Move };
 use super::commands::Command;
 use log::error;
 use rand::seq::SliceRandom;
@@ -42,9 +42,9 @@ fn handle_go(board: &mut Board) -> Option<String> {
     let best_move = moves.choose(&mut rand::thread_rng());
 
     match best_move {
-        Some(m) if m.valid() => {
+        Some(m) => {
             board.move_piece(m.source(), m.dest());
-            Some(format!("bestmove {}", m.to_long_algebraic().expect("Invalid move")))
+            Some(format!("bestmove {}", m.as_source_dest()))
         }
         _ => None,
     }

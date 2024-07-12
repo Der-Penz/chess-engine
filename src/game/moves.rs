@@ -206,7 +206,7 @@ impl Move {
     }
 
     /// Converts a source and destination string notation to a non-detailed move
-    pub fn from_source_dest(str: String) -> Self{
+    pub fn from_source_dest(str: &String) -> Self{
         let source = Square::from(&str[0..2]);
         let dest = Square::from(&str[2..4]);
         Move::source_dest(source.into(), dest.into())

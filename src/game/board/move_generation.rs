@@ -38,7 +38,7 @@ impl Board {
         };
 
         moves.extend(
-            iter_set_bits(possible_moves).map(|dest| { Move::normal(square, dest, piece, None) })
+            iter_set_bits(possible_moves).map(|dest| { Move::source_dest(square, dest) })
         );
 
         return Some(moves);
