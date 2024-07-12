@@ -1,13 +1,11 @@
 use std::io;
 
-use commands::{ Command, CommandParseError };
-use handling::handle_uci_command;
+use commands::{ handle_uci_command, Command, CommandParseError };
 use log::{ info, warn };
 
 use crate::game::Board;
 
 mod commands;
-mod handling;
 
 #[derive(Debug, PartialEq)]
 pub enum UCISTATE {
