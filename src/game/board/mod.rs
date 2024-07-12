@@ -4,7 +4,7 @@ use log::info;
 
 use crate::game::Square;
 
-use super::{ match_piece, Color, Piece, PieceVariation };
+use super::{ match_piece, Color, Move, Piece, PieceVariation };
 
 mod move_generation;
 pub mod representation;
@@ -127,6 +127,13 @@ impl Board {
         }
         info!("Move: {} from {} to {}", source_piece, Square::from(source), Square::from(dest));
         None
+    }
+
+    pub fn play(&mut self, mov: &Move) {
+        //TODO validate move
+        self.move_piece(mov.source(), mov.dest());
+
+        self.update_color_to_move();
     }
 
     pub fn update_color_to_move(&mut self) -> Color {

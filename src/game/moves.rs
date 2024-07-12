@@ -1,11 +1,10 @@
-use std::fmt::Display;
+use std::fmt::{ Debug, Display };
 
 use num_derive::FromPrimitive;
 use num_traits::{ FromPrimitive as FromPrim, Zero };
 
 use super::{ Color, Piece, PieceVariation, Square };
 
-#[derive(Debug)]
 pub struct Move(u32);
 
 #[derive(Debug, FromPrimitive)]
@@ -206,7 +205,7 @@ impl Move {
     }
 
     /// Converts a source and destination string notation to a non-detailed move
-    pub fn from_source_dest(str: &String) -> Self{
+    pub fn from_source_dest(str: &String) -> Self {
         let source = Square::from(&str[0..2]);
         let dest = Square::from(&str[2..4]);
         Move::source_dest(source.into(), dest.into())
@@ -219,7 +218,7 @@ impl Display for Move {
             return write!(f, "0000");
         }
 
-        if !self.is_detailed(){
+        if !self.is_detailed() {
             return write!(f, "{}", self.as_source_dest());
         }
 
@@ -240,5 +239,11 @@ impl Display for Move {
             MoveType::CASTLING =>
                 write!(f, "Castling {}", if self.castle_kingside() { "O-O" } else { "O-O-O" }),
         }
+    }
+}
+
+impl Debug for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }

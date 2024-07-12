@@ -30,10 +30,7 @@ fn handle_position(board: &mut Board, pos: &Option<String>, moves: &Vec<Move>) -
         None => Board::base(),
     };
 
-    for m in moves {
-        board.move_piece(m.source(), m.dest());
-    }
-
+    moves.iter().for_each(|m| board.play(m));
     None
 }
 
