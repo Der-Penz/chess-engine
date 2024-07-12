@@ -27,7 +27,8 @@ impl From<u8> for Square {
 
 impl From<&str> for Square {
     fn from(value: &str) -> Self {
-        let file: u32 = (value.to_lowercase().chars().nth(0).unwrap().to_ascii_lowercase() as u32) - 97;
+        let file: u32 =
+            (value.to_lowercase().chars().nth(0).unwrap().to_ascii_lowercase() as u32) - 97;
         let rank: u32 = value.chars().nth(1).unwrap().to_digit(10).unwrap() - 1;
         let square = rank * 8 + file;
         Square::from(square as u8)
@@ -93,6 +94,20 @@ impl Square {
     /// checks if the given bit board contains the square
     pub fn matches(&self, bb: u64) -> bool {
         bb & Square::to_board_bit((*self).into()) > 0
+    }
+
+    pub fn is_king_square(square: Square) -> bool {
+        match square {
+            Square::E1 | Square::E8 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_castle_dest(square: Square) -> bool {
+        match square {
+            Square::C1 | Square::G1 | Square::C8 | Square::G8 => true,
+            _ => false,
+        }
     }
 }
 

@@ -84,29 +84,29 @@ impl Board {
         }
     }
 
-    fn update_bit_board(&mut self, piece: &Piece, pos: u8, op: BitBoardOperation) {
+    fn update_bit_board(&mut self, piece: &Piece, square: u8, op: BitBoardOperation) {
         match piece {
             piece if piece.1 == Color::WHITE => {
                 match op {
                     BitBoardOperation::SET => {
-                        self.white_boards[PIECES_BOARD] |= Square::to_board_bit(pos);
-                        self.white_boards[piece.0] |= Square::to_board_bit(pos);
+                        self.white_boards[PIECES_BOARD] |= Square::to_board_bit(square);
+                        self.white_boards[piece.0] |= Square::to_board_bit(square);
                     }
                     BitBoardOperation::RESET => {
-                        self.white_boards[PIECES_BOARD] &= !Square::to_board_bit(pos);
-                        self.white_boards[piece.0] &= !Square::to_board_bit(pos);
+                        self.white_boards[PIECES_BOARD] &= !Square::to_board_bit(square);
+                        self.white_boards[piece.0] &= !Square::to_board_bit(square);
                     }
                 }
             }
             piece if piece.1 == Color::BLACK => {
                 match op {
                     BitBoardOperation::SET => {
-                        self.black_boards[PIECES_BOARD] |= Square::to_board_bit(pos);
-                        self.black_boards[piece.0] |= Square::to_board_bit(pos);
+                        self.black_boards[PIECES_BOARD] |= Square::to_board_bit(square);
+                        self.black_boards[piece.0] |= Square::to_board_bit(square);
                     }
                     BitBoardOperation::RESET => {
-                        self.black_boards[PIECES_BOARD] &= !Square::to_board_bit(pos);
-                        self.black_boards[piece.0] &= !Square::to_board_bit(pos);
+                        self.black_boards[PIECES_BOARD] &= !Square::to_board_bit(square);
+                        self.black_boards[piece.0] &= !Square::to_board_bit(square);
                     }
                 }
             }
@@ -114,26 +114,77 @@ impl Board {
         }
     }
 
-    pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<Piece> {
+    pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<Move> {
         let source_piece = self.get_piece(source)?;
         let dest_piece = self.get_piece(dest);
 
-        self.update_bit_board(&source_piece, source, BitBoardOperation::RESET);
-        self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
-
-        if let Some(dest_piece) = dest_piece {
-            info!("To {}", dest_piece);
-            self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);
+        let castle_move = self.is_castle_move(Square::from(source), Square::from(dest));
+        if castle_move {
+            info!("Castle Move");
+            todo!("handling castle move");
+        } else {
+            self.update_bit_board(&source_piece, source, BitBoardOperation::RESET);
+            self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
         }
-        info!("Move: {} from {} to {}", source_piece, Square::from(source), Square::from(dest));
-        None
+
+        if castle_move {
+            return Some(Move::castle(source, dest, source_piece.1));
+        }
+
+        let captured = match dest_piece {
+            Some(dest_piece) => {
+                self.update_bit_board(&dest_piece, dest, BitBoardOperation::RESET);
+                Some(dest_piece.0)
+            }
+            None => None,
+        };
+
+        Some(Move::normal(source, dest, source_piece, captured))
     }
 
-    pub fn play(&mut self, mov: &Move) {
-        //TODO validate move
-        self.move_piece(mov.source(), mov.dest());
+    pub fn is_castle_move(&self, source: Square, dest: Square) -> bool {
+        Square::is_king_square(source) &&
+            Square::is_castle_dest(dest) &&
+            self
+                .get_field_piece_variation(source.into())
+                .is_some_and(|p| p == PieceVariation::KING) &&
+            self
+                .get_field_piece_variation(dest.into())
+                .is_some_and(|p| p == PieceVariation::ROOK) &&
+            self
+                .get_field_color(source.into())
+                .is_some_and(|color| {
+                    self.get_field_color(dest.into()).is_some_and(|dest_color| {
+                        color == dest_color
+                    })
+                })
+    }
 
-        self.update_color_to_move();
+    pub fn play(&mut self, mov: &Move) -> Option<Move> {
+        //TODO validate move
+        let mov = self.move_piece(mov.source(), mov.dest());
+        mov.as_ref().inspect(|mov| {
+            self.update_color_to_move();
+            match (mov.castle_kingside(), mov.color()) {
+                (true, Color::WHITE) => {
+                    self.white_castle.0 = false;
+                }
+                (true, Color::BLACK) => {
+                    self.black_castle.0 = false;
+                }
+                _ => (),
+            }
+            match (mov.castle_queenside(), mov.color()) {
+                (true, Color::WHITE) => {
+                    self.white_castle.1 = false;
+                }
+                (true, Color::BLACK) => {
+                    self.black_castle.1 = false;
+                }
+                _ => (),
+            };
+        });
+        mov
     }
 
     pub fn update_color_to_move(&mut self) -> Color {
@@ -161,5 +212,20 @@ impl Board {
 
     pub fn get_bb_all_occupied(&self) -> u64 {
         self.white_boards[6] | self.black_boards[6]
+    }
+}
+
+impl Clone for Board {
+    fn clone(&self) -> Self {
+        Self {
+            black_boards: self.black_boards.clone(),
+            white_boards: self.white_boards.clone(),
+            color_to_move: self.color_to_move.clone(),
+            white_castle: self.white_castle.clone(),
+            black_castle: self.black_castle.clone(),
+            en_passant: self.en_passant.clone(),
+            half_move_clock: self.half_move_clock.clone(),
+            move_number: self.move_number.clone(),
+        }
     }
 }

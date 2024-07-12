@@ -180,11 +180,13 @@ impl Move {
     }
 
     pub fn castle_kingside(&self) -> bool {
-        self.move_type() == MoveType::CASTLING && self.dest() == Square::G1.into()
+        self.move_type() == MoveType::CASTLING &&
+            (self.dest() == Square::G1.into() || self.dest() == Square::G8.into())
     }
 
     pub fn castle_queenside(&self) -> bool {
-        self.move_type() == MoveType::CASTLING && self.dest() == Square::B1.into()
+        self.move_type() == MoveType::CASTLING &&
+            (self.dest() == Square::B1.into() || self.dest() == Square::B8.into())
     }
 
     pub fn is_null(&self) -> bool {

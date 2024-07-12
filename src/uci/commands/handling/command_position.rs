@@ -21,7 +21,9 @@ pub fn handle_position(
         None => Board::base(),
     };
 
-    moves.iter().for_each(|m| board.play(m));
+    moves.iter().for_each(|m| {
+        board.play(m);
+    });
     None
 }
 

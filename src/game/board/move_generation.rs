@@ -12,7 +12,7 @@ impl Board {
                 moves.extend(m);
             }
         }
-        moves
+        self.filter_legal_moves(moves)
     }
 
     /// Generates all the pseudo legal moves for a given square index.
@@ -40,6 +40,26 @@ impl Board {
         moves.extend(iter_set_bits(possible_moves).map(|dest| { Move::source_dest(square, dest) }));
 
         return Some(moves);
+    }
+
+    fn filter_legal_moves(&self, moves: Vec<Move>) -> Vec<Move> {
+        moves
+            .into_iter()
+            .filter(|m| {
+                let mut board= self.clone();
+                board.play(m);
+                let (white_check, black_check) = board.in_check();
+
+                if white_check.is_none() && black_check.is_none() {
+                    return false;
+                }
+
+                match board.color_to_move {
+                    Color::BLACK => !white_check.unwrap(),
+                    Color::WHITE => !black_check.unwrap(),
+                }
+            })
+            .collect()
     }
 
     fn attacks_rook(sq: &Square, enemy: u64, ally: u64) -> u64 {
@@ -71,7 +91,7 @@ impl Board {
 
         attacks ^= attacks & ally;
 
-        // Castling
+        // Castling TODO handle both colors
         let (king_side, queen_side) = match color {
             Color::WHITE => board.white_castle,
             Color::BLACK => board.black_castle,
