@@ -25,9 +25,9 @@ impl From<u8> for Square {
     }
 }
 
-impl From<String> for Square {
-    fn from(value: String) -> Self {
-        let file: u32 = (value.chars().nth(0).unwrap().to_ascii_lowercase() as u32) - 97;
+impl From<&str> for Square {
+    fn from(value: &str) -> Self {
+        let file: u32 = (value.to_lowercase().chars().nth(0).unwrap().to_ascii_lowercase() as u32) - 97;
         let rank: u32 = value.chars().nth(1).unwrap().to_digit(10).unwrap() - 1;
         let square = rank * 8 + file;
         Square::from(square as u8)
@@ -37,14 +37,14 @@ impl From<String> for Square {
 impl std::fmt::Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let name = match self.file() {
-            0 => format!("A{}", self.rank() + 1),
-            1 => format!("B{}", self.rank() + 1),
-            2 => format!("C{}", self.rank() + 1),
-            3 => format!("D{}", self.rank() + 1),
-            4 => format!("E{}", self.rank() + 1),
-            5 => format!("F{}", self.rank() + 1),
-            6 => format!("G{}", self.rank() + 1),
-            7 => format!("H{}", self.rank() + 1),
+            0 => format!("a{}", self.rank() + 1),
+            1 => format!("b{}", self.rank() + 1),
+            2 => format!("c{}", self.rank() + 1),
+            3 => format!("d{}", self.rank() + 1),
+            4 => format!("e{}", self.rank() + 1),
+            5 => format!("f{}", self.rank() + 1),
+            6 => format!("g{}", self.rank() + 1),
+            7 => format!("h{}", self.rank() + 1),
             _ => panic!("Invalid Board Position"),
         };
         write!(f, "{}", name)

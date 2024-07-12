@@ -15,6 +15,17 @@ impl PieceVariation {
     pub fn iter() -> impl Iterator<Item = (PieceVariation, usize)> {
         (0..=5usize).map(|i| (PieceVariation::from_usize(i).unwrap(), i))
     }
+
+    pub fn as_char(&self) -> char{
+        match self {
+            PieceVariation::PAWN => 'p',
+            PieceVariation::KNIGHT => 'n',
+            PieceVariation::BISHOP => 'b',
+            PieceVariation::ROOK => 'r',
+            PieceVariation::QUEEN => 'q',
+            PieceVariation::KING => 'k',
+        }
+    }
 }
 
 impl<T, const N: usize> Index<PieceVariation> for [T; N] {
@@ -41,5 +52,11 @@ impl From<char> for PieceVariation {
             'k' => PieceVariation::KING,
             _ => panic!("Invalid char for piece variation"),
         }
+    }
+}
+
+impl Default for PieceVariation {
+    fn default() -> Self {
+        PieceVariation::PAWN
     }
 }

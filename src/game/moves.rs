@@ -1,6 +1,5 @@
-use std::{ fmt::Display, io::ErrorKind };
+use std::fmt::Display;
 
-use itertools::PeekingNext;
 use num_derive::FromPrimitive;
 use num_traits::{ FromPrimitive as FromPrim, Zero };
 
@@ -32,6 +31,7 @@ static COLOR_OFFSET: u32 = 15;
 static PROMOTION_PIECE_OFFSET: u32 = 16;
 static MOVE_TYPE_OFFSET: u32 = 18;
 static CAPTURED_PICE_OFFSET: u32 = 20;
+static DETAIL_OFFSET: u32 = 23;
 
 static SOURCE_MASK: u32 = 0b111111 << SOURCE_OFFSET;
 static DEST_MASK: u32 = 0b111111 << DEST_OFFSET;
@@ -40,6 +40,7 @@ static COLOR_MASK: u32 = 0b1 << COLOR_OFFSET;
 static PROMOTION_PIECE_MASK: u32 = 0b11 << PROMOTION_PIECE_OFFSET;
 static MOVE_TYPE_MASK: u32 = 0b11 << MOVE_TYPE_OFFSET;
 static CAPTURED_PICE_MASK: u32 = 0b111 << CAPTURED_PICE_OFFSET;
+static DETAIL_MASK: u32 = 0b1 << DETAIL_OFFSET;
 
 impl Move {
     pub fn new(
@@ -47,8 +48,9 @@ impl Move {
         dest: u8,
         piece: Piece,
         move_type: MoveType,
-        promotion_piece: PromotionPiece,
-        captured_piece: Option<PieceVariation>
+        promotion_piece: Option<PromotionPiece>,
+        captured_piece: Option<PieceVariation>,
+        detailed: bool
     ) -> Self {
         assert!(Square::valid(source));
         assert!(Square::valid(dest));
@@ -58,13 +60,18 @@ impl Move {
         m = m | ((dest as u32) << DEST_OFFSET);
         m = m | ((piece.0 as u32) << PIECE_OFFSET);
         m = m | ((piece.1 as u32) << COLOR_OFFSET);
-        m = m | ((promotion_piece as u32) << PROMOTION_PIECE_OFFSET);
+        if promotion_piece.is_some() {
+            m = m | ((promotion_piece.unwrap() as u32) << PROMOTION_PIECE_OFFSET);
+        } else {
+            m = m | ((PromotionPiece::BISHOP as u32) << PROMOTION_PIECE_OFFSET);
+        }
         m = m | ((move_type as u32) << MOVE_TYPE_OFFSET);
         if captured_piece.is_some() {
             m = m | ((captured_piece.unwrap() as u32) << CAPTURED_PICE_OFFSET);
         } else {
             m = m | (0b111 << CAPTURED_PICE_OFFSET);
         }
+        m = m | ((detailed as u32) << DETAIL_OFFSET);
 
         Move(m)
     }
@@ -74,7 +81,7 @@ impl Move {
     }
 
     pub fn normal(source: u8, dest: u8, piece: Piece, captured: Option<PieceVariation>) -> Self {
-        Move::new(source, dest, piece, MoveType::NORMAL, PromotionPiece::BISHOP, captured)
+        Move::new(source, dest, piece, MoveType::NORMAL, None, captured, true)
     }
 
     pub fn promotion(
@@ -89,8 +96,9 @@ impl Move {
             dest,
             Piece(PieceVariation::PAWN, color),
             MoveType::PROMOTION,
-            promotion_piece,
-            captured
+            Some(promotion_piece),
+            captured,
+            true
         )
     }
 
@@ -100,8 +108,9 @@ impl Move {
             dest,
             Piece(PieceVariation::PAWN, color),
             MoveType::ENPASSANT,
-            PromotionPiece::BISHOP,
-            Some(PieceVariation::PAWN)
+            None,
+            Some(PieceVariation::PAWN),
+            true
         )
     }
 
@@ -111,13 +120,20 @@ impl Move {
             dest,
             Piece(PieceVariation::KING, color),
             MoveType::CASTLING,
-            PromotionPiece::BISHOP,
-            None
+            None,
+            None,
+            true
         )
     }
 
     pub fn null() -> Self {
         Move(std::u32::MAX)
+    }
+
+    /// Creates a non detailed move from a source and destination square
+    /// Non detailed moves are moves that do not contain any additional information except the source and destination squares
+    pub fn source_dest(source: u8, dest: u8) -> Self {
+        Move::new(source, dest, Default::default(), MoveType::NORMAL, None, None, false)
     }
 
     pub fn source(&self) -> u8 {
@@ -176,113 +192,37 @@ impl Move {
         self.0.is_zero()
     }
 
+    pub fn is_detailed(&self) -> bool {
+        ((self.0 & DETAIL_MASK) >> DETAIL_OFFSET) == 1
+    }
+
     pub fn valid(&self) -> bool {
         (self.0 & PIECE_MASK) >> PIECE_OFFSET < 7
     }
 
-    /// Converts a move to long algebraic notation
-    pub fn to_long_algebraic(&self) -> Option<String> {
-        if !self.valid() {
-            return None;
-        }
-
-        if self.is_null() {
-            return Some("0000".to_string());
-        }
-
-        let mut algebraic = String::new();
-        let piece = match self.piece_variation() {
-            PieceVariation::KNIGHT => "n",
-            PieceVariation::BISHOP => "b",
-            PieceVariation::ROOK => "r",
-            PieceVariation::QUEEN => "q",
-            PieceVariation::KING => "k",
-            PieceVariation::PAWN => "",
-        };
-        match self.color() {
-            Color::WHITE => algebraic.push_str(&piece.to_ascii_uppercase()),
-            Color::BLACK => algebraic.push_str(&piece),
-        }
-
-        algebraic.push_str(&Square::from(self.source()).to_string().to_ascii_lowercase());
-
-        if self.is_capture() {
-            algebraic.push('x');
-        }
-
-        algebraic.push_str(&Square::from(self.dest()).to_string().to_ascii_lowercase());
-
-        Some(algebraic)
+    /// Converts a move to source and destination string notation
+    pub fn as_source_dest(&self) -> String {
+        format!("{}{}", Square::from(self.source()), Square::from(self.dest()))
     }
 
-    pub fn from_long_algebraic(al: &str) -> Result<Self, ()> {
-        if al == "0000" {
-            return Ok(Move::null());
-        }
-        let chars = &mut al.chars().peekable();
-        let char = chars.peek();
-        let mut piece = match char {
-            Some('N') => Piece::white_knight(),
-            Some('n') => Piece::black_knight(),
-            Some('B') => Piece::white_bishop(),
-            Some('b') => Piece::black_bishop(),
-            Some('R') => Piece::white_rook(),
-            Some('r') => Piece::black_rook(),
-            Some('Q') => Piece::white_queen(),
-            Some('q') => Piece::black_queen(),
-            Some('K') => Piece::white_king(),
-            Some('k') => Piece::black_king(),
-            Some(_) => Piece::white_pawn(),
-            None => {
-                return Err(());
-            }
-        };
-
-        if piece.0 != PieceVariation::PAWN {
-            chars.next();
-        }
-
-        let mut source = String::new();
-        source.push(chars.next().unwrap());
-        source.push(chars.next().unwrap());
-        let source = Square::from(source);
-
-        let capture = match chars.peek() {
-            Some(&'x') => {
-                chars.next();
-                true
-            }
-            _ => false,
-        };
-
-        let mut dest = String::new();
-        dest.push(chars.next().unwrap());
-        dest.push(chars.next().unwrap());
-        let dest = Square::from(dest);
-
-        if piece.0 == PieceVariation::PAWN && source.rank() > dest.rank() {
-            piece = Piece::black_pawn();
-        }
-
-        if chars.peek().is_some() {
-            let promotion = match chars.next().unwrap().to_ascii_lowercase() {
-                'n' => PromotionPiece::KNIGHT,
-                'b' => PromotionPiece::BISHOP,
-                'r' => PromotionPiece::ROOK,
-                'q' => PromotionPiece::QUEEN,
-                _ => {
-                    return Err(());
-                }
-            };
-            return Ok(Move::promotion(source.into(), dest.into(), piece.1, promotion, None));
-        }
-        //TODO castling and en passant
-        Ok(Move::normal(source.into(), dest.into(), piece, None))
+    /// Converts a source and destination string notation to a non-detailed move
+    pub fn from_source_dest(str: String) -> Self{
+        let source = Square::from(&str[0..2]);
+        let dest = Square::from(&str[2..4]);
+        Move::source_dest(source.into(), dest.into())
     }
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_null() {
+            return write!(f, "0000");
+        }
+
+        if !self.is_detailed(){
+            return write!(f, "{}", self.as_source_dest());
+        }
+
         write!(
             f,
             "{}: {}->{} | ",

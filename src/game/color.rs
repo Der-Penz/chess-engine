@@ -38,3 +38,9 @@ impl Display for Color {
         write!(f, "{}", color)
     }
 }
+
+impl Default for Color {
+    fn default() -> Self {
+        Color::WHITE
+    }
+}

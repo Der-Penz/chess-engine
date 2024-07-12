@@ -64,3 +64,9 @@ impl fmt::Display for Piece {
         write!(f, "{}", repr)
     }
 }
+
+impl Default for Piece{
+    fn default() -> Self {
+        Self(Default::default(), Default::default())
+    }
+}
