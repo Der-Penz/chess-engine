@@ -4,7 +4,7 @@ use log::info;
 
 use crate::game::Square;
 
-use super::{ match_piece, Color, Move, Piece, PieceVariation };
+use super::{ match_piece, moves::CastleType, Color, DetailedMove, Move, Piece, PieceVariation };
 
 mod move_generation;
 pub mod representation;
@@ -114,12 +114,12 @@ impl Board {
         }
     }
 
-    pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<Move> {
+    pub fn move_piece(&mut self, source: u8, dest: u8) -> Option<DetailedMove> {
         let source_piece = self.get_piece(source)?;
         let dest_piece = self.get_piece(dest);
 
         let castle_move = self.is_castle_move(Square::from(source), Square::from(dest));
-        if castle_move {
+        if castle_move.is_some() {
             info!("Castle Move");
             todo!("handling castle move");
         } else {
@@ -127,8 +127,9 @@ impl Board {
             self.update_bit_board(&source_piece, dest, BitBoardOperation::SET);
         }
 
-        if castle_move {
-            return Some(Move::castle(source, dest, source_piece.1));
+        if castle_move.is_some() {
+            //TODO handle check check
+            return Some(DetailedMove::new_castle(source_piece, source, dest, false));
         }
 
         let captured = match dest_piece {
@@ -139,25 +140,29 @@ impl Board {
             None => None,
         };
 
-        Some(Move::normal(source, dest, source_piece, captured))
+        //TODO handle en passant promotion and check check
+        Some(DetailedMove::new_normal(source_piece, source, dest, captured, false))
     }
 
-    pub fn is_castle_move(&self, source: Square, dest: Square) -> bool {
-        Square::is_king_square(source) &&
-            Square::is_castle_dest(dest) &&
-            self
-                .get_field_piece_variation(source.into())
-                .is_some_and(|p| p == PieceVariation::KING) &&
-            self
-                .get_field_piece_variation(dest.into())
-                .is_some_and(|p| p == PieceVariation::ROOK) &&
-            self
-                .get_field_color(source.into())
-                .is_some_and(|color| {
-                    self.get_field_color(dest.into()).is_some_and(|dest_color| {
-                        color == dest_color
-                    })
-                })
+    pub fn is_castle_move(&self, source: Square, dest: Square) -> Option<CastleType> {
+        let castle_type = CastleType::matches_castle(source, dest);
+
+        if castle_type.is_none() {
+            return None;
+        }
+
+        let s_piece = self.get_piece(source.into())?;
+        let d_piece = self.get_piece(dest.into())?;
+
+        if
+            s_piece.color_matches(d_piece) &&
+            s_piece.0 == PieceVariation::KING &&
+            d_piece.0 == PieceVariation::ROOK
+        {
+            Some(castle_type.unwrap())
+        } else {
+            None
+        }
     }
 
     pub fn play(&mut self, mov: &Move) -> Option<Move> {

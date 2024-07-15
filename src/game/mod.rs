@@ -1,11 +1,11 @@
 pub mod board;
 pub mod piece_variation;
 pub mod color;
-pub mod moves;
 pub mod piece;
 pub mod position;
 pub mod bit_manipulation;
 pub mod display;
+pub mod moves;
 
 pub use board::*;
 pub use piece::*;

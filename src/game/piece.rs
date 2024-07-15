@@ -42,6 +42,10 @@ impl Piece {
     pub fn white_pawn() -> Piece {
         Piece(PieceVariation::PAWN, Color::WHITE)
     }
+
+    pub fn color_matches(&self, other: Piece) -> bool {
+        self.1 == other.1
+    }
 }
 
 impl fmt::Display for Piece {

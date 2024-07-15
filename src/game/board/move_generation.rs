@@ -1,4 +1,7 @@
-use crate::{ attack_pattern, game::{ iter_set_bits, Color, Move, Piece, PieceVariation, Square } };
+use crate::{
+    attack_pattern,
+    game::{ iter_set_bits, BaseMoveType, Color, Move, Piece, PieceVariation, Square },
+};
 
 use super::Board;
 
@@ -37,7 +40,11 @@ impl Board {
             PieceVariation::KING => Board::attacks_king(square, ally, &piece.1, self),
         };
 
-        moves.extend(iter_set_bits(possible_moves).map(|dest| { Move::source_dest(square, dest) }));
+        moves.extend(
+            iter_set_bits(possible_moves).map(|dest| {
+                Move::new(square, dest, BaseMoveType::Normal)
+            })
+        );
 
         return Some(moves);
     }
@@ -46,7 +53,7 @@ impl Board {
         moves
             .into_iter()
             .filter(|m| {
-                let mut board= self.clone();
+                let mut board = self.clone();
                 board.play(m);
                 let (white_check, black_check) = board.in_check();
 

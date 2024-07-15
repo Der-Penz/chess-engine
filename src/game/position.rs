@@ -95,20 +95,6 @@ impl Square {
     pub fn matches(&self, bb: u64) -> bool {
         bb & Square::to_board_bit((*self).into()) > 0
     }
-
-    pub fn is_king_square(square: Square) -> bool {
-        match square {
-            Square::E1 | Square::E8 => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_castle_dest(square: Square) -> bool {
-        match square {
-            Square::C1 | Square::G1 | Square::C8 | Square::G8 => true,
-            _ => false,
-        }
-    }
 }
 
 /// checks if a given position of a bit board is set

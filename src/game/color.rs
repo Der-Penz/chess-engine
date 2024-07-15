@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::{ Index, IndexMut }};
+use std::{ fmt::Display, ops::{ Index, IndexMut } };
 
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
 pub enum Color {
@@ -26,6 +26,17 @@ impl Color {
             Color::WHITE => Color::BLACK,
             Color::BLACK => Color::WHITE,
         }
+    }
+
+    pub fn transform_str(&self, value: &str) -> String {
+        match self {
+            Color::WHITE => value.to_ascii_uppercase(),
+            Color::BLACK => value.to_ascii_lowercase(),
+        }
+    }
+
+    pub fn transform_char(&self, value: &char) -> char {
+        self.transform_str(value.to_string().as_ref()).chars().next().unwrap()
     }
 }
 
