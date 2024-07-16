@@ -69,8 +69,16 @@ impl fmt::Display for Piece {
     }
 }
 
-impl Default for Piece{
+impl Default for Piece {
     fn default() -> Self {
         Self(Default::default(), Default::default())
+    }
+}
+
+impl From<char> for Piece {
+    fn from(c: char) -> Self {
+        let color = if c.is_uppercase() { Color::WHITE } else { Color::BLACK };
+        let piece_variation = PieceVariation::from(c);
+        Piece(piece_variation, color)
     }
 }

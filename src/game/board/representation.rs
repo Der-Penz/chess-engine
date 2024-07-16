@@ -2,7 +2,7 @@ use std::fmt::{ Debug, Display };
 
 use thiserror::Error;
 
-use crate::game::{ bb_to_string, Color, Piece, PieceVariation, Square };
+use crate::game::{ bb_to_string, Color, Square };
 
 use super::{ BitBoardOperation, Board };
 
@@ -38,7 +38,7 @@ impl Board {
         let mut col: i8 = 0;
         for char in fen_group.chars() {
             if char != '/' && (row < 0 || col > 7) {
-                return Err(FENError::ParsingError);
+                Err(FENError::ParsingError)?;
             }
             match char {
                 '/' => {
@@ -46,21 +46,18 @@ impl Board {
                     col = 0;
                 }
                 number if number.is_digit(10) => {
-                    col += number.to_digit(10).expect("Must be a digit") as i8;
+                    col += number.to_digit(10).ok_or(FENError::ParsingError)? as i8;
                 }
-                'r' | 'n' | 'b' | 'q' | 'k' | 'p' => {
-                    let piece = Piece(PieceVariation::from(char), Color::BLACK);
-                    board.update_bit_board(&piece, (row * 8 + col) as u8, BitBoardOperation::SET);
+                'R' | 'N' | 'B' | 'Q' | 'K' | 'P' | 'r' | 'n' | 'b' | 'q' | 'k' | 'p' => {
+                    board.update_bit_board(
+                        &char.into(),
+                        (row * 8 + col) as u8,
+                        BitBoardOperation::SET
+                    );
                     col += 1;
                 }
-                'R' | 'N' | 'B' | 'Q' | 'K' | 'P' => {
-                    let piece = Piece(PieceVariation::from(char), Color::WHITE);
-                    board.update_bit_board(&piece, (row * 8 + col) as u8, BitBoardOperation::SET);
-                    col += 1;
-                }
-                _ => {
-                    return Err(FENError::ParsingError);
-                }
+
+                _ => Err(FENError::ParsingError)?,
             }
         }
 
@@ -73,9 +70,7 @@ impl Board {
             "b" => {
                 board.color_to_move = Color::BLACK;
             }
-            _ => {
-                return Err(FENError::ParsingError);
-            }
+            _ => Err(FENError::ParsingError)?,
         }
 
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
@@ -97,9 +92,7 @@ impl Board {
                     board.black_castle.1 = true;
                 }
                 '-' => (),
-                _ => {
-                    return Err(FENError::ParsingError);
-                }
+                _ => Err(FENError::ParsingError)?,
             }
         }
 
@@ -152,18 +145,7 @@ impl Board {
                         s.push_str(&format!("{}", empty));
                         empty = 0;
                     }
-                    let mut char = match piece.0 {
-                        PieceVariation::PAWN => 'p',
-                        PieceVariation::KNIGHT => 'n',
-                        PieceVariation::BISHOP => 'b',
-                        PieceVariation::ROOK => 'r',
-                        PieceVariation::QUEEN => 'q',
-                        PieceVariation::KING => 'k',
-                    };
-                    if piece.1 == Color::WHITE {
-                        char = char.to_uppercase().next().unwrap();
-                    }
-                    s.push_str(&format!("{}", char));
+                    s.push_str(&format!("{}", piece.1.transform_char(&piece.0.as_char())));
                 }
                 None => {
                     empty += 1;
