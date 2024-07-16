@@ -147,7 +147,7 @@ impl Board {
         attacks
     }
 
-    fn attacks_pawn(sq: u8, enemy: u64, ally: u64, color: &Color, en_passant: u8) -> u64 {
+    fn attacks_pawn(sq: u8, enemy: u64, ally: u64, color: &Color, en_passant: Option<Square>) -> u64 {
         let mut attacks = attack_pattern::MOVE_PATTERN_PAWN[*color][sq as usize];
 
         let all = enemy | ally;
@@ -165,8 +165,8 @@ impl Board {
 
         let mut attack_moves = attack_pattern::ATTACK_PATTERN_PAWN[*color][sq as usize];
         attack_moves ^= attack_moves & ally;
-        if Square::valid(en_passant) {
-            attack_moves &= enemy | Square::to_board_bit(en_passant);
+        if en_passant.is_some() {
+            attack_moves &= enemy | Square::to_board_bit(en_passant.unwrap().into());
         } else {
             attack_moves &= enemy;
         }

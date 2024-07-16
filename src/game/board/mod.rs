@@ -23,7 +23,7 @@ pub struct Board {
     color_to_move: Color,
     white_castle: (bool, bool), //(king side, queen side)
     black_castle: (bool, bool), // (king side, queen side)
-    en_passant: u8, //notes the square behind the pawn that can be captured en passant.
+    en_passant: Option<Square>, //notes the square behind the pawn that can be captured en passant.
     // a value over 63 means no en passant
     // e.g if pawn moves from F2 to F4, F3 is the en passant square
     half_move_clock: usize, //number of half moves since the last capture or pawn advance
@@ -38,7 +38,7 @@ impl Board {
             color_to_move: Color::WHITE,
             white_castle: (true, true),
             black_castle: (true, true),
-            en_passant: 0xff,
+            en_passant: None,
             half_move_clock: 0,
             move_number: 1,
         }
@@ -166,12 +166,12 @@ impl Board {
         }
     }
 
-    pub fn play(&mut self, mov: &Move) -> Option<Move> {
+    pub fn play(&mut self, mov: &Move) -> Option<DetailedMove> {
         //TODO validate move
         let mov = self.move_piece(mov.source(), mov.dest());
         mov.as_ref().inspect(|mov| {
             self.update_color_to_move();
-            match (mov.castle_kingside(), mov.color()) {
+            match (CastleType::matches_king_side(mov.source_sq(), mov.dest_sq()), mov.color()) {
                 (true, Color::WHITE) => {
                     self.white_castle.0 = false;
                 }
@@ -180,7 +180,7 @@ impl Board {
                 }
                 _ => (),
             }
-            match (mov.castle_queenside(), mov.color()) {
+            match (CastleType::matches_queen_side(mov.source_sq(), mov.dest_sq()), mov.color()) {
                 (true, Color::WHITE) => {
                     self.white_castle.1 = false;
                 }

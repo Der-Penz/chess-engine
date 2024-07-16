@@ -10,7 +10,7 @@ impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}{} FEN: {}\n",
+            "{}{:#} FEN: {}\n",
             bb_to_string(|sq| { self.get_piece(sq.into()).map(|p| p.to_string()) }),
             self.color_to_move,
             self.to_fen()
@@ -107,7 +107,7 @@ impl Board {
 
         match fen_group {
             "-" => {
-                board.en_passant = 0xff;
+                board.en_passant = None;
             }
             _ => {
                 let mut chars = fen_group.chars();
@@ -125,7 +125,7 @@ impl Board {
                     en_passant;
                 Square::valid(en_passant).then_some(0).ok_or(FENError::ParsingError)?;
 
-                board.en_passant = en_passant;
+                board.en_passant = Some(Square::from(en_passant));
             }
         }
 
@@ -180,7 +180,7 @@ impl Board {
             }
         });
 
-        s.push_str(&format!(" {} ", if self.color_to_move == Color::WHITE { "w" } else { "b" }));
+        s.push_str(&format!(" {} ", self.color_to_move));
 
         if self.white_castle.0 {
             s.push('K');
@@ -204,12 +204,9 @@ impl Board {
             s.push_str("-");
         }
 
-        if Square::valid(self.en_passant) {
-            s.push_str(
-                &format!(" {} ", Square::from(self.en_passant).to_string().to_ascii_lowercase())
-            );
-        } else {
-            s.push_str(" - ");
+        match self.en_passant {
+            Some(sq) => s.push_str(&format!(" {} ", sq.to_string())),
+            None => s.push_str(" - "),
         }
 
         s.push_str(&format!("{} {}", self.half_move_clock, self.move_number));
