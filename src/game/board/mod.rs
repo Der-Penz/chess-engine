@@ -16,6 +16,7 @@ enum BitBoardOperation {
     RESET,
 }
 
+#[derive(Clone)]
 pub struct Board {
     black_boards: [u64; 7],
     white_boards: [u64; 7],
@@ -217,20 +218,5 @@ impl Board {
 
     pub fn get_bb_all_occupied(&self) -> u64 {
         self.white_boards[6] | self.black_boards[6]
-    }
-}
-
-impl Clone for Board {
-    fn clone(&self) -> Self {
-        Self {
-            black_boards: self.black_boards.clone(),
-            white_boards: self.white_boards.clone(),
-            color_to_move: self.color_to_move.clone(),
-            white_castle: self.white_castle.clone(),
-            black_castle: self.black_castle.clone(),
-            en_passant: self.en_passant.clone(),
-            half_move_clock: self.half_move_clock.clone(),
-            move_number: self.move_number.clone(),
-        }
     }
 }
