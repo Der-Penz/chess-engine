@@ -1,5 +1,7 @@
 use num_traits::FromPrimitive;
-use std::ops::{ Index, IndexMut };
+use std::ops::{Index, IndexMut};
+
+use super::Piece;
 
 #[derive(Debug, FromPrimitive, Clone, Copy, PartialEq)]
 pub enum PieceVariation {
@@ -16,7 +18,7 @@ impl PieceVariation {
         (0..=5usize).map(|i| (PieceVariation::from_usize(i).unwrap(), i))
     }
 
-    pub fn as_char(&self) -> char{
+    pub fn as_char(&self) -> char {
         match self {
             PieceVariation::PAWN => 'p',
             PieceVariation::KNIGHT => 'n',
@@ -58,5 +60,11 @@ impl From<char> for PieceVariation {
 impl Default for PieceVariation {
     fn default() -> Self {
         PieceVariation::PAWN
+    }
+}
+
+impl From<Piece> for PieceVariation {
+    fn from(piece: Piece) -> Self {
+        piece.0
     }
 }

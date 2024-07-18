@@ -1,6 +1,6 @@
-use crate::game::{ Color, Piece, PieceVariation, Square };
+use crate::game::{Color, Piece, PieceVariation, Square};
 
-use super::{ CastleType, Move, MoveType, PromotionPiece };
+use super::{CastleType, Move, MoveType, PromotionPiece};
 
 pub struct DetailedMove {
     piece: Piece,
@@ -17,7 +17,7 @@ impl DetailedMove {
         source: u8,
         dest: u8,
         capture: Option<PieceVariation>,
-        check: bool
+        check: bool,
     ) -> Self {
         DetailedMove {
             piece,
@@ -35,7 +35,7 @@ impl DetailedMove {
         dest: u8,
         promotion_piece: PromotionPiece,
         capture: Option<PieceVariation>,
-        check: bool
+        check: bool,
     ) -> Self {
         if piece.0 != PieceVariation::PAWN {
             panic!("Only pawns can be promoted");
@@ -66,9 +66,8 @@ impl DetailedMove {
             panic!("Only kings can castle");
         }
 
-        let castle_type = CastleType::matches_castle(source.into(), dest.into()).expect(
-            "Invalid castle move"
-        );
+        let castle_type = CastleType::satisfies_castle(&source.into(), &dest.into(), &piece.1)
+            .expect("Tried to create a castle move that is not a valid castle move");
 
         DetailedMove {
             piece,
@@ -150,11 +149,14 @@ impl std::fmt::Display for DetailedMove {
             return write!(f, "0000");
         }
 
-        write!(f, "{}: {}->{}{}| ", self.piece(), self.source_sq(), self.dest_sq(), if self.check() {
-            "+"
-        } else {
-            " "
-        })?;
+        write!(
+            f,
+            "{}: {}->{}{}| ",
+            self.piece(),
+            self.source_sq(),
+            self.dest_sq(),
+            if self.check() { "+" } else { " " }
+        )?;
         self.capture().inspect(|c| {
             write!(f, "⚔:{}|", Piece(*c, self.color().opposite()));
         });

@@ -1,7 +1,7 @@
-use std::fmt::{ Debug, Display };
+use std::fmt::{Debug, Display};
 
-use crate::game::Square;
 use super::{BaseMoveType, PromotionPiece};
+use crate::game::Square;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Move(u8, u8, BaseMoveType);
@@ -23,11 +23,11 @@ impl Move {
         self.1
     }
 
-    pub fn from_sq(&self) -> Square {
+    pub fn source_sq(&self) -> Square {
         Square::from(self.0)
     }
 
-    pub fn to_sq(&self) -> Square {
+    pub fn dest_sq(&self) -> Square {
         Square::from(self.1)
     }
 
@@ -59,8 +59,7 @@ impl Move {
             "{}{}{}",
             Square::from(self.source()),
             Square::from(self.dest()),
-            self
-                .promotion_piece()
+            self.promotion_piece()
                 .map(|p| Into::<char>::into(p).to_string())
                 .unwrap_or("".to_string())
         )
@@ -92,13 +91,13 @@ impl Display for Move {
             return write!(
                 f,
                 "{}->{}|{}",
-                self.from_sq(),
-                self.to_sq(),
+                self.source_sq(),
+                self.dest_sq(),
                 Into::<char>::into(self.promotion_piece().unwrap())
             );
         }
 
-        write!(f, "{}->{}", self.from_sq(), self.to_sq())
+        write!(f, "{}->{}", self.source_sq(), self.dest_sq())
     }
 }
 

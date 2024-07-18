@@ -227,6 +227,12 @@ impl Board {
             white_check = self.square_attacked(king_sq.into(), Color::BLACK).into();
         }
 
+        let king: u64 = self.white_boards[PieceVariation::KING];
+        let king_sq = iter_set_bits(king).next();
+        if let Some(king_sq) = king_sq {
+            white_check = self.square_attacked(king_sq.into(), Color::BLACK).into();
+        }
+
         let king: u64 = self.black_boards[PieceVariation::KING];
         let king_sq = iter_set_bits(king).next();
         if let Some(king_sq) = king_sq {
@@ -234,5 +240,14 @@ impl Board {
         }
 
         (white_check, black_check)
+    }
+
+    pub fn in_check_color(&self, color: Color) -> Option<bool> {
+        let (white, black) = self.in_check();
+
+        match color {
+            Color::WHITE => white,
+            Color::BLACK => black,
+        }
     }
 }

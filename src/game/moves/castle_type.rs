@@ -1,4 +1,4 @@
-use crate::game::Square;
+use crate::game::{Color, Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CastleType {
@@ -7,35 +7,53 @@ pub enum CastleType {
 }
 
 impl CastleType {
-    pub fn is_king_side(&self) -> bool {
-        match self {
-            CastleType::KingSide => true,
-            _ => false,
+    pub fn satisfies_king_side(from: &Square, to: &Square, color: &Color) -> bool {
+        match color {
+            Color::WHITE => *from == Square::E1 && *to == Square::G1,
+            Color::BLACK => *from == Square::E8 && *to == Square::G8,
         }
     }
 
-    pub fn is_queen_side(&self) -> bool {
-        match self {
-            CastleType::QueenSide => true,
-            _ => false,
+    pub fn satisfies_queen_side(from: &Square, to: &Square, color: &Color) -> bool {
+        match color {
+            Color::WHITE => *from == Square::E1 && *to == Square::C1,
+            Color::BLACK => *from == Square::E8 && *to == Square::C8,
         }
     }
 
-    pub fn matches_king_side(from: Square, to: Square) -> bool {
-        (from == Square::E1 && to == Square::G1) || (from == Square::E8 && to == Square::G8)
-    }
-
-    pub fn matches_queen_side(from: Square, to: Square) -> bool {
-        (from == Square::E1 && to == Square::C1) || (from == Square::E8 && to == Square::C8)
-    }
-
-    pub fn matches_castle(from: Square, to: Square) -> Option<Self> {
-        if Self::matches_king_side(from, to) {
+    pub fn satisfies_castle(from: &Square, to: &Square, color: &Color) -> Option<Self> {
+        if CastleType::satisfies_king_side(from, to, color) {
             Some(CastleType::KingSide)
-        } else if Self::matches_queen_side(from, to) {
+        } else if CastleType::satisfies_queen_side(from, to, color) {
             Some(CastleType::QueenSide)
         } else {
             None
+        }
+    }
+
+    pub fn get_rook_source(&self, color: &Color) -> Square {
+        match self {
+            CastleType::KingSide => match color {
+                Color::WHITE => Square::H1,
+                Color::BLACK => Square::H8,
+            },
+            CastleType::QueenSide => match color {
+                Color::WHITE => Square::A1,
+                Color::BLACK => Square::A8,
+            },
+        }
+    }
+
+    pub fn get_rook_dest(&self, color: &Color) -> Square {
+        match self {
+            CastleType::KingSide => match color {
+                Color::WHITE => Square::F1,
+                Color::BLACK => Square::F8,
+            },
+            CastleType::QueenSide => match color {
+                Color::WHITE => Square::D1,
+                Color::BLACK => Square::D8,
+            },
         }
     }
 }

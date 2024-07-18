@@ -1,12 +1,11 @@
 use std::fmt;
 
-use super::{ Color, PieceVariation };
+use super::{Color, PieceVariation};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Piece(pub PieceVariation, pub Color);
 
 impl Piece {
-
     pub fn new(piece_variation: PieceVariation, color: Color) -> Piece {
         Piece(piece_variation, color)
     }
@@ -48,7 +47,7 @@ impl Piece {
         Piece(PieceVariation::PAWN, Color::WHITE)
     }
 
-    pub fn color_matches(&self, other: Piece) -> bool {
+    pub fn color_matches(&self, other: &Piece) -> bool {
         self.1 == other.1
     }
 }
@@ -82,7 +81,11 @@ impl Default for Piece {
 
 impl From<char> for Piece {
     fn from(c: char) -> Self {
-        let color = if c.is_uppercase() { Color::WHITE } else { Color::BLACK };
+        let color = if c.is_uppercase() {
+            Color::WHITE
+        } else {
+            Color::BLACK
+        };
         let piece_variation = PieceVariation::from(c);
         Piece(piece_variation, color)
     }
