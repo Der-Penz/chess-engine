@@ -6,6 +6,11 @@ use super::{ Color, PieceVariation };
 pub struct Piece(pub PieceVariation, pub Color);
 
 impl Piece {
+
+    pub fn new(piece_variation: PieceVariation, color: Color) -> Piece {
+        Piece(piece_variation, color)
+    }
+
     pub fn black_rook() -> Piece {
         Piece(PieceVariation::ROOK, Color::BLACK)
     }

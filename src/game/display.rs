@@ -72,7 +72,7 @@ pub fn print_bb_bbx(bb: &Board, x_bb: u64) {
     info!(
         "{}",
         bb_to_string(|s| {
-            match bb.get_piece(s.into()) {
+            match bb.get_field_piece(s.into()) {
                 Some(p) => if s.matches(x_bb) {
                     Some(format!("{}{}", "\u{035C}", p.to_string()))
                 } else {

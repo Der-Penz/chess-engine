@@ -22,7 +22,7 @@ pub fn handle_position(
     };
 
     moves.iter().for_each(|m| {
-        board.play(m);
+        board.play_move(m);
     });
     None
 }

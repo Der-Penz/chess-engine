@@ -10,8 +10,8 @@ impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}{:#} FEN: {}\n",
-            bb_to_string(|sq| { self.get_piece(sq.into()).map(|p| p.to_string()) }),
+            "{}{:?} FEN: {}\n",
+            bb_to_string(|sq| { self.get_field_piece(sq.into()).map(|p| p.to_string()) }),
             self.color_to_move,
             self.to_fen()
         )
@@ -49,7 +49,7 @@ impl Board {
                     col += number.to_digit(10).ok_or(FENError::ParsingError)? as i8;
                 }
                 'R' | 'N' | 'B' | 'Q' | 'K' | 'P' | 'r' | 'n' | 'b' | 'q' | 'k' | 'p' => {
-                    board.update_bit_board(
+                    board.update_bb(
                         &char.into(),
                         (row * 8 + col) as u8,
                         BitBoardOperation::SET
@@ -138,7 +138,7 @@ impl Board {
 
         let mut empty = 0;
         Square::iter_ah_81().for_each(|square| {
-            let piece = self.get_piece(square.into());
+            let piece = self.get_field_piece(square.into());
             match piece {
                 Some(piece) => {
                     if empty > 0 {

@@ -1,6 +1,6 @@
 use crate::{
     attack_pattern,
-    game::{ iter_set_bits, BaseMoveType, Color, Move, Piece, PieceVariation, Square },
+    game::{iter_set_bits, BaseMoveType, Color, Move, Piece, PieceVariation, Square},
 };
 
 use super::Board;
@@ -23,7 +23,7 @@ impl Board {
     /// All moves are normale moves. After taking the move, it must be transformed into a different move
     /// type if it is a promotion, en passant or castling move.
     pub fn get_pseudo_legal_moves(&self, square: u8) -> Option<Vec<Move>> {
-        let piece = self.get_piece(square)?;
+        let piece = self.get_field_piece(square)?;
         let sq = Square::from(square);
 
         let ally = self.get_bb_color_occupied(&piece.1);
@@ -31,8 +31,9 @@ impl Board {
 
         let mut moves = Vec::new();
         let possible_moves = match piece.0 {
-            PieceVariation::PAWN =>
-                Board::attacks_pawn(square, enemy, ally, &piece.1, self.en_passant),
+            PieceVariation::PAWN => {
+                Board::attacks_pawn(square, enemy, ally, &piece.1, self.en_passant)
+            }
             PieceVariation::KNIGHT => Board::attacks_knight(square, ally),
             PieceVariation::ROOK => Board::attacks_rook(&sq, enemy, ally),
             PieceVariation::BISHOP => Board::attacks_bishop(&sq, enemy, ally),
@@ -41,9 +42,7 @@ impl Board {
         };
 
         moves.extend(
-            iter_set_bits(possible_moves).map(|dest| {
-                Move::new(square, dest, BaseMoveType::Normal)
-            })
+            iter_set_bits(possible_moves).map(|dest| Move::new(square, dest, BaseMoveType::Normal)),
         );
 
         return Some(moves);
@@ -54,7 +53,7 @@ impl Board {
             .into_iter()
             .filter(|m| {
                 let mut board = self.clone();
-                board.play(m);
+                board.play_move(m);
                 let (white_check, black_check) = board.in_check();
 
                 if white_check.is_none() && black_check.is_none() {
@@ -103,37 +102,33 @@ impl Board {
             Color::WHITE => board.white_castle,
             Color::BLACK => board.black_castle,
         };
-        if
-            king_side &&
-            color == &Color::WHITE &&
-            board.get_piece(Square::F1.into()).is_none() &&
-            board.get_piece(Square::G1.into()).is_none()
+        if king_side
+            && color == &Color::WHITE
+            && board.get_field_piece(Square::F1.into()).is_none()
+            && board.get_field_piece(Square::G1.into()).is_none()
         {
             attacks |= Square::to_board_bit(Square::G1.into());
         }
-        if
-            king_side &&
-            color == &Color::BLACK &&
-            board.get_piece(Square::F8.into()).is_none() &&
-            board.get_piece(Square::G8.into()).is_none()
+        if king_side
+            && color == &Color::BLACK
+            && board.get_field_piece(Square::F8.into()).is_none()
+            && board.get_field_piece(Square::G8.into()).is_none()
         {
             attacks |= Square::to_board_bit(Square::G8.into());
         }
-        if
-            queen_side &&
-            color == &Color::WHITE &&
-            board.get_piece(Square::D1.into()).is_none() &&
-            board.get_piece(Square::C1.into()).is_none() &&
-            board.get_piece(Square::B1.into()).is_none()
+        if queen_side
+            && color == &Color::WHITE
+            && board.get_field_piece(Square::D1.into()).is_none()
+            && board.get_field_piece(Square::C1.into()).is_none()
+            && board.get_field_piece(Square::B1.into()).is_none()
         {
             attacks |= Square::to_board_bit(Square::C1.into());
         }
-        if
-            queen_side &&
-            color == &Color::BLACK &&
-            board.get_piece(Square::D8.into()).is_none() &&
-            board.get_piece(Square::C8.into()).is_none() &&
-            board.get_piece(Square::B8.into()).is_none()
+        if queen_side
+            && color == &Color::BLACK
+            && board.get_field_piece(Square::D8.into()).is_none()
+            && board.get_field_piece(Square::C8.into()).is_none()
+            && board.get_field_piece(Square::B8.into()).is_none()
         {
             attacks |= Square::to_board_bit(Square::C8.into());
         }
@@ -147,7 +142,13 @@ impl Board {
         attacks
     }
 
-    fn attacks_pawn(sq: u8, enemy: u64, ally: u64, color: &Color, en_passant: Option<Square>) -> u64 {
+    fn attacks_pawn(
+        sq: u8,
+        enemy: u64,
+        ally: u64,
+        color: &Color,
+        en_passant: Option<Square>,
+    ) -> u64 {
         let mut attacks = attack_pattern::MOVE_PATTERN_PAWN[*color][sq as usize];
 
         let all = enemy | ally;
@@ -182,9 +183,8 @@ impl Board {
         let enemy = self.get_bb_color_occupied(&attacked_by);
 
         let pawns = self.get_bb_for(&Piece(PieceVariation::PAWN, attacked_by));
-        if
-            (Board::attacks_pawn(sq, enemy, ally, &attacked_by.opposite(), self.en_passant) &
-                pawns) != 0
+        if (Board::attacks_pawn(sq, enemy, ally, &attacked_by.opposite(), self.en_passant) & pawns)
+            != 0
         {
             return true;
         }
@@ -200,16 +200,14 @@ impl Board {
         }
 
         let square = Square::from(sq);
-        let bishop_queen =
-            self.get_bb_for(&Piece(PieceVariation::BISHOP, attacked_by)) |
-            self.get_bb_for(&Piece(PieceVariation::QUEEN, attacked_by));
+        let bishop_queen = self.get_bb_for(&Piece(PieceVariation::BISHOP, attacked_by))
+            | self.get_bb_for(&Piece(PieceVariation::QUEEN, attacked_by));
         if (Board::attacks_bishop(&square, enemy, ally) & bishop_queen) != 0 {
             return true;
         }
 
-        let rook_queen =
-            self.get_bb_for(&Piece(PieceVariation::ROOK, attacked_by)) |
-            self.get_bb_for(&Piece(PieceVariation::QUEEN, attacked_by));
+        let rook_queen = self.get_bb_for(&Piece(PieceVariation::ROOK, attacked_by))
+            | self.get_bb_for(&Piece(PieceVariation::QUEEN, attacked_by));
         if (Board::attacks_rook(&square, enemy, ally) & rook_queen) != 0 {
             return true;
         }
