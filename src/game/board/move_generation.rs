@@ -53,7 +53,10 @@ impl Board {
             .into_iter()
             .filter(|m| {
                 let mut board = self.clone();
-                board.play_move(m);
+                let played = board.play_move(m, false);
+                if played.is_err() {
+                    return false;
+                }
                 let (white_check, black_check) = board.in_check();
 
                 if white_check.is_none() && black_check.is_none() {

@@ -1,28 +1,31 @@
 use itertools::Itertools;
 use log::error;
 
-use crate::{ game::{ Board, Move }, uci::commands::{ Command, CommandParseError } };
+use crate::{
+    game::{Board, Move},
+    uci::commands::{Command, CommandParseError},
+};
 
 pub fn handle_position(
     board: &mut Board,
     pos: &Option<String>,
-    moves: &Vec<Move>
+    moves: &Vec<Move>,
 ) -> Option<String> {
     *board = match pos {
-        Some(fen) => {
-            match Board::from_fen(&fen) {
-                Ok(b) => b,
-                Err(err) => {
-                    error!("Error parsing FEN: {}", err);
-                    return Some("quit".into());
-                }
+        Some(fen) => match Board::from_fen(&fen) {
+            Ok(b) => b,
+            Err(err) => {
+                error!("Error parsing FEN: {}", err);
+                return Some("quit".into());
             }
-        }
+        },
         None => Board::base(),
     };
 
     moves.iter().for_each(|m| {
-        board.play_move(m);
+        board
+            .play_move(m, false)
+            .expect("UCI received invalid move that cannot be played by the engine");
     });
     None
 }

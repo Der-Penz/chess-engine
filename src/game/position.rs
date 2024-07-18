@@ -27,8 +27,13 @@ impl From<u8> for Square {
 
 impl From<&str> for Square {
     fn from(value: &str) -> Self {
-        let file: u32 =
-            (value.to_lowercase().chars().nth(0).unwrap().to_ascii_lowercase() as u32) - 97;
+        let file: u32 = (value
+            .to_lowercase()
+            .chars()
+            .nth(0)
+            .unwrap()
+            .to_ascii_lowercase() as u32)
+            - 97;
         let rank: u32 = value.chars().nth(1).unwrap().to_digit(10).unwrap() - 1;
         let square = rank * 8 + file;
         Square::from(square as u8)

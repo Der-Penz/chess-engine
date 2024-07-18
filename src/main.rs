@@ -4,7 +4,7 @@ use std::io::Write;
 
 use attack_pattern::SLIDING_ATTACK_LOOKUP_TABLE;
 use log::LevelFilter;
-// #[cfg(feature = "uci")]
+#[cfg(feature = "uci")]
 use uci::start_uci_protocol;
 
 #[macro_use]

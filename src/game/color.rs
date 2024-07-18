@@ -34,7 +34,10 @@ impl Color {
     }
 
     pub fn transform_char(&self, value: &char) -> char {
-        self.transform_str(value.to_string().as_ref()).chars().next().unwrap()
+        self.transform_str(value.to_string().as_ref())
+            .chars()
+            .next()
+            .unwrap()
     }
 }
 

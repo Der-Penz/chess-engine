@@ -1,4 +1,4 @@
-use log::info;
+use thiserror::Error;
 
 use crate::game::{MoveType, Square};
 
@@ -27,6 +27,20 @@ impl BitBoardOperation {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum MoveError {
+    #[error("You cannot capture your own {0}")]
+    AttackOnAlliedPiece(Piece),
+    #[error("The source square {0} is empty")]
+    EmptySource(Square),
+    #[error("Invalid move")]
+    InvalidMove,
+    #[error("You cannot capture a King")]
+    KingCapture,
+    #[error("You cannot move to the same square")]
+    SameSquare,
+}
+
 #[derive(Clone)]
 pub struct Board {
     black_boards: [u64; 7],
@@ -38,6 +52,7 @@ pub struct Board {
     // a value over 63 means no en passant
     // e.g if pawn moves from F2 to F4, F3 is the en passant square
     half_move_clock: usize, //number of half moves since the last capture or pawn advance
+    half_move_clock_prev: usize, //previous value of half_move_clock to undo
     move_number: usize,
 }
 
@@ -51,6 +66,7 @@ impl Board {
             black_castle: (true, true),
             en_passant: None,
             half_move_clock: 0,
+            half_move_clock_prev: 0,
             move_number: 1,
         }
     }
@@ -111,47 +127,6 @@ impl Board {
         }
     }
 
-    fn is_castle_move(
-        source: Square,
-        dest: Square,
-        source_piece: &Piece,
-        dest_piece: &Piece,
-    ) -> Option<CastleType> {
-        let castle_type = CastleType::satisfies_castle(&source, &dest, &source_piece.1);
-
-        if castle_type.is_none() {
-            return None;
-        }
-
-        if source_piece.color_matches(dest_piece)
-            && source_piece.0 == PieceVariation::KING
-            && dest_piece.0 == PieceVariation::ROOK
-        {
-            Some(castle_type.unwrap())
-        } else {
-            None
-        }
-    }
-
-    fn is_promotion_move(dest: &Square, source_piece: &Piece) -> bool {
-        source_piece.0 == PieceVariation::PAWN
-            && ((source_piece.1 == Color::WHITE && dest.rank() == 8 - 1)
-                || (source_piece.1 == Color::BLACK && dest.rank() == 1 - 1))
-    }
-
-    fn is_en_passant_move(
-        source: &Square,
-        dest: &Square,
-        source_piece: &Piece,
-        dest_piece: &Option<Piece>,
-        en_passant: &Option<Square>,
-    ) -> bool {
-        en_passant.is_some_and(|sq| sq == *dest)
-            && source_piece.0 == PieceVariation::PAWN
-            && dest_piece.is_none()
-            && (source.file() == 4 - 1 || source.file() == 5 - 1)
-    }
-
     pub fn update_color_to_move(&mut self) -> Color {
         self.color_to_move = self.color_to_move.opposite();
         self.color_to_move
@@ -176,113 +151,217 @@ impl Board {
         self.white_boards[6] | self.black_boards[6]
     }
 
-    pub fn play_move(&mut self, mov: &Move) -> Option<DetailedMove> {
-        //TODO checking for same color capture
-        if mov.is_null() {
-            self.move_number += 1;
-            self.update_color_to_move();
-            return Some(DetailedMove::null());
+    /// Will check if the move is any kind of special move
+    /// it won't check if the move is valid only if it satisfies minimal requirements for a special move
+    /// if required checks don't determine any special move, it will return MoveType::Normal
+    fn get_move_type(
+        &self,
+        mov: &Move,
+        source_piece: &Piece,
+        dest_piece: &Option<Piece>,
+    ) -> MoveType {
+        if mov.is_null() || !mov.valid() {
+            return MoveType::Normal;
         }
 
-        if !mov.valid() {
-            return None;
+        if let Some(promotion_pice) = mov.promotion_piece() {
+            return MoveType::Promotion(promotion_pice);
         }
 
-        let source_piece = self.get_field_piece(mov.source())?;
-        let dest_piece = self.get_field_piece(mov.dest());
-        let mut move_type = MoveType::default();
-        //move the piece, can be done no matter the move type
-        self.update_bb(&source_piece, mov.source(), BitBoardOperation::RESET);
-        self.update_bb(&source_piece, mov.dest(), BitBoardOperation::SET);
+        if let Some(capture) = dest_piece {
+            //same color capture could be a castling move
+            if capture.1 == source_piece.1 {
+                let castle_type =
+                    CastleType::satisfies_castle(&mov.source_sq(), &mov.dest_sq(), &source_piece.1);
 
-        if let Some(capture) = dest_piece.as_ref() {
-            //castling
-            if let Some(castle_type) =
-                Board::is_castle_move(mov.source_sq(), mov.dest_sq(), &source_piece, capture)
+                if let Some(castle_type) = castle_type {
+                    return MoveType::Castling(castle_type);
+                }
+            }
+        } else {
+            if source_piece.0 == PieceVariation::PAWN
+                && self.en_passant.is_some_and(|sq| sq == mov.dest_sq())
+                && ((source_piece.1 == Color::WHITE && mov.source_sq().rank() == 5 - 1)
+                    || (source_piece.1 == Color::BLACK && mov.source_sq().rank() == 4 - 1))
             {
-                self.update_bb(
-                    &capture,
-                    castle_type.get_rook_source(&capture.1).into(),
-                    BitBoardOperation::RESET,
-                );
-                self.update_bb(
-                    &capture,
-                    castle_type.get_rook_dest(&capture.1).into(),
-                    BitBoardOperation::SET,
-                );
-
-                move_type = MoveType::Castling(castle_type);
-            } else {
-                //normal capture
-                self.update_bb(capture, mov.dest(), BitBoardOperation::RESET);
+                return MoveType::EnPassant;
             }
         }
 
-        if mov.promotion_piece().is_some()
-            && Board::is_promotion_move(&mov.dest_sq(), &source_piece)
-        {
-            self.update_bb(&source_piece, mov.dest(), BitBoardOperation::RESET);
-            self.update_bb(
-                &Piece::new(mov.promotion_piece().unwrap().into(), source_piece.1),
-                mov.dest(),
-                BitBoardOperation::SET,
-            );
-            move_type = MoveType::Promotion(mov.promotion_piece().unwrap());
+        MoveType::Normal
+    }
+
+    /// plays a move on the board and returns a DetailedMove that can be used to undo the move
+    /// if the move cannot be played, it will return a MoveError
+    /// if full_validation is set to true, it will fully validate the move (king capture, pins, castling through check, invalid move for a piece, same color capture)
+    /// if full_validation is set to false, it will only check basic requirements for a move (empty source, same square, invalid squares)
+    /// if you now the move is from a trusted source, you can skip full_validation to improve performance
+    pub fn play_move(
+        &mut self,
+        mov: &Move,
+        full_validation: bool,
+    ) -> Result<DetailedMove, MoveError> {
+        if !mov.valid() {
+            return Err(MoveError::InvalidMove);
+        }
+        if mov.is_null() {
+            self.half_move_clock = 0;
+            if self.color_to_move == Color::BLACK {
+                self.move_number += 1;
+            }
+            self.update_color_to_move();
+            return Ok(DetailedMove::null());
         }
 
-        if Board::is_en_passant_move(
-            &mov.source_sq(),
-            &mov.dest_sq(),
-            &source_piece,
-            &dest_piece,
-            &self.en_passant,
-        ) {
-            self.update_bb(
-                &Piece::new(PieceVariation::PAWN, source_piece.1.opposite()),
-                if source_piece.1 == Color::WHITE {
-                    mov.dest() - 8
-                } else {
-                    mov.dest() + 8
-                },
-                BitBoardOperation::RESET,
-            );
-            move_type = MoveType::EnPassant;
+        let source_piece = self
+            .get_field_piece(mov.source())
+            .ok_or(MoveError::EmptySource(mov.source_sq()))?;
+        let dest_piece = self.get_field_piece(mov.dest());
+
+        if full_validation {
+            //TODO move validation with MoveError like attack on own piece, invalid move, Pins, castling through check, castle rights
+            if dest_piece.is_some_and(|p| p.0 == PieceVariation::KING) {
+                return Err(MoveError::KingCapture);
+            }
         }
 
+        let move_type = self.get_move_type(mov, &source_piece, &dest_piece);
+
+        dest_piece.inspect(|p| {
+            self.update_bb(p, mov.dest(), BitBoardOperation::RESET);
+        });
+
+        match move_type {
+            MoveType::Normal => {
+                self.update_bb(&source_piece, mov.source(), BitBoardOperation::RESET);
+                self.update_bb(&source_piece, mov.dest(), BitBoardOperation::SET);
+
+                //TODO only check for reset if still has castle rights
+                if source_piece.0 == PieceVariation::KING {
+                    //TODO better castle rights updates
+                    match source_piece.1 {
+                        Color::WHITE => {
+                            self.white_castle = (false, false);
+                        }
+                        Color::BLACK => {
+                            self.black_castle = (false, false);
+                        }
+                    }
+                }
+
+                if source_piece.0 == PieceVariation::ROOK {
+                    match (source_piece.1, mov.source_sq()) {
+                        (Color::WHITE, Square::A1) => {
+                            self.white_castle.1 = false;
+                        }
+                        (Color::WHITE, Square::H1) => {
+                            self.white_castle.0 = false;
+                        }
+                        (Color::BLACK, Square::A8) => {
+                            self.black_castle.1 = false;
+                        }
+                        (Color::BLACK, Square::H8) => {
+                            self.black_castle.0 = false;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            MoveType::Promotion(promotion_piece) => {
+                self.update_bb(&source_piece, mov.source(), BitBoardOperation::RESET);
+                self.update_bb(
+                    &Piece::new(promotion_piece.into(), source_piece.1),
+                    mov.dest(),
+                    BitBoardOperation::SET,
+                );
+            }
+            MoveType::EnPassant => {
+                self.update_bb(&source_piece, mov.source(), BitBoardOperation::RESET);
+                self.update_bb(&source_piece, mov.dest(), BitBoardOperation::SET);
+
+                self.update_bb(
+                    &Piece::new(PieceVariation::PAWN, source_piece.1.opposite()),
+                    if source_piece.1 == Color::WHITE {
+                        mov.dest() - 8
+                    } else {
+                        mov.dest() + 8
+                    },
+                    BitBoardOperation::RESET,
+                );
+            }
+            MoveType::Castling(castle_type) => {
+                self.update_bb(&source_piece, mov.source(), BitBoardOperation::RESET);
+                self.update_bb(&source_piece, mov.dest(), BitBoardOperation::SET);
+
+                self.update_bb(
+                    &Piece::new(PieceVariation::ROOK, source_piece.1),
+                    castle_type.get_rook_source(&source_piece.1).into(),
+                    BitBoardOperation::RESET,
+                );
+                let rook_dest = castle_type.get_rook_dest(&source_piece.1).into();
+                if let Some(remove) = self.get_field_piece(rook_dest) {
+                    self.update_bb(&remove, rook_dest, BitBoardOperation::RESET);
+                }
+
+                self.update_bb(
+                    &Piece::new(PieceVariation::ROOK, source_piece.1),
+                    rook_dest,
+                    BitBoardOperation::SET,
+                );
+
+                //reset castle rights
+                match (source_piece.1, castle_type) {
+                    (Color::WHITE, CastleType::KingSide) => {
+                        self.white_castle.0 = false;
+                    }
+                    (Color::WHITE, CastleType::QueenSide) => {
+                        self.white_castle.1 = false;
+                    }
+                    (Color::BLACK, CastleType::KingSide) => {
+                        self.black_castle.0 = false;
+                    }
+                    (Color::BLACK, CastleType::QueenSide) => {
+                        self.black_castle.1 = false;
+                    }
+                }
+            }
+        }
+
+        self.half_move_clock_prev = self.half_move_clock;
+        if source_piece.0 == PieceVariation::PAWN {
+            self.half_move_clock = 0;
+        } else {
+            self.half_move_clock += 1;
+        }
+
+        if self.color_to_move == Color::BLACK {
+            self.move_number += 1;
+        }
         self.update_color_to_move();
 
         let check = self
             .in_check_color(self.color_to_move)
             .expect("Enemy Player should still have a king");
 
-        match move_type {
-            MoveType::Normal => DetailedMove::new_normal(
-                source_piece,
-                mov.source(),
-                mov.dest(),
-                dest_piece.map(|p| p.into()),
-                check,
-            )
-            .into(),
-            MoveType::Promotion(p) => DetailedMove::new_promotion(
-                source_piece,
-                mov.source(),
-                mov.dest(),
-                p,
-                dest_piece.map(|p| p.into()),
-                check,
-            )
-            .into(),
-            MoveType::EnPassant => {
-                DetailedMove::new_en_passant(source_piece, mov.source(), mov.dest(), check).into()
-            }
+        let capture = match move_type {
+            MoveType::Castling(_) => None,
+            _ => dest_piece.map(|p| p.0),
+        };
 
-            MoveType::Castling(_) => {
-                DetailedMove::new_castle(source_piece, mov.source(), mov.dest(), check).into()
-            }
-        }
+        Ok(DetailedMove::new(
+            source_piece,
+            mov.source(),
+            mov.dest(),
+            move_type,
+            capture,
+            check,
+        ))
     }
 
+    ///will undo the given move on the board
+    /// <bold>Important</bold>: The move must be the last move played on the board or the board will be in an invalid state
+    /// No validation is done to check if the move was last played or was valid
+    /// program might panic with a invalid move
     pub fn undo_move(&mut self, last_move: &DetailedMove) {
         if last_move.is_null() {
             self.move_number -= 1;
@@ -409,16 +488,10 @@ impl Board {
             }
         }
 
-        match last_move.capture().is_some() || last_move.piece_variation() == PieceVariation::PAWN {
-            true => {
-                todo!("reset counter to initial save it somewhere");
-            }
-            false => {
-                self.half_move_clock = self.half_move_clock.checked_sub(1).unwrap_or(0);
-            }
+        self.half_move_clock = self.half_move_clock_prev;
+        if last_move.color() == Color::BLACK {
+            self.move_number -= 1;
         }
-
-        self.move_number -= 1;
         self.update_color_to_move();
     }
 }

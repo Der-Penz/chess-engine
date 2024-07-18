@@ -12,6 +12,24 @@ pub struct DetailedMove {
 }
 
 impl DetailedMove {
+    pub fn new(
+        piece: Piece,
+        source: u8,
+        dest: u8,
+        move_type: MoveType,
+        capture: Option<PieceVariation>,
+        check: bool,
+    ) -> Self {
+        DetailedMove {
+            piece,
+            source,
+            dest,
+            move_type,
+            capture,
+            check,
+        }
+    }
+
     pub fn new_normal(
         piece: Piece,
         source: u8,
@@ -158,7 +176,7 @@ impl std::fmt::Display for DetailedMove {
             if self.check() { "+" } else { " " }
         )?;
         self.capture().inspect(|c| {
-            write!(f, "⚔:{}|", Piece(*c, self.color().opposite()));
+            let _ = write!(f, "⚔:{}|", Piece(*c, self.color().opposite()));
         });
         match self.move_type() {
             MoveType::EnPassant => write!(f, "En Passant"),
