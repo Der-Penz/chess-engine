@@ -383,6 +383,17 @@ impl Board {
         self.half_move_clock_prev = self.half_move_clock;
         if source_piece.0 == PieceVariation::PAWN {
             self.half_move_clock = 0;
+
+            //check if pawn moved 2 squares
+            if ((mov.source() as i8) - (mov.dest() as i8)).abs() == 16 {
+                self.en_passant = if source_piece.1 == Color::WHITE {
+                    Some(Square::from(mov.dest() - 8))
+                } else {
+                    Some(Square::from(mov.dest() + 8))
+                };
+            } else {
+                self.en_passant = None;
+            }
         } else {
             self.half_move_clock += 1;
         }
@@ -401,8 +412,6 @@ impl Board {
             _ => dest_piece.map(|p| p.0),
         };
 
-        //TODO set en passant square also in undo_move
-
         Ok(DetailedMove::new(
             source_piece,
             mov.source(),
@@ -413,8 +422,8 @@ impl Board {
         ))
     }
 
-    ///will undo the given move on the board
-    /// <bold>Important</bold>: The move must be the last move played on the board or the board will be in an invalid state
+    /// will undo the given move on the board.  
+    /// Important: The move must be the last move played on the board or the board will be in an invalid state
     /// No validation is done to check if the move was last played or was valid
     /// program might panic with a invalid move
     pub fn undo_move(&mut self, last_move: &DetailedMove) {
