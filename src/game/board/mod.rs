@@ -29,8 +29,6 @@ impl BitBoardOperation {
 
 #[derive(Debug, Error)]
 pub enum MoveError {
-    #[error("You cannot capture your own {0}")]
-    AttackOnAlliedPiece(Piece),
     #[error("The source square {0} is empty")]
     EmptySource(Square),
     #[error("Invalid move")]
@@ -39,6 +37,12 @@ pub enum MoveError {
     KingCapture,
     #[error("You cannot move to the same square")]
     SameSquare,
+    #[error("No moves available from the source square")]
+    NoMovesAvailable,
+    #[error("Invalid piece move: {0} can not move from {1} to {2}")]
+    InvalidPieceMove(Piece, Square, Square),
+    #[error("It is not {0:?}'s turn to move")]
+    WrongColor(Color),
 }
 
 #[derive(Clone)]
@@ -191,6 +195,52 @@ impl Board {
         MoveType::Normal
     }
 
+    fn validate_move(
+        &self,
+        mov: &Move,
+        source_piece: &Option<Piece>,
+        dest_piece: &Option<Piece>,
+    ) -> Result<(), MoveError> {
+        if !mov.valid() {
+            return Err(MoveError::InvalidMove);
+        }
+
+        if mov.is_null() {
+            return Ok(());
+        }
+
+        if mov.source() == mov.dest() {
+            return Err(MoveError::SameSquare);
+        }
+
+        let source_piece = source_piece
+            .as_ref()
+            .ok_or(MoveError::EmptySource(mov.source_sq()))?;
+
+        if dest_piece.is_some_and(|p| p.0 == PieceVariation::KING) {
+            return Err(MoveError::KingCapture);
+        }
+
+        //by comparing the move to the moves the engine itself generates, we can check if the move is valid and doesn't put the king in check
+        //additional castling through check is already verified by the move generation
+        let moves = self.get_pseudo_legal_moves(mov.source()).unwrap_or(vec![]);
+        let moves = self.filter_legal_moves(moves);
+
+        if moves.is_empty() {
+            return Err(MoveError::NoMovesAvailable);
+        }
+
+        if !moves.contains(mov) {
+            return Err(MoveError::InvalidPieceMove(
+                *source_piece,
+                mov.source_sq(),
+                mov.dest_sq(),
+            ));
+        }
+
+        Ok(())
+    }
+
     /// plays a move on the board and returns a DetailedMove that can be used to undo the move
     /// if the move cannot be played, it will return a MoveError
     /// if full_validation is set to true, it will fully validate the move (king capture, pins, castling through check, invalid move for a piece, same color capture)
@@ -218,11 +268,12 @@ impl Board {
             .ok_or(MoveError::EmptySource(mov.source_sq()))?;
         let dest_piece = self.get_field_piece(mov.dest());
 
+        if source_piece.1 == self.color_to_move {
+            return Err(MoveError::WrongColor(source_piece.1));
+        }
+
         if full_validation {
-            //TODO move validation with MoveError like attack on own piece, invalid move, Pins, castling through check, castle rights
-            if dest_piece.is_some_and(|p| p.0 == PieceVariation::KING) {
-                return Err(MoveError::KingCapture);
-            }
+            self.validate_move(mov, &source_piece.into(), &dest_piece)?;
         }
 
         let move_type = self.get_move_type(mov, &source_piece, &dest_piece);
@@ -347,6 +398,8 @@ impl Board {
             MoveType::Castling(_) => None,
             _ => dest_piece.map(|p| p.0),
         };
+
+        //TODO set en passant square also in undo_move
 
         Ok(DetailedMove::new(
             source_piece,

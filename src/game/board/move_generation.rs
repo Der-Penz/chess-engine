@@ -1,6 +1,8 @@
 use crate::{
     attack_pattern,
-    game::{iter_set_bits, BaseMoveType, Color, Move, Piece, PieceVariation, Square},
+    game::{
+        iter_set_bits, BaseMoveType, Color, Move, Piece, PieceVariation, PromotionPiece, Square,
+    },
 };
 
 use super::Board;
@@ -41,14 +43,55 @@ impl Board {
             PieceVariation::KING => Board::attacks_king(square, ally, &piece.1, self),
         };
 
-        moves.extend(
-            iter_set_bits(possible_moves).map(|dest| Move::new(square, dest, BaseMoveType::Normal)),
-        );
+        //handle promotion
+        if piece.0 == PieceVariation::PAWN {
+            let promotion_rank = match piece.1 {
+                Color::WHITE => 7,
+                Color::BLACK => 0,
+            };
+            moves.extend(
+                iter_set_bits(possible_moves)
+                    .map(|dest| {
+                        if Square::from(dest).rank() == promotion_rank {
+                            return vec![
+                                Move::new(
+                                    square,
+                                    dest,
+                                    BaseMoveType::Promotion(PromotionPiece::Knight),
+                                ),
+                                Move::new(
+                                    square,
+                                    dest,
+                                    BaseMoveType::Promotion(PromotionPiece::Bishop),
+                                ),
+                                Move::new(
+                                    square,
+                                    dest,
+                                    BaseMoveType::Promotion(PromotionPiece::Rook),
+                                ),
+                                Move::new(
+                                    square,
+                                    dest,
+                                    BaseMoveType::Promotion(PromotionPiece::Queen),
+                                ),
+                            ];
+                        } else {
+                            return vec![Move::new(square, dest, BaseMoveType::Normal)];
+                        }
+                    })
+                    .flatten(),
+            );
+        } else {
+            moves.extend(
+                iter_set_bits(possible_moves)
+                    .map(|dest| Move::new(square, dest, BaseMoveType::Normal)),
+            );
+        }
 
         return Some(moves);
     }
 
-    fn filter_legal_moves(&self, moves: Vec<Move>) -> Vec<Move> {
+    pub fn filter_legal_moves(&self, moves: Vec<Move>) -> Vec<Move> {
         moves
             .into_iter()
             .filter(|m| {
