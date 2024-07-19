@@ -1,10 +1,10 @@
-use std::fmt::{ Debug, Display };
+use std::fmt::{Debug, Display};
 
 use thiserror::Error;
 
-use crate::game::{ bb_to_string, Color, Square };
+use crate::game::{bb_to_string, CastleType, Color, Square};
 
-use super::{ BitBoardOperation, Board };
+use super::{BitBoardOperation, Board};
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -49,11 +49,7 @@ impl Board {
                     col += number.to_digit(10).ok_or(FENError::ParsingError)? as i8;
                 }
                 'R' | 'N' | 'B' | 'Q' | 'K' | 'P' | 'r' | 'n' | 'b' | 'q' | 'k' | 'p' => {
-                    board.update_bb(
-                        &char.into(),
-                        (row * 8 + col) as u8,
-                        BitBoardOperation::SET
-                    );
+                    board.update_bb(&char.into(), (row * 8 + col) as u8, BitBoardOperation::SET);
                     col += 1;
                 }
 
@@ -75,21 +71,19 @@ impl Board {
 
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
 
-        board.black_castle = (false, false);
-        board.white_castle = (false, false);
         for char in fen_group.chars() {
             match char {
                 'K' => {
-                    board.white_castle.0 = true;
+                    board.castle_rights[Color::WHITE][CastleType::KingSide] = true;
                 }
                 'Q' => {
-                    board.white_castle.1 = true;
+                    board.castle_rights[Color::WHITE][CastleType::QueenSide] = true;
                 }
                 'k' => {
-                    board.black_castle.0 = true;
+                    board.castle_rights[Color::BLACK][CastleType::KingSide] = true;
                 }
                 'q' => {
-                    board.black_castle.1 = true;
+                    board.castle_rights[Color::BLACK][CastleType::QueenSide] = true;
                 }
                 '-' => (),
                 _ => Err(FENError::ParsingError)?,
@@ -105,18 +99,17 @@ impl Board {
             _ => {
                 let mut chars = fen_group.chars();
                 let en_passant = (chars.next().ok_or(FENError::ParsingError)? as u8) - ('a' as u8);
-                let en_passant =
-                    ((
-                        chars
-                            .next()
-                            .ok_or(FENError::ParsingError)?
-                            .to_digit(10)
-                            .ok_or(FENError::ParsingError)? as u8
-                    ) -
-                        1) *
-                        8 +
-                    en_passant;
-                Square::valid(en_passant).then_some(0).ok_or(FENError::ParsingError)?;
+                let en_passant = ((chars
+                    .next()
+                    .ok_or(FENError::ParsingError)?
+                    .to_digit(10)
+                    .ok_or(FENError::ParsingError)? as u8)
+                    - 1)
+                    * 8
+                    + en_passant;
+                Square::valid(en_passant)
+                    .then_some(0)
+                    .ok_or(FENError::ParsingError)?;
 
                 board.en_passant = Some(Square::from(en_passant));
             }
@@ -164,26 +157,24 @@ impl Board {
 
         s.push_str(&format!(" {} ", self.color_to_move));
 
-        if self.white_castle.0 {
-            s.push('K');
+        let mut castle_rights = String::new();
+        if self.castle_rights[Color::WHITE][CastleType::KingSide] {
+            castle_rights.push('K');
         }
-        if self.white_castle.1 {
-            s.push('Q');
+        if self.castle_rights[Color::WHITE][CastleType::QueenSide] {
+            castle_rights.push('Q');
         }
-        if self.black_castle.0 {
-            s.push('k');
+        if self.castle_rights[Color::BLACK][CastleType::KingSide] {
+            castle_rights.push('k');
         }
-        if self.black_castle.1 {
-            s.push('q');
+        if self.castle_rights[Color::BLACK][CastleType::QueenSide] {
+            castle_rights.push('q');
         }
 
-        if
-            !self.black_castle.0 ||
-            !self.black_castle.1 ||
-            !self.white_castle.0 ||
-            !self.white_castle.1
-        {
+        if castle_rights.is_empty() {
             s.push_str("-");
+        } else {
+            s.push_str(&castle_rights);
         }
 
         match self.en_passant {

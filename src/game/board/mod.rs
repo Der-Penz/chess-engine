@@ -50,8 +50,7 @@ pub struct Board {
     black_boards: [u64; 7],
     white_boards: [u64; 7],
     color_to_move: Color,
-    white_castle: (bool, bool), //(king side, queen side)
-    black_castle: (bool, bool), // (king side, queen side)
+    castle_rights: [[bool; 2]; 2], //(white king side, white queen side, black king side, black queen side)
     en_passant: Option<Square>, //notes the square behind the pawn that can be captured en passant.
     // a value over 63 means no en passant
     // e.g if pawn moves from F2 to F4, F3 is the en passant square
@@ -73,8 +72,7 @@ impl Board {
             white_boards: [0, 0, 0, 0, 0, 0, 0],
             black_boards: [0, 0, 0, 0, 0, 0, 0],
             color_to_move: Color::WHITE,
-            white_castle: (true, true),
-            black_castle: (true, true),
+            castle_rights: [[false, false], [false, false]],
             en_passant: None,
             half_move_clock: 0,
             half_move_clock_prev: 0,
@@ -289,32 +287,27 @@ impl Board {
                 self.update_bb(&source_piece, mov.source(), BitBoardOperation::RESET);
                 self.update_bb(&source_piece, mov.dest(), BitBoardOperation::SET);
 
-                //TODO only check for reset if still has castle rights
                 if source_piece.0 == PieceVariation::KING {
-                    //TODO better castle rights updates
-                    match source_piece.1 {
-                        Color::WHITE => {
-                            self.white_castle = (false, false);
-                        }
-                        Color::BLACK => {
-                            self.black_castle = (false, false);
-                        }
-                    }
+                    self.castle_rights[source_piece.1][0] = false;
+                    self.castle_rights[source_piece.1][1] = false;
                 }
 
-                if source_piece.0 == PieceVariation::ROOK {
+                if source_piece.0 == PieceVariation::ROOK
+                    && (self.castle_rights[source_piece.1][0]
+                        || self.castle_rights[source_piece.1][0])
+                {
                     match (source_piece.1, mov.source_sq()) {
                         (Color::WHITE, Square::A1) => {
-                            self.white_castle.1 = false;
+                            self.castle_rights[Color::WHITE][1] = false;
                         }
                         (Color::WHITE, Square::H1) => {
-                            self.white_castle.0 = false;
+                            self.castle_rights[Color::WHITE][0] = false;
                         }
                         (Color::BLACK, Square::A8) => {
-                            self.black_castle.1 = false;
+                            self.castle_rights[Color::BLACK][1] = false;
                         }
                         (Color::BLACK, Square::H8) => {
-                            self.black_castle.0 = false;
+                            self.castle_rights[Color::BLACK][0] = false;
                         }
                         _ => {}
                     }
@@ -363,20 +356,8 @@ impl Board {
                 );
 
                 //reset castle rights
-                match (source_piece.1, castle_type) {
-                    (Color::WHITE, CastleType::KingSide) => {
-                        self.white_castle.0 = false;
-                    }
-                    (Color::WHITE, CastleType::QueenSide) => {
-                        self.white_castle.1 = false;
-                    }
-                    (Color::BLACK, CastleType::KingSide) => {
-                        self.black_castle.0 = false;
-                    }
-                    (Color::BLACK, CastleType::QueenSide) => {
-                        self.black_castle.1 = false;
-                    }
-                }
+                self.castle_rights[source_piece.1][0] = false;
+                self.castle_rights[source_piece.1][1] = false;
             }
         }
 
@@ -511,23 +492,12 @@ impl Board {
                     BitBoardOperation::SET,
                 );
 
+                self.castle_rights[last_move.color()][castle_type] = true;
                 let (rook_source, rook_dest) = match (last_move.color(), castle_type) {
-                    (Color::WHITE, CastleType::KingSide) => {
-                        self.white_castle.0 = true;
-                        (Square::H1, Square::F1)
-                    }
-                    (Color::WHITE, CastleType::QueenSide) => {
-                        self.white_castle.1 = true;
-                        (Square::A1, Square::D1)
-                    }
-                    (Color::BLACK, CastleType::KingSide) => {
-                        self.black_castle.0 = true;
-                        (Square::H8, Square::F8)
-                    }
-                    (Color::BLACK, CastleType::QueenSide) => {
-                        self.black_castle.1 = true;
-                        (Square::A8, Square::D8)
-                    }
+                    (Color::WHITE, CastleType::KingSide) => (Square::H1, Square::F1),
+                    (Color::WHITE, CastleType::QueenSide) => (Square::A1, Square::D1),
+                    (Color::BLACK, CastleType::KingSide) => (Square::H8, Square::F8),
+                    (Color::BLACK, CastleType::QueenSide) => (Square::A8, Square::D8),
                 };
 
                 self.update_bb(

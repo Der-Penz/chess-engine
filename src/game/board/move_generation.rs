@@ -40,7 +40,7 @@ impl Board {
             PieceVariation::ROOK => Board::attacks_rook(&sq, enemy, ally),
             PieceVariation::BISHOP => Board::attacks_bishop(&sq, enemy, ally),
             PieceVariation::QUEEN => Board::attacks_queen(&sq, enemy, ally),
-            PieceVariation::KING => Board::attacks_king(square, ally, &piece.1, self),
+            PieceVariation::KING => Board::attacks_king(square, ally, &piece.1, self, true),
         };
 
         //handle promotion
@@ -138,46 +138,50 @@ impl Board {
         attacks
     }
 
-    fn attacks_king(sq: u8, ally: u64, color: &Color, board: &Board) -> u64 {
+    fn attacks_king(sq: u8, ally: u64, color: &Color, board: &Board, castle_check: bool) -> u64 {
         let mut attacks = attack_pattern::ATTACK_PATTERN_KING[sq as usize];
 
         attacks ^= attacks & ally;
 
-        // Castling TODO handle both colors
-        let (king_side, queen_side) = match color {
-            Color::WHITE => board.white_castle,
-            Color::BLACK => board.black_castle,
-        };
-        if king_side
-            && color == &Color::WHITE
-            && board.get_field_piece(Square::F1.into()).is_none()
-            && board.get_field_piece(Square::G1.into()).is_none()
-        {
-            attacks |= Square::to_board_bit(Square::G1.into());
+        if !castle_check {
+            return attacks;
         }
-        if king_side
-            && color == &Color::BLACK
-            && board.get_field_piece(Square::F8.into()).is_none()
-            && board.get_field_piece(Square::G8.into()).is_none()
-        {
-            attacks |= Square::to_board_bit(Square::G8.into());
+
+        let [king_side, queen_side] = board.castle_rights[*color];
+
+        //checks if the path is free and not attacked
+        fn castle_allowed(path: &Vec<Square>, board: &Board, color: &Color) -> bool {
+            for path in path {
+                if board.get_field_piece((*path).into()).is_some() {
+                    return false;
+                }
+                if board.square_attacked(*path, color.opposite()) {
+                    return false;
+                }
+            }
+            true
         }
-        if queen_side
-            && color == &Color::WHITE
-            && board.get_field_piece(Square::D1.into()).is_none()
-            && board.get_field_piece(Square::C1.into()).is_none()
-            && board.get_field_piece(Square::B1.into()).is_none()
-        {
-            attacks |= Square::to_board_bit(Square::C1.into());
+
+        if king_side {
+            let path = match color {
+                Color::WHITE => vec![Square::F1, Square::G1],
+                Color::BLACK => vec![Square::F8, Square::G8],
+            };
+            if castle_allowed(&path, board, color) {
+                attacks |= Square::to_board_bit(path[1].into());
+            }
         }
-        if queen_side
-            && color == &Color::BLACK
-            && board.get_field_piece(Square::D8.into()).is_none()
-            && board.get_field_piece(Square::C8.into()).is_none()
-            && board.get_field_piece(Square::B8.into()).is_none()
-        {
-            attacks |= Square::to_board_bit(Square::C8.into());
+
+        if queen_side {
+            let path = match color {
+                Color::WHITE => vec![Square::D1, Square::C1, Square::B1],
+                Color::BLACK => vec![Square::D8, Square::C8, Square::B8],
+            };
+            if castle_allowed(&path, board, color) {
+                attacks |= Square::to_board_bit(path[1].into());
+            }
         }
+
         attacks
     }
 
@@ -241,7 +245,7 @@ impl Board {
         }
 
         let king = self.get_bb_for(&Piece(PieceVariation::KING, attacked_by));
-        if (Board::attacks_king(sq, ally, &attacked_by.opposite(), &self) & king) != 0 {
+        if (Board::attacks_king(sq, ally, &attacked_by.opposite(), &self, false) & king) != 0 {
             return true;
         }
 

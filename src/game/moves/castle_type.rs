@@ -66,3 +66,17 @@ impl std::fmt::Display for CastleType {
         }
     }
 }
+
+impl<T, const N: usize> std::ops::Index<CastleType> for [T; N] {
+    type Output = T;
+
+    fn index(&self, index: CastleType) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl<T, const N: usize> std::ops::IndexMut<CastleType> for [T; N] {
+    fn index_mut(&mut self, index: CastleType) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
