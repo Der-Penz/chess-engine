@@ -1,4 +1,4 @@
-use crate::game::{ east, north, north_east, north_west, south, south_east, south_west, west };
+use crate::game::{east, north, north_east, north_west, south, south_east, south_west, west};
 
 const fn calculate_king_attack_pattern() -> [u64; 64] {
     let mut res = [0; 64];
@@ -23,3 +23,6 @@ const fn calculate_king_attack_pattern() -> [u64; 64] {
 }
 
 pub const ATTACK_PATTERN_KING: [u64; 64] = calculate_king_attack_pattern();
+
+pub const CASTLE_FREE_SQUARES: [[u64; 2]; 2] =
+    [[0x60, 0xe], [0x6000000000000000, 0xe00000000000000]];

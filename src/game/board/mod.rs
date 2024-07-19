@@ -268,7 +268,7 @@ impl Board {
             .ok_or(MoveError::EmptySource(mov.source_sq()))?;
         let dest_piece = self.get_field_piece(mov.dest());
 
-        if source_piece.1 == self.color_to_move {
+        if source_piece.1 != self.color_to_move {
             return Err(MoveError::WrongColor(source_piece.1));
         }
 
@@ -361,6 +361,11 @@ impl Board {
             }
         }
 
+        let capture = match move_type {
+            MoveType::Castling(_) => None,
+            _ => dest_piece.map(|p| p.0),
+        };
+
         self.half_move_clock_prev = self.half_move_clock;
         if source_piece.0 == PieceVariation::PAWN {
             self.half_move_clock = 0;
@@ -375,6 +380,8 @@ impl Board {
             } else {
                 self.en_passant = None;
             }
+        } else if capture.is_some() {
+            self.half_move_clock = 0;
         } else {
             self.half_move_clock += 1;
         }
@@ -387,11 +394,6 @@ impl Board {
         let check = self
             .in_check_color(self.color_to_move)
             .expect("Enemy Player should still have a king");
-
-        let capture = match move_type {
-            MoveType::Castling(_) => None,
-            _ => dest_piece.map(|p| p.0),
-        };
 
         Ok(DetailedMove::new(
             source_piece,
@@ -410,6 +412,8 @@ impl Board {
     pub fn undo_move(&mut self, last_move: &DetailedMove) {
         if last_move.is_null() {
             self.move_number -= 1;
+            //TODO rework half_move_clock to work properly
+            self.half_move_clock = self.half_move_clock_prev;
             self.update_color_to_move();
             return;
         }
@@ -434,6 +438,12 @@ impl Board {
                         last_move.dest(),
                         BitBoardOperation::SET,
                     );
+                }
+
+                //reset castle rights correctly need a different castle representation
+                if last_move.piece().0 == PieceVariation::KING {
+                    self.castle_rights[last_move.color()][0] = true;
+                    self.castle_rights[last_move.color()][1] = true;
                 }
             }
             MoveType::Promotion(promotion_piece) => {
