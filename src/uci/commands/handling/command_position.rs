@@ -19,7 +19,7 @@ pub fn handle_position(
                 return Some("quit".into());
             }
         },
-        None => Board::base(),
+        None => Board::default(),
     };
 
     moves.iter().for_each(|m| {

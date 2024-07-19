@@ -1,7 +1,7 @@
 use std::io;
 
-use commands::{ handle_uci_command, Command, CommandParseError };
-use log::{ info, warn };
+use commands::{handle_uci_command, Command, CommandParseError};
+use log::{info, warn};
 
 use crate::game::Board;
 
@@ -14,7 +14,7 @@ pub enum UCISTATE {
 }
 
 pub fn start_uci_protocol() {
-    let mut board: Board = Board::base();
+    let mut board: Board = Board::default();
     let mut state = UCISTATE::Idle;
     loop {
         let command = read_uci_input();
@@ -49,7 +49,9 @@ pub fn start_uci_protocol() {
 /// Reads standard input and parses it into a UCI command
 pub fn read_uci_input() -> Result<Command, CommandParseError> {
     let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Failed to read line");
+    io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to read line");
     info!("Received Message: {:?}", input);
     input.parse::<Command>()
 }

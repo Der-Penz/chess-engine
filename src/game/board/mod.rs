@@ -60,6 +60,13 @@ pub struct Board {
     move_number: usize,
 }
 
+impl std::default::Default for Board {
+    fn default() -> Self {
+        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .expect("Invalid base FEN String")
+    }
+}
+
 impl Board {
     pub fn empty() -> Self {
         Board {
@@ -73,11 +80,6 @@ impl Board {
             half_move_clock_prev: 0,
             move_number: 1,
         }
-    }
-
-    pub fn base() -> Self {
-        Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            .expect("Invalid base FEN String")
     }
 
     fn get_field_color(&self, square: u8) -> Option<Color> {
