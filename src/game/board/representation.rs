@@ -72,18 +72,22 @@ impl Board {
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
 
         for char in fen_group.chars() {
-            match char {
+            let color = if char.is_uppercase() {
+                Color::WHITE
+            } else {
+                Color::BLACK
+            };
+
+            match char.to_ascii_uppercase() {
                 'K' => {
-                    board.castle_rights[Color::WHITE][CastleType::KingSide] = true;
+                    board
+                        .castle_rights
+                        .update(&color, &CastleType::KingSide, true);
                 }
                 'Q' => {
-                    board.castle_rights[Color::WHITE][CastleType::QueenSide] = true;
-                }
-                'k' => {
-                    board.castle_rights[Color::BLACK][CastleType::KingSide] = true;
-                }
-                'q' => {
-                    board.castle_rights[Color::BLACK][CastleType::QueenSide] = true;
+                    board
+                        .castle_rights
+                        .update(&color, &CastleType::QueenSide, true);
                 }
                 '-' => (),
                 _ => Err(FENError::ParsingError)?,
@@ -116,8 +120,8 @@ impl Board {
         }
 
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
-        let moves: usize = fen_group.parse().ok().ok_or(FENError::ParsingError)?;
-        board.half_move_clock = moves;
+        let ply_clock: u8 = fen_group.parse().ok().ok_or(FENError::ParsingError)?;
+        board.ply_clock = ply_clock;
 
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
         let moves: usize = fen_group.parse().ok().ok_or(FENError::ParsingError)?;
@@ -156,33 +160,14 @@ impl Board {
         });
 
         s.push_str(&format!(" {} ", self.color_to_move));
-
-        let mut castle_rights = String::new();
-        if self.castle_rights[Color::WHITE][CastleType::KingSide] {
-            castle_rights.push('K');
-        }
-        if self.castle_rights[Color::WHITE][CastleType::QueenSide] {
-            castle_rights.push('Q');
-        }
-        if self.castle_rights[Color::BLACK][CastleType::KingSide] {
-            castle_rights.push('k');
-        }
-        if self.castle_rights[Color::BLACK][CastleType::QueenSide] {
-            castle_rights.push('q');
-        }
-
-        if castle_rights.is_empty() {
-            s.push_str("-");
-        } else {
-            s.push_str(&castle_rights);
-        }
+        s.push_str(self.castle_rights.to_string().as_str());
 
         match self.en_passant {
             Some(sq) => s.push_str(&format!(" {} ", sq.to_string())),
             None => s.push_str(" - "),
         }
 
-        s.push_str(&format!("{} {}", self.half_move_clock, self.move_number));
+        s.push_str(&format!("{} {}", self.ply_clock, self.move_number));
 
         s
     }

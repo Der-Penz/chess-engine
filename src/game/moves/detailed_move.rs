@@ -1,6 +1,6 @@
 use crate::game::{Color, Piece, PieceVariation, Square};
 
-use super::{CastleType, Move, MoveType, PromotionPiece};
+use super::{CastleRights, Move, MoveType};
 
 pub struct DetailedMove {
     piece: Piece,
@@ -9,6 +9,8 @@ pub struct DetailedMove {
     move_type: MoveType,
     capture: Option<PieceVariation>,
     check: bool,
+    ply_clock: u8,
+    castle_rights: CastleRights,
 }
 
 impl DetailedMove {
@@ -19,6 +21,8 @@ impl DetailedMove {
         move_type: MoveType,
         capture: Option<PieceVariation>,
         check: bool,
+        ply_clock: u8,
+        castle_rights: CastleRights,
     ) -> Self {
         DetailedMove {
             piece,
@@ -27,73 +31,8 @@ impl DetailedMove {
             move_type,
             capture,
             check,
-        }
-    }
-
-    pub fn new_normal(
-        piece: Piece,
-        source: u8,
-        dest: u8,
-        capture: Option<PieceVariation>,
-        check: bool,
-    ) -> Self {
-        DetailedMove {
-            piece,
-            source,
-            dest,
-            move_type: MoveType::Normal,
-            check,
-            capture,
-        }
-    }
-
-    pub fn new_promotion(
-        piece: Piece,
-        source: u8,
-        dest: u8,
-        promotion_piece: PromotionPiece,
-        capture: Option<PieceVariation>,
-        check: bool,
-    ) -> Self {
-        if piece.0 != PieceVariation::PAWN {
-            panic!("Only pawns can be promoted");
-        }
-
-        DetailedMove {
-            piece,
-            source,
-            dest,
-            move_type: MoveType::Promotion(promotion_piece),
-            check,
-            capture,
-        }
-    }
-    pub fn new_en_passant(piece: Piece, source: u8, dest: u8, check: bool) -> Self {
-        DetailedMove {
-            piece,
-            source,
-            dest,
-            move_type: MoveType::EnPassant,
-            check,
-            capture: Some(PieceVariation::PAWN),
-        }
-    }
-
-    pub fn new_castle(piece: Piece, source: u8, dest: u8, check: bool) -> Self {
-        if piece.0 != PieceVariation::KING {
-            panic!("Only kings can castle");
-        }
-
-        let castle_type = CastleType::satisfies_castle(&source.into(), &dest.into(), &piece.1)
-            .expect("Tried to create a castle move that is not a valid castle move");
-
-        DetailedMove {
-            piece,
-            source,
-            dest,
-            move_type: MoveType::Castling(castle_type),
-            check,
-            capture: None,
+            ply_clock,
+            castle_rights,
         }
     }
 
@@ -105,6 +44,8 @@ impl DetailedMove {
             move_type: MoveType::default(),
             check: false,
             capture: None,
+            ply_clock: 0,
+            castle_rights: CastleRights::default(),
         }
     }
 
@@ -148,6 +89,14 @@ impl DetailedMove {
         self.check
     }
 
+    pub fn ply_clock(&self) -> u8 {
+        self.ply_clock
+    }
+
+    pub fn castle_rights(&self) -> CastleRights {
+        self.castle_rights
+    }
+
     pub fn as_move(&self) -> Move {
         Move::new(self.source, self.dest, self.move_type.into())
     }
@@ -170,15 +119,18 @@ impl std::fmt::Display for DetailedMove {
         write!(
             f,
             "{}: {}->{}{}| ",
-            self.piece(),
+            self.piece,
             self.source_sq(),
             self.dest_sq(),
-            if self.check() { "+" } else { " " }
+            if self.check { "+" } else { " " }
         )?;
-        self.capture().inspect(|c| {
-            let _ = write!(f, "⚔:{}|", Piece(*c, self.color().opposite()));
+        self.capture.inspect(|c| {
+            let _ = write!(f, "⚔:{}| ", Piece(*c, self.color().opposite()));
         });
-        match self.move_type() {
+
+        write!(f, "Ply: {}| ", self.ply_clock)?;
+        write!(f, "{} | ", self.castle_rights)?;
+        match self.move_type {
             MoveType::EnPassant => write!(f, "En Passant"),
             MoveType::Promotion(p) => write!(f, "Promotion -> {}", Piece(p.into(), self.color())),
             MoveType::Castling(t) => write!(f, "Castling {}", t),

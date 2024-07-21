@@ -1,11 +1,10 @@
-use super::{ castle_type::CastleType, promotion_piece::PromotionPiece };
+use super::{castle_type::CastleType, promotion_piece::PromotionPiece};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BaseMoveType {
     Normal,
     Promotion(PromotionPiece),
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveType {

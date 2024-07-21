@@ -155,10 +155,9 @@ impl Board {
             return attacks;
         }
 
-        let [king_side, queen_side] = board.castle_rights[*color];
         let occupied = ally | enemy;
 
-        if king_side
+        if board.castle_rights.has(color, &CastleType::KingSide)
             && (attack_pattern::CASTLE_FREE_SQUARES[*color][CastleType::KingSide] & occupied) == 0
         {
             let path = match color {
@@ -172,7 +171,7 @@ impl Board {
             }
         }
 
-        if queen_side
+        if board.castle_rights.has(color, &CastleType::QueenSide)
             && (attack_pattern::CASTLE_FREE_SQUARES[*color][CastleType::QueenSide] & occupied) == 0
         {
             let path = match color {
