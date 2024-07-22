@@ -6,6 +6,7 @@ use super::{
     match_piece, moves::CastleType, CastleRights, Color, DetailedMove, Move, Piece, PieceVariation,
 };
 
+pub mod evaluation;
 mod move_generation;
 pub mod representation;
 

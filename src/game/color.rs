@@ -1,3 +1,5 @@
+use super::Square;
+
 #[derive(FromPrimitive, Clone, Copy, PartialEq)]
 pub enum Color {
     WHITE = 0,
@@ -38,6 +40,26 @@ impl Color {
             .chars()
             .next()
             .unwrap()
+    }
+
+    pub fn relative_sq(&self, sq: Square) -> Square {
+        match self {
+            Color::WHITE => sq,
+            Color::BLACK => {
+                let rank = 7 - sq.rank();
+                Square::from(rank * 8 + sq.file())
+            }
+        }
+    }
+
+    pub fn relative(&self, sq: u8) -> u8 {
+        match self {
+            Color::WHITE => sq,
+            Color::BLACK => {
+                let rank = 7 - (sq / 8);
+                (rank * 8) + (sq % 8)
+            }
+        }
     }
 }
 
