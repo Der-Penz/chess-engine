@@ -15,6 +15,13 @@ mod game;
 mod uci;
 
 fn main() {
+    init_logging();
+
+    #[cfg(feature = "uci")]
+    start_uci_protocol();
+}
+
+fn init_logging() {
     #[cfg(not(feature = "log_to_file"))]
     {
         env_logger::builder()
@@ -32,7 +39,4 @@ fn main() {
             .filter(None, LevelFilter::Info)
             .init();
     }
-
-    #[cfg(feature = "uci")]
-    start_uci_protocol();
 }
