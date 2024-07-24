@@ -1,8 +1,9 @@
 use std::fmt::{Debug, Display};
 
+use itertools::Itertools;
 use thiserror::Error;
 
-use crate::game::{bb_to_string, CastleType, Color, Square};
+use crate::game::{bb_to_string, CastleType, Color, Piece, Square};
 
 use super::{BitBoardOperation, Board};
 
@@ -24,6 +25,8 @@ pub enum FENError {
     ParsingError,
     #[error("Missing Group in FEN String")]
     MissingGroup,
+    #[error("Missing King in FEN String for color {0}")]
+    MissingKing(Color),
 }
 
 impl Board {
@@ -55,6 +58,21 @@ impl Board {
 
                 _ => Err(FENError::ParsingError)?,
             }
+        }
+
+        if board
+            .get_piece_position(&Piece::white_king())
+            .exactly_one()
+            .is_err()
+        {
+            return Err(FENError::MissingKing(Color::WHITE));
+        }
+        if board
+            .get_piece_position(&Piece::black_king())
+            .exactly_one()
+            .is_err()
+        {
+            return Err(FENError::MissingKing(Color::BLACK));
         }
 
         let fen_group = splits.next().ok_or(FENError::MissingGroup)?;
