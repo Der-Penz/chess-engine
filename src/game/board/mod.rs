@@ -3,7 +3,8 @@ use thiserror::Error;
 use crate::game::{MoveType, Square};
 
 use super::{
-    match_piece, moves::CastleType, CastleRights, Color, DetailedMove, Move, Piece, PieceVariation,
+    iter_set_bits, match_piece, moves::CastleType, CastleRights, Color, DetailedMove, Move, Piece,
+    PieceVariation,
 };
 
 mod move_generation;
@@ -559,5 +560,9 @@ impl Board {
             }
         }
         self.update_color_to_move();
+    }
+
+    fn get_piece_positions(&self, piece: &Piece) -> impl Iterator<Item = u8> {
+        iter_set_bits(self.get_bb_for(piece))
     }
 }

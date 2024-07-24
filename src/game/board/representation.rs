@@ -61,14 +61,14 @@ impl Board {
         }
 
         if board
-            .get_piece_position(&Piece::white_king())
+            .get_piece_positions(&Piece::white_king())
             .exactly_one()
             .is_err()
         {
             return Err(FENError::MissingKing(Color::WHITE));
         }
         if board
-            .get_piece_position(&Piece::black_king())
+            .get_piece_positions(&Piece::black_king())
             .exactly_one()
             .is_err()
         {
