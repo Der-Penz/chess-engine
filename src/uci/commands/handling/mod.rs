@@ -25,8 +25,12 @@ pub fn handle_uci_command(command: Command, board: &mut Board) -> Option<String>
 
 #[derive(Error, Debug)]
 pub enum CommandParseError {
-    #[error("Command not recognized: {0}")] InvalidCommand(String),
-    #[error("Missing Parameter: {0}")] MissingParameter(String),
+    #[error("Command not recognized: {0}")]
+    InvalidCommand(String),
+    #[error("Missing Parameter: {0}")]
+    MissingParameter(String),
+    #[error("Parsing error: {0}")]
+    ParseError(String),
 }
 
 impl FromStr for Command {

@@ -2,11 +2,26 @@
 name = "chess-bot"
 version = "0.1.0"
 edition = "2021"
+default-run = "main"
+config = "config.toml"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
+name = "perft"
+path = "src/bin/perft.rs"
+
+[[bin]]
+name = "uci"
+path = "src/bin/uci.rs"
+required-features = ["log_to_file"]
 
 [features]
 log_to_file = []
-uci = ["log_to_file"]
 default = []
+
 
 [dependencies]
 num-traits = "0.2"
@@ -17,3 +32,4 @@ rand = "0.8.4"
 log = "0.4"
 env_logger = "0.10"
 thiserror = "1.0"
+lazy_static = "1.4"

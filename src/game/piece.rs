@@ -1,77 +1,7 @@
-use std::fmt;
+use super::{color::Color, piece_type::PieceType};
 
-use super::{Color, PieceVariation};
-
-#[derive(Debug, Copy, Clone)]
-pub struct Piece(pub PieceVariation, pub Color);
-
-impl Piece {
-    pub fn new(piece_variation: PieceVariation, color: Color) -> Piece {
-        Piece(piece_variation, color)
-    }
-
-    pub fn black_rook() -> Piece {
-        Piece(PieceVariation::ROOK, Color::BLACK)
-    }
-    pub fn black_bishop() -> Piece {
-        Piece(PieceVariation::BISHOP, Color::BLACK)
-    }
-    pub fn black_queen() -> Piece {
-        Piece(PieceVariation::QUEEN, Color::BLACK)
-    }
-    pub fn black_king() -> Piece {
-        Piece(PieceVariation::KING, Color::BLACK)
-    }
-    pub fn black_knight() -> Piece {
-        Piece(PieceVariation::KNIGHT, Color::BLACK)
-    }
-    pub fn black_pawn() -> Piece {
-        Piece(PieceVariation::PAWN, Color::BLACK)
-    }
-    pub fn white_rook() -> Piece {
-        Piece(PieceVariation::ROOK, Color::WHITE)
-    }
-    pub fn white_bishop() -> Piece {
-        Piece(PieceVariation::BISHOP, Color::WHITE)
-    }
-    pub fn white_queen() -> Piece {
-        Piece(PieceVariation::QUEEN, Color::WHITE)
-    }
-    pub fn white_king() -> Piece {
-        Piece(PieceVariation::KING, Color::WHITE)
-    }
-    pub fn white_knight() -> Piece {
-        Piece(PieceVariation::KNIGHT, Color::WHITE)
-    }
-    pub fn white_pawn() -> Piece {
-        Piece(PieceVariation::PAWN, Color::WHITE)
-    }
-
-    pub fn color_matches(&self, other: &Piece) -> bool {
-        self.1 == other.1
-    }
-}
-
-impl fmt::Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let black = matches!(self.1, Color::BLACK);
-        let repr = match self.0 {
-            PieceVariation::PAWN if black => "♙",
-            PieceVariation::BISHOP if black => "♗",
-            PieceVariation::KNIGHT if black => "♘",
-            PieceVariation::ROOK if black => "♖",
-            PieceVariation::KING if black => "♔",
-            PieceVariation::QUEEN if black => "♕",
-            PieceVariation::PAWN => "♟︎",
-            PieceVariation::BISHOP => "♝",
-            PieceVariation::KNIGHT => "♞",
-            PieceVariation::ROOK => "♜",
-            PieceVariation::KING => "♚",
-            PieceVariation::QUEEN => "♛",
-        };
-        write!(f, "{}", repr)
-    }
-}
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Piece(PieceType, Color);
 
 impl Default for Piece {
     fn default() -> Self {
@@ -79,14 +9,59 @@ impl Default for Piece {
     }
 }
 
-impl From<char> for Piece {
-    fn from(c: char) -> Self {
-        let color = if c.is_uppercase() {
-            Color::WHITE
-        } else {
-            Color::BLACK
-        };
-        let piece_variation = PieceVariation::from(c);
+impl Piece {
+    pub fn new(piece_variation: PieceType, color: Color) -> Piece {
         Piece(piece_variation, color)
     }
+
+    pub fn ptype(&self) -> PieceType {
+        self.0
+    }
+
+    pub fn color(&self) -> Color {
+        self.1
+    }
+
+    pub fn same_side(&self, other: &Piece) -> bool {
+        self.1 == other.1
+    }
+
+    pub fn same_type(&self, other: &Piece) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl std::fmt::Display for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let char = char::from(self.0);
+        write!(f, "{}", self.1.transform_char(&char))
+    }
+}
+
+impl From<char> for Piece {
+    fn from(c: char) -> Self {
+        Piece(PieceType::from(c), Color::from(c))
+    }
+}
+
+impl From<Piece> for char {
+    fn from(p: Piece) -> Self {
+        p.1.transform_char(&char::from(p.0))
+    }
+}
+
+//CONSTANTS
+impl Piece {
+    pub const BLACK_PAWN: Piece = Piece(PieceType::Rook, Color::Black);
+    pub const BLACK_KNIGHT: Piece = Piece(PieceType::Knight, Color::Black);
+    pub const BLACK_BISHOP: Piece = Piece(PieceType::Bishop, Color::Black);
+    pub const BLACK_ROOK: Piece = Piece(PieceType::Rook, Color::Black);
+    pub const BLACK_QUEEN: Piece = Piece(PieceType::Queen, Color::Black);
+    pub const BLACK_KING: Piece = Piece(PieceType::King, Color::Black);
+    pub const WHITE_PAWN: Piece = Piece(PieceType::Pawn, Color::White);
+    pub const WHITE_KNIGHT: Piece = Piece(PieceType::Knight, Color::White);
+    pub const WHITE_BISHOP: Piece = Piece(PieceType::Bishop, Color::White);
+    pub const WHITE_ROOK: Piece = Piece(PieceType::Rook, Color::White);
+    pub const WHITE_QUEEN: Piece = Piece(PieceType::Queen, Color::White);
+    pub const WHITE_KING: Piece = Piece(PieceType::King, Color::White);
 }
