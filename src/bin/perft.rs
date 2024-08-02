@@ -1,6 +1,6 @@
 use std::vec;
 
-use chess_bot::game::{move_gen::MoveGeneration, Board, Move};
+use chess_bot::game::{board::move_gen::MoveGeneration, Board, Move};
 
 fn main() {
     //read args depth and fen from command line
