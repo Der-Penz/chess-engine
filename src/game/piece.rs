@@ -22,11 +22,11 @@ impl Piece {
         self.1
     }
 
-    pub fn same_side(&self, other: &Piece) -> bool {
+    pub fn same_side(&self, other: Piece) -> bool {
         self.1 == other.1
     }
 
-    pub fn same_type(&self, other: &Piece) -> bool {
+    pub fn same_type(&self, other: Piece) -> bool {
         self.0 == other.0
     }
 }

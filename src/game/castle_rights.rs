@@ -35,7 +35,7 @@ impl<T, const N: usize> std::ops::IndexMut<CastleType> for [T; N] {
 pub struct CastleRights(u8);
 
 impl CastleRights {
-    pub fn update(&mut self, color: &Color, castle_type: &CastleType, value: bool) {
+    pub fn update(&mut self, color: Color, castle_type: CastleType, value: bool) {
         let index = Self::to_index(color, castle_type);
         if value {
             self.0 |= 1 << index;
@@ -44,15 +44,15 @@ impl CastleRights {
         }
     }
 
-    pub fn has(&self, color: &Color, castle_type: &CastleType) -> bool {
+    pub fn has(&self, color: Color, castle_type: CastleType) -> bool {
         self.0 & (1 << Self::to_index(color, castle_type)) != 0
     }
 
-    pub fn has_any(&self, color: &Color) -> bool {
-        self.has(color, &CastleType::KingSide) || self.has(color, &CastleType::QueenSide)
+    pub fn has_any(&self, color: Color) -> bool {
+        self.has(color, CastleType::KingSide) || self.has(color, CastleType::QueenSide)
     }
 
-    pub fn to_index(color: &Color, castle_type: &CastleType) -> u8 {
+    pub fn to_index(color: Color, castle_type: CastleType) -> u8 {
         match (color, castle_type) {
             (Color::White, CastleType::KingSide) => 0,
             (Color::White, CastleType::QueenSide) => 1,
@@ -75,16 +75,16 @@ impl Default for CastleRights {
 impl std::fmt::Display for CastleRights {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut rights = String::new();
-        if self.has(&Color::White, &CastleType::KingSide) {
+        if self.has(Color::White, CastleType::KingSide) {
             rights.push('K');
         }
-        if self.has(&Color::White, &CastleType::QueenSide) {
+        if self.has(Color::White, CastleType::QueenSide) {
             rights.push('Q');
         }
-        if self.has(&Color::Black, &CastleType::KingSide) {
+        if self.has(Color::Black, CastleType::KingSide) {
             rights.push('k');
         }
-        if self.has(&Color::Black, &CastleType::QueenSide) {
+        if self.has(Color::Black, CastleType::QueenSide) {
             rights.push('q');
         }
         if rights.is_empty() {
@@ -118,10 +118,10 @@ impl TryFrom<&str> for CastleRights {
 
         for c in value.chars() {
             match c {
-                'K' => rights.update(&Color::White, &CastleType::KingSide, true),
-                'Q' => rights.update(&Color::White, &CastleType::QueenSide, true),
-                'k' => rights.update(&Color::Black, &CastleType::KingSide, true),
-                'q' => rights.update(&Color::Black, &CastleType::QueenSide, true),
+                'K' => rights.update(Color::White, CastleType::KingSide, true),
+                'Q' => rights.update(Color::White, CastleType::QueenSide, true),
+                'k' => rights.update(Color::Black, CastleType::KingSide, true),
+                'q' => rights.update(Color::Black, CastleType::QueenSide, true),
                 _ => return Err(CastleRightsError::InvalidCharacter(c)),
             }
         }
@@ -141,27 +141,27 @@ impl CastleType {
     pub const KING_DEST: [Square; 4] = [Square::G1, Square::C1, Square::G8, Square::C8];
 
     /// Checks which castle type satisfies the move from and to squares
-    pub fn satisfies_castle(from: &Square, to: &Square, color: &Color) -> Option<Self> {
-        if *from == CastleType::KING_SOURCE[*color]
-            && *to
+    pub fn satisfies_castle(from: Square, to: Square, color: Color) -> Option<Self> {
+        if from == CastleType::KING_SOURCE[color]
+            && to
                 == CastleType::KING_DEST
-                    [CastleRights::to_index(color, &CastleType::KingSide) as usize]
+                    [CastleRights::to_index(color, CastleType::KingSide) as usize]
         {
             return Some(CastleType::KingSide);
-        } else if *from == CastleType::KING_SOURCE[*color]
-            && *to
+        } else if from == CastleType::KING_SOURCE[color]
+            && to
                 == CastleType::KING_DEST
-                    [CastleRights::to_index(&color, &CastleType::QueenSide) as usize]
+                    [CastleRights::to_index(color, CastleType::QueenSide) as usize]
         {
             return Some(CastleType::QueenSide);
         }
         None
     }
 
-    pub fn get_rook_positions(&self, color: &Color) -> (&Square, &Square) {
+    pub fn get_rook_positions(&self, color: Color) -> (Square, Square) {
         (
-            &CastleType::ROOK_SOURCE[CastleRights::to_index(color, &self) as usize],
-            &CastleType::ROOK_DEST[CastleRights::to_index(color, &self) as usize],
+            CastleType::ROOK_SOURCE[CastleRights::to_index(color, *self) as usize],
+            CastleType::ROOK_DEST[CastleRights::to_index(color, *self) as usize],
         )
     }
 }

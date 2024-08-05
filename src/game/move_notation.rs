@@ -87,7 +87,7 @@ impl Move {
         let dest =
             Square::try_from(&uci[2..4]).map_err(|_| UCIMoveParseError::InvalidDestSquare)?;
         let moved_piece_type = board
-            .get_sq_piece(&source)
+            .get_sq_piece(source)
             .ok_or(UCIMoveParseError::EmptySourceSquare)?
             .ptype();
 
@@ -109,7 +109,7 @@ impl Move {
                     MoveFlag::Normal
                 }
             }
-            PieceType::King => CastleType::satisfies_castle(&source, &dest, &board.side_to_move())
+            PieceType::King => CastleType::satisfies_castle(source, dest, board.side_to_move())
                 .map_or(MoveFlag::Normal, |castle| match castle {
                     CastleType::KingSide => MoveFlag::KingSideCastle,
                     CastleType::QueenSide => MoveFlag::QueenSideCastle,

@@ -45,7 +45,7 @@ impl FENUtility {
                         FENError::ParsingError(format!("Invalid square {}", row * 8 + col))
                     })?;
 
-                    board.update_bb(&piece_char.into(), &square, true);
+                    board.update_bb(piece_char.into(), square, true);
                     col += 1;
                 }
                 _ => {
@@ -58,11 +58,11 @@ impl FENUtility {
         }
 
         board
-            .get_piece_positions(&Piece::WHITE_KING)
+            .get_piece_positions(Piece::WHITE_KING)
             .exactly_one()
             .map_err(|_| FENError::MissingKing(Color::White))?;
         board
-            .get_piece_positions(&Piece::BLACK_KING)
+            .get_piece_positions(Piece::BLACK_KING)
             .exactly_one()
             .map_err(|_| FENError::MissingKing(Color::Black))?;
 
@@ -139,7 +139,7 @@ impl FENUtility {
         let mut fen_string = String::with_capacity(64); // try to avoid reallocations
         let mut empty_squares = 0;
         Square::iter_ah_81().for_each(|square| {
-            let piece = board.get_sq_piece(&square);
+            let piece = board.get_sq_piece(square);
             match piece {
                 Some(piece) => {
                     if empty_squares > 0 {

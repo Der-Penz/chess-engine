@@ -80,8 +80,8 @@ impl Zobrist {
     }
 
     ///use for incremental update
-    pub fn get_rn_piece(&self, piece_type: &PieceType, square: &Square) -> u64 {
-        self.pieces[*piece_type][*square]
+    pub fn get_rn_piece(&self, piece_type: PieceType, square: Square) -> u64 {
+        self.pieces[piece_type][square]
     }
 
     ///use for incremental update

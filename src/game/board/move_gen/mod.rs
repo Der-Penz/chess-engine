@@ -18,15 +18,15 @@ impl MoveGeneration {
         let mut legal_moves = MoveList::default();
 
         let color = board.side_to_move();
-        let ally = **board.get_bb_occupied(&color);
-        let enemy = **board.get_bb_occupied(&color.opposite());
-        let bb_king = **board.get_bb_for(&PieceType::King.as_colored_piece(color));
-        let king_sq = board.get_king_pos(&color);
+        let ally = *board.get_bb_occupied(color);
+        let enemy = *board.get_bb_occupied(color.opposite());
+        let bb_king = *board.get_bb_for(PieceType::King.as_colored_piece(color));
+        let king_sq = board.get_king_pos(color);
 
         let king_danger_squares =
             Self::generate_king_danger_squares(ally, enemy, bb_king, color, &board);
 
-        let in_check = king_danger_squares.is_occupied(&king_sq);
+        let in_check = (king_danger_squares & king_sq.to_mask()) != 0;
 
         //calculate checkers
         let checkers = if !in_check {
@@ -38,7 +38,7 @@ impl MoveGeneration {
         let multi_check = checkers.count_ones() > 1;
 
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
-        let king_moves = Self::attacks_king(king_sq, ally) & !*king_danger_squares;
+        let king_moves = Self::attacks_king(king_sq, ally) & !king_danger_squares;
         legal_moves.create_and_add_moves(king_sq, king_moves, MoveFlag::Normal);
         if multi_check {
             return legal_moves;
@@ -51,7 +51,7 @@ impl MoveGeneration {
 
         //calculate moves for pinned pieces
         for sq in BitBoard::from(straight_pinned_pieces).get_occupied() {
-            let piece = board.get_sq_piece(&sq).expect("Pinned piece must exist");
+            let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
 
             let moves = match piece.ptype() {
                 PieceType::Pawn => {
@@ -71,7 +71,7 @@ impl MoveGeneration {
             legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
         }
         for sq in BitBoard::from(diagonal_pinned_pieces).get_occupied() {
-            let piece = board.get_sq_piece(&sq).expect("Pinned piece must exist");
+            let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
 
             let moves = match piece.ptype() {
                 PieceType::Pawn => {
@@ -104,7 +104,7 @@ impl MoveGeneration {
         let non_pinned = ally & !(straight_pinned_pieces | diagonal_pinned_pieces);
 
         for sq in BitBoard::from(non_pinned).get_occupied() {
-            let piece = board.get_sq_piece(&sq).expect("Piece must exist");
+            let piece = board.get_sq_piece(sq).expect("Piece must exist");
 
             match piece.ptype() {
                 PieceType::Pawn => {
@@ -177,7 +177,7 @@ impl MoveGeneration {
                                 sq,
                                 enemy,
                                 ally,
-                                *king_danger_squares,
+                                king_danger_squares,
                                 color,
                             ),
                             MoveFlag::KingSideCastle,
@@ -188,7 +188,7 @@ impl MoveGeneration {
                                 sq,
                                 enemy,
                                 ally,
-                                *king_danger_squares,
+                                king_danger_squares,
                                 color,
                             ),
                             MoveFlag::QueenSideCastle,
@@ -219,7 +219,7 @@ impl MoveGeneration {
                 .next()
                 .expect("Checkers board must not be empty if in check");
             let check_piece = board
-                .get_sq_piece(&check_sq)
+                .get_sq_piece(check_sq)
                 .expect("Checker piece must be present if in check");
 
             //check can only be blocked if it is a sliding piece
@@ -311,16 +311,16 @@ impl MoveGeneration {
         bb_king: u64,
         color: Color,
         board: &Board,
-    ) -> BitBoard {
+    ) -> u64 {
         let mut danger_squares = 0u64;
 
         let enemy_color = color.opposite();
 
         //King attacks
-        danger_squares |= Self::attacks_king(board.get_king_pos(&enemy_color), 0);
+        danger_squares |= Self::attacks_king(board.get_king_pos(enemy_color), 0);
 
         //Pawn attacks
-        let bb_pawns = **board.get_bb_for(&PieceType::Pawn.as_colored_piece(enemy_color));
+        let bb_pawns = *board.get_bb_for(PieceType::Pawn.as_colored_piece(enemy_color));
         if enemy_color == Color::White {
             danger_squares |= north_east(bb_pawns, 1);
             danger_squares |= north_west(bb_pawns, 1);
@@ -330,38 +330,38 @@ impl MoveGeneration {
         }
 
         //Knight attacks
-        for knight_sq in board.get_piece_positions(&PieceType::Knight.as_colored_piece(enemy_color))
+        for knight_sq in board.get_piece_positions(PieceType::Knight.as_colored_piece(enemy_color))
         {
             danger_squares |= Self::attacks_knight(knight_sq, 0);
         }
 
         //skip more expensive slider calculations if there are no sliders
         if *board.bb_sliders[enemy_color] == 0 {
-            return danger_squares.into();
+            return danger_squares;
         }
 
         let bb_allies_without_king = bb_allies & !bb_king;
 
         //Sliding attacks
-        for sq in board.get_piece_positions(&PieceType::Bishop.as_colored_piece(enemy_color)) {
+        for sq in board.get_piece_positions(PieceType::Bishop.as_colored_piece(enemy_color)) {
             danger_squares |= Self::attacks_bishop(sq, bb_enemies, bb_allies_without_king);
         }
-        for sq in board.get_piece_positions(&PieceType::Rook.as_colored_piece(enemy_color)) {
+        for sq in board.get_piece_positions(PieceType::Rook.as_colored_piece(enemy_color)) {
             danger_squares |= Self::attacks_rook(sq, bb_enemies, bb_allies_without_king);
         }
-        for sq in board.get_piece_positions(&PieceType::Queen.as_colored_piece(enemy_color)) {
+        for sq in board.get_piece_positions(PieceType::Queen.as_colored_piece(enemy_color)) {
             danger_squares |= Self::attacks_bishop(sq, bb_enemies, bb_allies_without_king);
             danger_squares |= Self::attacks_rook(sq, bb_enemies, bb_allies_without_king);
         }
 
-        danger_squares.into()
+        danger_squares
     }
 
     /// Generates the checkers BB for a given square and color. Square is the king square. Checkers are from the opposite color
     fn generate_checkers(king_pos: Square, color: Color, board: &Board) -> BitBoard {
         let attack_color = color.opposite();
-        let ally = **board.get_bb_occupied(&color);
-        let enemy = **board.get_bb_occupied(&attack_color);
+        let ally = *board.get_bb_occupied(color);
+        let enemy = *board.get_bb_occupied(attack_color);
         let enemy_bb = board.get_bb_pieces()[attack_color];
 
         let mut checkers = 0u64;
@@ -436,7 +436,7 @@ impl MoveGeneration {
         let queen_side_possible = (queen_side_free & (all | attacked)) == 0;
 
         if queen_side_possible {
-            CastleType::KING_DEST[CastleRights::to_index(&color, &CastleType::QueenSide) as usize]
+            CastleType::KING_DEST[CastleRights::to_index(color, CastleType::QueenSide) as usize]
                 .to_mask()
         } else {
             0
@@ -460,7 +460,7 @@ impl MoveGeneration {
         let king_side_possible = (king_side_free & (all | attacked)) == 0;
 
         if king_side_possible {
-            CastleType::KING_DEST[CastleRights::to_index(&color, &CastleType::KingSide) as usize]
+            CastleType::KING_DEST[CastleRights::to_index(color, CastleType::KingSide) as usize]
                 .to_mask()
         } else {
             0
@@ -479,7 +479,7 @@ impl MoveGeneration {
         }
         let index = (sq.square_value() as i8 + (color.perspective() * 8)) as u8;
         let all = BitBoard::new(ally | enemy);
-        if all.is_occupied(&Square::new(index)) {
+        if all.is_occupied(Square::new(index)) {
             return 0;
         }
 
@@ -518,7 +518,7 @@ impl MoveGeneration {
                 .get_occupied()
                 .any(|square| {
                     board
-                        .get_sq_piece(&square)
+                        .get_sq_piece(square)
                         .map(|piece| matches!(piece.ptype(), PieceType::Rook | PieceType::Queen))
                         .is_some()
                 });
@@ -617,7 +617,7 @@ impl MoveList {
     pub fn as_attack_bb(&self) -> BitBoard {
         let mut bb = BitBoard::default();
         for m in self.iter() {
-            bb.set(&m.dest());
+            bb.set(m.dest());
         }
         bb
     }

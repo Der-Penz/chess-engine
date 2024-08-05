@@ -18,7 +18,7 @@ impl BoardDisplay {
 
         ascii_string.push_str(row_del);
         for square in Square::iter_ah_81() {
-            let piece = board.get_sq_piece(&square);
+            let piece = board.get_sq_piece(square);
             if let Some(piece) = piece {
                 ascii_string.push_str(&format!("{}{} ", col_del, piece));
             } else {
@@ -67,7 +67,7 @@ impl BoardDisplay {
     pub fn as_board(board: &Board) -> String {
         let mut repr = String::with_capacity(1000);
         repr.push_str(&BoardDisplay::squares_to_string(|square| {
-            let piece = board.get_sq_piece(&square);
+            let piece = board.get_sq_piece(square);
             if let Some(piece) = piece {
                 let piece_char = PICE_CHAR_MAP[piece.color()][piece.ptype()];
                 Some(format!("| {} ", piece_char))
@@ -85,9 +85,9 @@ impl BoardDisplay {
         let mut repr = String::with_capacity(1000);
 
         repr.push_str(&BoardDisplay::squares_to_string(|square| {
-            let piece = board.get_sq_piece(&square);
+            let piece = board.get_sq_piece(square);
 
-            match (piece, attacks.is_occupied(&square)) {
+            match (piece, attacks.is_occupied(square)) {
                 (Some(piece), true) => {
                     let piece_char = PICE_CHAR_MAP[piece.color()][piece.ptype()];
                     Some(format!("| {}{} ", "\u{035C}", piece_char))
@@ -109,7 +109,7 @@ impl BoardDisplay {
     pub fn bit_board_to_string(o_bb: BitBoard, x_bb: BitBoard) -> String {
         let mut repr = String::with_capacity(1000);
         repr.push_str(&BoardDisplay::squares_to_string(|square| {
-            match (o_bb.is_occupied(&square), x_bb.is_occupied(&square)) {
+            match (o_bb.is_occupied(square), x_bb.is_occupied(square)) {
                 (true, true) => Some("| \u{035C}O ".to_string()),
                 (true, false) => Some("| O ".to_string()),
                 (false, true) => Some("| X ".to_string()),

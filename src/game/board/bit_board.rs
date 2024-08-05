@@ -16,15 +16,15 @@ impl BitBoard {
         BitBoard(bb)
     }
 
-    pub fn set(&mut self, square: &Square) {
+    pub fn set(&mut self, square: Square) {
         self.0 |= square.to_mask();
     }
 
-    pub fn reset(&mut self, square: &Square) {
+    pub fn reset(&mut self, square: Square) {
         self.0 &= !square.to_mask();
     }
 
-    pub fn update(&mut self, square: &Square, set: bool) {
+    pub fn update(&mut self, square: Square, set: bool) {
         if set {
             self.set(square);
         } else {
@@ -36,7 +36,7 @@ impl BitBoard {
         self.0.count_ones()
     }
 
-    pub fn is_occupied(&self, square: &Square) -> bool {
+    pub fn is_occupied(&self, square: Square) -> bool {
         self.0 & square.to_mask() != 0
     }
 
@@ -48,7 +48,7 @@ impl BitBoard {
 impl std::fmt::Debug for BitBoard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Square::iter_ah_81().for_each(|square| {
-            if self.is_occupied(&square) {
+            if self.is_occupied(square) {
                 let _ = write!(f, "1 ");
             } else {
                 let _ = write!(f, "0 ");
@@ -64,7 +64,7 @@ impl std::fmt::Debug for BitBoard {
 impl From<&[Square]> for BitBoard {
     fn from(squares: &[Square]) -> Self {
         squares.iter().fold(BitBoard::default(), |mut bb, s| {
-            bb.set(s);
+            bb.set(*s);
             bb
         })
     }
