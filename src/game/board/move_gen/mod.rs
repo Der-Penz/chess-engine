@@ -600,7 +600,7 @@ impl MoveGeneration {
         let rank_attack_ray =
             attack_pattern::rook_attacks_horizontal(enemy_without_pawn, ally_without_pawn, king_sq);
 
-        if rank_attack_ray & enemy_without_pawn != 0 {
+        if king_sq.rank() == sq.rank() && rank_attack_ray & enemy_without_pawn != 0 {
             let horizontal_rook_attack = BitBoard::from(rank_attack_ray & enemy_without_pawn)
                 .get_occupied()
                 .any(|square| {
