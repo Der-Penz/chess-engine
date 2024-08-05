@@ -1,6 +1,5 @@
 use crate::game::{
     bit_manipulation::{north_east, north_west, south_east, south_west},
-    board::display::BoardDisplay,
     castle_rights::{CastleRights, CastleType},
     color::Color,
     move_notation::{Move, MoveFlag},
