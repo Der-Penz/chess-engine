@@ -48,7 +48,7 @@ impl MoveGeneration {
             Self::generate_pins(king_sq, ally, enemy, color.opposite(), board);
         let (push_mask, capture_mask) =
             Self::generate_push_and_capture_mask(in_check, checkers.into(), king_sq, board);
-
+        //TODO when generating pawn pushes whe should generate promotions as well
         //calculate moves for pinned pieces
         for sq in BitBoard::from(straight_pinned_pieces).get_occupied() {
             let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
@@ -61,7 +61,9 @@ impl MoveGeneration {
                         double_push & pin_move_mask,
                         MoveFlag::DoublePawnPush,
                     );
-                    Self::moves_pawn(sq, enemy, ally, color)
+                    let pawn_move = Self::moves_pawn(sq, enemy, ally, color);
+                    add_pawn_moves(&mut legal_moves, sq, pawn_move, color);
+                    0
                 }
                 PieceType::Rook => Self::attacks_rook(sq, enemy, ally),
                 PieceType::Queen => Self::attacks_queen(sq, enemy, ally),
@@ -108,11 +110,13 @@ impl MoveGeneration {
 
             match piece.ptype() {
                 PieceType::Pawn => {
-                    let mut moves = Self::moves_pawn(sq, enemy, ally, color);
-                    moves |= Self::attacks_pawn(sq, enemy, ally, color);
+                    let pawn_move = Self::moves_pawn(sq, enemy, ally, color);
+                    add_pawn_moves(&mut legal_moves, sq, pawn_move, color);
+
+                    let attacks = Self::attacks_pawn(sq, enemy, ally, color);
                     legal_moves.create_and_add_moves(
                         sq,
-                        moves & (push_mask | capture_mask),
+                        attacks & (push_mask | capture_mask),
                         MoveFlag::Normal,
                     );
 
@@ -560,6 +564,21 @@ fn sq_betweens_bishop_rays(first: Square, second: Square) -> u64 {
     let mut ray_second = attack_pattern::bishop_attacks_main(0, first_mask, second);
     ray_second |= attack_pattern::bishop_attacks_anti(0, first_mask, second);
     ray_first & ray_second
+}
+
+/// Adds pawn moves to the move list for a given source and destination square
+/// handles promotions as well
+fn add_pawn_moves(moves: &mut MoveList, source: Square, dest: u64, color: Color) {
+    BitBoard::from(dest).get_occupied().for_each(|dest| {
+        if dest.rank() != color.promotion_rank() {
+            moves.add_move(Move::new(source, dest, MoveFlag::Normal));
+        } else {
+            moves.add_move(Move::new(source, dest, MoveFlag::QueenPromotion));
+            moves.add_move(Move::new(source, dest, MoveFlag::RookPromotion));
+            moves.add_move(Move::new(source, dest, MoveFlag::BishopPromotion));
+            moves.add_move(Move::new(source, dest, MoveFlag::KnightPromotion));
+        }
+    });
 }
 
 const MAX_NUMBER_OF_MOVES_PER_POSITION: usize = 218;
