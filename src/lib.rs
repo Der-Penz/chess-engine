@@ -7,7 +7,6 @@ use std::io::Write;
 pub fn init_logging() {
     #[cfg(not(feature = "log_to_file"))]
     {
-        println!("Logging to std:out");
         env_logger::builder()
             .format(|buf, record| writeln!(buf, "{}", record.args()))
             .filter(None, LevelFilter::Info)
@@ -17,7 +16,6 @@ pub fn init_logging() {
     #[cfg(feature = "log_to_file")]
     {
         let log_file_path = std::env::var("LOG_FILE").unwrap_or("logs.log".to_string());
-        println!("Logging to file: {}", log_file_path);
         let log_file = std::fs::File::create(log_file_path).unwrap();
         env_logger::Builder::from_default_env()
             .format(|buf, record| writeln!(buf, "[{}] - {}", record.level(), record.args()))

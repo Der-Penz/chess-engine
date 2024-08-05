@@ -10,6 +10,7 @@ use bit_board::BitBoard;
 use board_error::{FENError, UndoMoveError};
 use board_state::BoardState;
 use fen_utility::FENUtility;
+use log::error;
 use move_gen::MoveGeneration;
 use zobrist::ZOBRIST;
 
@@ -229,11 +230,11 @@ impl Board {
         }
 
         if validate {
-            let moves = MoveGeneration::generate_all_moves(self);
-            if !moves.contains(mov) {
-                println!("{}", self);
-                println!("Available moves: {:?}", moves);
-                println!("Invalid move: {}", mov);
+            let moves = MoveGeneration::generate_legal_moves(self);
+            if !moves.has(mov) {
+                error!("Tried playing an invalid move");
+                error!("Legal moves: {}", moves);
+                error!("The illegal move: {}", mov);
                 return Err(());
             }
         }

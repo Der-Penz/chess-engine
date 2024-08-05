@@ -4,41 +4,21 @@ use crate::game::{
     castle_rights::{CastleRights, CastleType},
     color::Color,
     move_notation::{Move, MoveFlag},
-    piece::Piece,
     piece_type::PieceType,
     square::Square,
 };
 
-use super::{bit_board::BitBoard, board_state::BoardState, Board};
+use super::{bit_board::BitBoard, Board};
 
 pub mod attack_pattern;
 
 pub struct MoveGeneration();
 
-const MAX_NUMBER_OF_MOVES_PER_POSITION: usize = 218;
-
 impl MoveGeneration {
-    fn add_moves(
-        moves: u64,
-        from: Square,
-        flag: MoveFlag,
-        legal_moves: &mut [Move; 218],
-        count: &mut usize,
-    ) {
-        BitBoard::from(moves).get_occupied().for_each(|sq| {
-            legal_moves[*count] = Move::new(from, sq, flag);
-            *count += 1;
-        });
-    }
-
-    pub fn generate_legal_moves(
-        board: &Board,
-    ) -> ([Move; MAX_NUMBER_OF_MOVES_PER_POSITION], usize) {
-        let mut legal_moves = [Move::default(); MAX_NUMBER_OF_MOVES_PER_POSITION];
-        let mut count = 0;
+    pub fn generate_legal_moves(board: &Board) -> MoveList {
+        let mut legal_moves = MoveList::default();
 
         let color = board.side_to_move();
-
         let ally = **board.get_bb_occupied(&color);
         let enemy = **board.get_bb_occupied(&color.opposite());
         let bb_king = **board.get_bb_for(&PieceType::King.as_colored_piece(color));
@@ -60,46 +40,15 @@ impl MoveGeneration {
 
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
         let king_moves = Self::attacks_king(king_sq, ally) & !*king_danger_squares;
-        Self::add_moves(
-            king_moves,
-            king_sq,
-            MoveFlag::Normal,
-            &mut legal_moves,
-            &mut count,
-        );
+        legal_moves.create_and_add_moves(king_sq, king_moves, MoveFlag::Normal);
         if multi_check {
-            return (legal_moves, count);
+            return legal_moves;
         }
 
         let (pin_move_mask, straight_pinned_pieces, diagonal_pinned_pieces) =
             Self::generate_pins(king_sq, ally, enemy, color.opposite(), board);
         let (push_mask, capture_mask) =
             Self::generate_push_and_capture_mask(in_check, checkers.into(), king_sq, board);
-
-        println!(
-            "Push Mask\n{}",
-            BoardDisplay::as_board_with_attacks(&Board::empty(), push_mask.into())
-        );
-        println!(
-            "Capture Mask\n{}",
-            BoardDisplay::as_board_with_attacks(&Board::empty(), capture_mask.into())
-        );
-        println!(
-            "Pin move\n{}",
-            BoardDisplay::as_board_with_attacks(&Board::empty(), pin_move_mask.into())
-        );
-        println!(
-            "Straight pinned pieces\n{}",
-            BoardDisplay::as_board_with_attacks(&Board::empty(), straight_pinned_pieces.into())
-        );
-        println!(
-            "Diagonal pinned pieces\n{}",
-            BoardDisplay::as_board_with_attacks(&Board::empty(), diagonal_pinned_pieces.into())
-        );
-        println!(
-            "King danger mask\n{}",
-            BoardDisplay::as_board_with_attacks(&Board::empty(), king_danger_squares)
-        );
 
         //calculate moves for pinned pieces
         for sq in BitBoard::from(straight_pinned_pieces).get_occupied() {
@@ -108,12 +57,10 @@ impl MoveGeneration {
             let moves = match piece.ptype() {
                 PieceType::Pawn => {
                     let double_push = Self::moves_pawn_double_push(sq, enemy, ally, color);
-                    Self::add_moves(
-                        double_push & pin_move_mask,
+                    legal_moves.create_and_add_moves(
                         sq,
+                        double_push & pin_move_mask,
                         MoveFlag::DoublePawnPush,
-                        &mut legal_moves,
-                        &mut count,
                     );
                     Self::moves_pawn(sq, enemy, ally, color)
                 }
@@ -122,14 +69,7 @@ impl MoveGeneration {
                 PieceType::Knight | PieceType::Bishop => 0, //can't move if pinned by a rook like piece
                 PieceType::King => panic!("King can't be pinned"),
             };
-
-            Self::add_moves(
-                moves & pin_move_mask,
-                sq,
-                MoveFlag::Normal,
-                &mut legal_moves,
-                &mut count,
-            );
+            legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
         }
         for sq in BitBoard::from(diagonal_pinned_pieces).get_occupied() {
             let piece = board.get_sq_piece(&sq).expect("Pinned piece must exist");
@@ -145,12 +85,10 @@ impl MoveGeneration {
                         ally,
                         board,
                     );
-                    Self::add_moves(
-                        en_passant & pin_move_mask,
+                    legal_moves.create_and_add_moves(
                         sq,
+                        en_passant & pin_move_mask,
                         MoveFlag::EnPassant,
-                        &mut legal_moves,
-                        &mut count,
                     );
                     Self::attacks_pawn(sq, enemy, ally, color)
                 }
@@ -160,13 +98,7 @@ impl MoveGeneration {
                 PieceType::King => panic!("King can't be pinned"),
             };
 
-            Self::add_moves(
-                moves & pin_move_mask,
-                sq,
-                MoveFlag::Normal,
-                &mut legal_moves,
-                &mut count,
-            );
+            legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
         }
 
         //calculate moves for non-pinned pieces
@@ -179,20 +111,17 @@ impl MoveGeneration {
                 PieceType::Pawn => {
                     let mut moves = Self::moves_pawn(sq, enemy, ally, color);
                     moves |= Self::attacks_pawn(sq, enemy, ally, color);
-                    Self::add_moves(
+                    legal_moves.create_and_add_moves(
+                        sq,
                         moves & (push_mask | capture_mask),
-                        sq,
                         MoveFlag::Normal,
-                        &mut legal_moves,
-                        &mut count,
                     );
+
                     let double_push = Self::moves_pawn_double_push(sq, enemy, ally, color);
-                    Self::add_moves(
-                        double_push & (push_mask | capture_mask),
+                    legal_moves.create_and_add_moves(
                         sq,
-                        MoveFlag::Normal,
-                        &mut legal_moves,
-                        &mut count,
+                        double_push & (push_mask | capture_mask),
+                        MoveFlag::DoublePawnPush,
                     );
                     let en_passant = Self::attacks_pawn_en_passant(
                         sq,
@@ -203,58 +132,48 @@ impl MoveGeneration {
                         ally,
                         board,
                     );
-                    Self::add_moves(
-                        en_passant & (push_mask | capture_mask),
+                    legal_moves.create_and_add_moves(
                         sq,
+                        en_passant & (push_mask | capture_mask),
                         MoveFlag::EnPassant,
-                        &mut legal_moves,
-                        &mut count,
                     );
                 }
                 PieceType::Knight => {
                     let moves = Self::attacks_knight(sq, ally);
-                    Self::add_moves(
-                        moves & (push_mask | capture_mask),
+                    legal_moves.create_and_add_moves(
                         sq,
+                        moves & (push_mask | capture_mask),
                         MoveFlag::Normal,
-                        &mut legal_moves,
-                        &mut count,
                     );
                 }
                 PieceType::Bishop => {
                     let moves = Self::attacks_bishop(sq, enemy, ally);
-                    Self::add_moves(
-                        moves & (push_mask | capture_mask),
+                    legal_moves.create_and_add_moves(
                         sq,
+                        moves & (push_mask | capture_mask),
                         MoveFlag::Normal,
-                        &mut legal_moves,
-                        &mut count,
                     );
                 }
                 PieceType::Rook => {
                     let moves = Self::attacks_rook(sq, enemy, ally);
-                    Self::add_moves(
-                        moves & (push_mask | capture_mask),
+                    legal_moves.create_and_add_moves(
                         sq,
+                        moves & (push_mask | capture_mask),
                         MoveFlag::Normal,
-                        &mut legal_moves,
-                        &mut count,
                     );
                 }
                 PieceType::Queen => {
                     let moves = Self::attacks_queen(sq, enemy, ally);
-                    Self::add_moves(
-                        moves & (push_mask | capture_mask),
+                    legal_moves.create_and_add_moves(
                         sq,
+                        moves & (push_mask | capture_mask),
                         MoveFlag::Normal,
-                        &mut legal_moves,
-                        &mut count,
                     );
                 }
                 PieceType::King => {
                     if !in_check {
-                        //TODO king danger squares might be wrong since ray attacks go through the king
-                        Self::add_moves(
+                        legal_moves.create_and_add_moves(
+                            sq,
                             Self::moves_king_castle_king_side(
                                 sq,
                                 enemy,
@@ -262,12 +181,10 @@ impl MoveGeneration {
                                 *king_danger_squares,
                                 color,
                             ),
-                            sq,
                             MoveFlag::KingSideCastle,
-                            &mut legal_moves,
-                            &mut count,
                         );
-                        Self::add_moves(
+                        legal_moves.create_and_add_moves(
+                            sq,
                             Self::moves_king_castle_queen_side(
                                 sq,
                                 enemy,
@@ -275,17 +192,14 @@ impl MoveGeneration {
                                 *king_danger_squares,
                                 color,
                             ),
-                            sq,
                             MoveFlag::QueenSideCastle,
-                            &mut legal_moves,
-                            &mut count,
                         );
                     }
                 }
             }
         }
 
-        (legal_moves, count)
+        legal_moves
     }
 
     fn generate_push_and_capture_mask(
@@ -623,155 +537,6 @@ impl MoveGeneration {
     pub fn moves_pawn(sq: Square, enemy: u64, ally: u64, color: Color) -> u64 {
         attack_pattern::MOVE_PATTERN_PAWN[color][sq] & !(ally | enemy)
     }
-
-    /// Generates pseudo-legal moves for a given piece on a given square
-    pub fn generate_pseudo_legal_moves(
-        square: Square,
-        piece: Piece,
-        enemy: BitBoard,
-        ally: BitBoard,
-        board_state: &BoardState,
-    ) -> Option<Vec<Move>> {
-        let mut moves: Vec<Move> = Vec::new();
-
-        let enemy = *enemy;
-        let ally = *ally;
-
-        match piece.ptype() {
-            PieceType::Pawn => {
-                let attacks = Self::attacks_pawn(square, enemy, ally, piece.color());
-                BitBoard::from(attacks).get_occupied().for_each(|sq| {
-                    if sq.rank() == piece.color().promotion_rank() {
-                        MoveFlag::PAWN_PROMOTION_FLAGS.into_iter().for_each(|flag| {
-                            moves.push(Move::new(square, sq, flag));
-                        });
-                    } else {
-                        moves.push(Move::new(square, sq, MoveFlag::Normal));
-                    }
-                });
-
-                if square.rank() == piece.color().pawn_rank() {
-                    let double_push =
-                        Self::moves_pawn_double_push(square, enemy, ally, piece.color());
-                    BitBoard::from(double_push).get_occupied().for_each(|sq| {
-                        moves.push(Move::new(square, sq, MoveFlag::DoublePawnPush));
-                    });
-                }
-
-                // let en_passant_attack = Self::attacks_pawn_en_passant(
-                //     square,
-                //     piece.color(),
-                //     board_state.en_passant.as_ref(),
-                //     enemy,
-                //     ally,
-
-                // );
-                // BitBoard::from(en_passant_attack)
-                //     .get_occupied()
-                //     .for_each(|sq| {
-                //         moves.push(Move::new(square, sq, MoveFlag::EnPassant));
-                //     });
-
-                let pawn_moves = Self::moves_pawn(square, enemy, ally, piece.color());
-                BitBoard::from(pawn_moves).get_occupied().for_each(|sq| {
-                    if sq.rank() == piece.color().promotion_rank() {
-                        MoveFlag::PAWN_PROMOTION_FLAGS.into_iter().for_each(|flag| {
-                            moves.push(Move::new(square, sq, flag));
-                        });
-                    } else {
-                        moves.push(Move::new(square, sq, MoveFlag::Normal));
-                    }
-                });
-            }
-            PieceType::Knight => {
-                let attacks = Self::attacks_knight(square, ally);
-                BitBoard::from(attacks).get_occupied().for_each(|sq| {
-                    moves.push(Move::new(square, sq, MoveFlag::Normal));
-                });
-            }
-            PieceType::Bishop => {
-                let attacks = Self::attacks_bishop(square, enemy, ally);
-                BitBoard::from(attacks).get_occupied().for_each(|sq| {
-                    moves.push(Move::new(square, sq, MoveFlag::Normal));
-                });
-            }
-            PieceType::Rook => {
-                let attacks = Self::attacks_rook(square, enemy, ally);
-                BitBoard::from(attacks).get_occupied().for_each(|sq| {
-                    moves.push(Move::new(square, sq, MoveFlag::Normal));
-                });
-            }
-            PieceType::Queen => {
-                let mut attacks = Self::attacks_rook(square, enemy, ally);
-                attacks |= Self::attacks_bishop(square, enemy, ally);
-                BitBoard::from(attacks).get_occupied().for_each(|sq| {
-                    moves.push(Move::new(square, sq, MoveFlag::Normal));
-                });
-            }
-            PieceType::King => {
-                let attacks = Self::attacks_king(square, ally);
-                BitBoard::from(attacks).get_occupied().for_each(|sq| {
-                    moves.push(Move::new(square, sq, MoveFlag::Normal));
-                });
-
-                // let castle_moves = Self::moves_king_castle(square, enemy, ally, 0, piece.color());
-                // BitBoard::from(castle_moves).get_occupied().for_each(|sq| {
-                //     match sq {
-                //         s if s == CastleType::KING_DEST[0] || s == CastleType::KING_DEST[2] => {
-                //             moves.push(Move::new(square, sq, MoveFlag::KingSideCastle));
-                //         }
-                //         s if s == CastleType::KING_DEST[1] || s == CastleType::KING_DEST[3] => {
-                //             moves.push(Move::new(square, sq, MoveFlag::QueenSideCastle));
-                //         }
-                //         _ => (),
-                //     };
-                // });
-            }
-        };
-
-        Some(moves)
-    }
-
-    /// Generates all legal moves for the current board state
-    pub fn generate_all_moves(board: &Board) -> Vec<Move> {
-        let bb = board.get_bb_occupied(&board.side_to_move);
-        let mut moves = Vec::with_capacity(218); // 218 is the maximum number of moves possible in a position
-
-        bb.get_occupied().for_each(|sq| {
-            let piece = board
-                .get_sq_piece(&sq)
-                .expect("There has to be a piece on this board or the bb are out of sync");
-            let enemy = board.get_bb_occupied(&board.side_to_move.opposite());
-            let ally = board.get_bb_occupied(&board.side_to_move);
-
-            let sq_moves =
-                Self::generate_pseudo_legal_moves(sq, piece, *enemy, *ally, &board.current_state);
-
-            if let Some(sq_moves) = sq_moves {
-                moves.extend(sq_moves);
-            }
-        });
-
-        //TODO filter out illegal moves
-        Self::filter_legal_moves(moves, board)
-    }
-
-    pub fn filter_legal_moves(moves: Vec<Move>, board: &Board) -> Vec<Move> {
-        moves
-            .into_iter()
-            .filter(|m| {
-                let mut board = board.clone();
-                let correct = board.make_move(m, false, false);
-
-                if correct.is_err() {
-                    return false;
-                }
-                let in_check = board.in_check(&board.side_to_move.opposite());
-
-                !in_check
-            })
-            .collect()
-    }
 }
 
 /// returns a mask of squares between two squares in vertical or horizontal direction
@@ -796,4 +561,75 @@ fn sq_betweens_bishop_rays(first: Square, second: Square) -> u64 {
     let mut ray_second = attack_pattern::bishop_attacks_main(0, first_mask, second);
     ray_second |= attack_pattern::bishop_attacks_anti(0, first_mask, second);
     ray_first & ray_second
+}
+
+const MAX_NUMBER_OF_MOVES_PER_POSITION: usize = 218;
+type MoveListArray = [Move; MAX_NUMBER_OF_MOVES_PER_POSITION];
+pub struct MoveList {
+    moves: MoveListArray,
+    count: usize,
+}
+
+impl std::default::Default for MoveList {
+    fn default() -> Self {
+        Self {
+            moves: [Move::default(); MAX_NUMBER_OF_MOVES_PER_POSITION],
+            count: 0,
+        }
+    }
+}
+
+impl MoveList {
+    pub fn add_move(&mut self, m: Move) {
+        self.moves[self.count] = m;
+        self.count += 1;
+    }
+
+    pub fn create_and_add_moves(&mut self, source: Square, moves: u64, flag: MoveFlag) {
+        BitBoard::from(moves).get_occupied().for_each(|dest| {
+            self.add_move(Move::new(source, dest, flag));
+        });
+    }
+
+    pub fn len(&self) -> usize {
+        self.count
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Move> {
+        self.moves.get(index)
+    }
+
+    pub fn has(&self, m: &Move) -> bool {
+        self.moves[..self.count].contains(m)
+    }
+
+    pub fn as_vec(&self) -> Vec<Move> {
+        self.moves[..self.count].to_vec()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Move> {
+        self.moves[..self.count].iter()
+    }
+
+    pub fn as_attack_bb(&self) -> BitBoard {
+        let mut bb = BitBoard::default();
+        for m in self.iter() {
+            bb.set(&m.dest());
+        }
+        bb
+    }
+}
+
+impl std::fmt::Display for MoveList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Moves: ")?;
+        for m in self.iter() {
+            write!(f, "{}, ", m)?;
+        }
+        Ok(())
+    }
 }
