@@ -146,8 +146,16 @@ impl Board {
         self.bb_pieces[piece.color()][piece.ptype()].get_occupied()
     }
 
+    pub fn get_bb_rook_slider(&self, color: Color) -> BitBoard {
+        self.bb_pieces[color][PieceType::Rook] | self.bb_pieces[color][PieceType::Queen]
+    }
+
+    pub fn get_bb_bishop_slider(&self, color: Color) -> BitBoard {
+        self.bb_pieces[color][PieceType::Bishop] | self.bb_pieces[color][PieceType::Queen]
+    }
+
     ///Checks if the given square is attacked by the given color
-    pub fn sq_attacked(&self, square: &Square, color: &Color) -> bool {
+    pub fn sq_attacked(&self, square: Square, color: &Color) -> bool {
         let ally = self.get_bb_occupied(&color.opposite());
         let enemy = self.get_bb_occupied(&color);
         let bb = self.get_bb_pieces()[*color];
@@ -156,7 +164,7 @@ impl Board {
         let mut attacks = MoveGeneration::attacks_knight(square, **ally) & *bb[PieceType::Knight];
         //King attacks are not needed since the king can't attack a square that is occupied by an enemy piece
         // attacks |= MoveGeneration::attacks_king(square, **enemy) & *bb[PieceType::King];
-        attacks |= MoveGeneration::attacks_pawn(square, **enemy, **ally, &color.opposite())
+        attacks |= MoveGeneration::attacks_pawn(square, **enemy, **ally, color.opposite())
             & *bb[PieceType::Pawn];
         if attacks != 0 {
             return true;
@@ -169,7 +177,7 @@ impl Board {
             if attacks != 0 {
                 return true;
             }
-            let attacks = MoveGeneration::attacks_rook(&square, **enemy, **ally)
+            let attacks = MoveGeneration::attacks_rook(square, **enemy, **ally)
                 & (*bb[PieceType::Rook] | *bb[PieceType::Queen]);
             if attacks != 0 {
                 return true;
@@ -180,7 +188,7 @@ impl Board {
     }
 
     pub fn in_check(&self, color: &Color) -> bool {
-        self.sq_attacked(&self.get_king_pos(color), &color.opposite())
+        self.sq_attacked(self.get_king_pos(color), &color.opposite())
     }
 
     fn make_null_move(&mut self) {

@@ -1,3 +1,4 @@
+pub mod direction_mask;
 pub mod bishop;
 pub mod king;
 pub mod knight;
