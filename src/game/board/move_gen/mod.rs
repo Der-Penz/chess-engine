@@ -1,3 +1,4 @@
+mod test;
 use attack_pattern::direction_mask::ALIGN_MASKS;
 
 use crate::game::{
@@ -188,28 +189,40 @@ impl MoveGeneration {
                 }
                 PieceType::King => {
                     if !in_check {
-                        legal_moves.create_and_add_moves(
-                            sq,
-                            Self::moves_king_castle_king_side(
+                        if board
+                            .cur_state()
+                            .castling_rights
+                            .has(color, CastleType::KingSide)
+                        {
+                            legal_moves.create_and_add_moves(
                                 sq,
-                                enemy,
-                                ally,
-                                king_danger_squares,
-                                color,
-                            ),
-                            MoveFlag::KingSideCastle,
-                        );
-                        legal_moves.create_and_add_moves(
-                            sq,
-                            Self::moves_king_castle_queen_side(
+                                Self::moves_king_castle_king_side(
+                                    sq,
+                                    enemy,
+                                    ally,
+                                    king_danger_squares,
+                                    color,
+                                ),
+                                MoveFlag::KingSideCastle,
+                            );
+                        }
+                        if board
+                            .cur_state()
+                            .castling_rights
+                            .has(color, CastleType::QueenSide)
+                        {
+                            legal_moves.create_and_add_moves(
                                 sq,
-                                enemy,
-                                ally,
-                                king_danger_squares,
-                                color,
-                            ),
-                            MoveFlag::QueenSideCastle,
-                        );
+                                Self::moves_king_castle_queen_side(
+                                    sq,
+                                    enemy,
+                                    ally,
+                                    king_danger_squares,
+                                    color,
+                                ),
+                                MoveFlag::QueenSideCastle,
+                            );
+                        }
                     }
                 }
             }
@@ -449,8 +462,11 @@ impl MoveGeneration {
 
         let all = ally | enemy;
         let queen_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::QueenSide];
+        let queen_side_attack_free =
+            attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::QueenSide];
 
-        let queen_side_possible = (queen_side_free & (all | attacked)) == 0;
+        let queen_side_possible =
+            (queen_side_free & all) == 0 && (queen_side_attack_free & attacked) == 0;
 
         if queen_side_possible {
             CastleType::KING_DEST[CastleRights::to_index(color, CastleType::QueenSide) as usize]
@@ -473,8 +489,11 @@ impl MoveGeneration {
 
         let all = ally | enemy;
         let king_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::KingSide];
+        let king_side_attack_free =
+            attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::KingSide];
 
-        let king_side_possible = (king_side_free & (all | attacked)) == 0;
+        let king_side_possible =
+            (king_side_free & all) == 0 && (king_side_attack_free & attacked) == 0;
 
         if king_side_possible {
             CastleType::KING_DEST[CastleRights::to_index(color, CastleType::KingSide) as usize]
