@@ -10,7 +10,7 @@ use bit_board::BitBoard;
 use board_error::{FENError, UndoMoveError};
 use board_state::BoardState;
 use fen_utility::FENUtility;
-use log::error;
+use log::{error, info};
 use move_gen::MoveGeneration;
 use zobrist::ZOBRIST;
 
@@ -163,8 +163,6 @@ impl Board {
 
         //check for attacks from non-sliding pieces
         let mut attacks = MoveGeneration::attacks_knight(square, *ally) & *bb[PieceType::Knight];
-        //King attacks are not needed since the king can't attack a square that is occupied by an enemy piece
-        // attacks |= MoveGeneration::attacks_king(square, **enemy) & *bb[PieceType::King];
         attacks |= MoveGeneration::attacks_pawn(square, *enemy, *ally, color.opposite())
             & *bb[PieceType::Pawn];
         if attacks != 0 {
@@ -188,8 +186,11 @@ impl Board {
         false
     }
 
-    pub fn in_check(&self, color: Color) -> bool {
-        self.sq_attacked(self.get_king_pos(color), color.opposite())
+    pub fn in_check(&self) -> bool {
+        self.sq_attacked(
+            self.get_king_pos(self.side_to_move),
+            self.side_to_move.opposite(),
+        )
     }
 
     fn make_null_move(&mut self) {
@@ -213,7 +214,7 @@ impl Board {
         self.current_state = new_state;
     }
 
-    pub fn undo_null_move(&mut self) -> Result<(), board_error::UndoMoveError> {
+    fn undo_null_move(&mut self) -> Result<(), board_error::UndoMoveError> {
         self.current_state = self
             .previous_states
             .pop()
@@ -279,10 +280,10 @@ impl Board {
             }
         }
         //move the source piece to the destination
-        self.update_bb(source_piece, source, false);
-        new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), source);
-        self.update_bb(source_piece, dest, true);
-        new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), dest);
+            self.update_bb(source_piece, source, false);
+            new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), source);
+            self.update_bb(source_piece, dest, true);
+            new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), dest);
 
         //handling king
         if source_piece.ptype() == PieceType::King {
