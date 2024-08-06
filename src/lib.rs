@@ -1,7 +1,9 @@
 pub mod game;
 pub mod uci;
 
-use log::{info, LevelFilter};
+#[cfg(feature = "log_to_file")]
+use log::info;
+use log::LevelFilter;
 use std::io::Write;
 
 pub fn init_logging() {
