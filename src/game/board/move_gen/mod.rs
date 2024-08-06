@@ -153,7 +153,11 @@ impl MoveGeneration {
                         ally,
                         board,
                     );
-                    legal_moves.create_and_add_moves(sq, en_passant, MoveFlag::EnPassant);
+                    legal_moves.create_and_add_moves(
+                        sq,
+                        en_passant & push_mask,
+                        MoveFlag::EnPassant,
+                    );
                 }
                 PieceType::Knight => {
                     let moves = Self::attacks_knight(sq, ally);
@@ -537,14 +541,15 @@ impl MoveGeneration {
         }
         let en_passant_square = en_passant.unwrap();
 
-        let en_passant_mask = en_passant_square.to_mask();
+        let enemy_pawn_mask =
+            1u64 << (en_passant_square.square_value() as i8 - (color.perspective() * 8));
         let sq_mask = sq.to_mask();
 
         //check for if the en passant capture would expose a discovered attack on the king
         //by removing the pawn and the en passant pawn from the board, we can check if there
         //is a rook or queen attacking the king by using the rook horizontal attack pattern from the king square
         //and check if this ray would attack a enemy rook or queen
-        let enemy_without_pawn = enemy & !(en_passant_mask);
+        let enemy_without_pawn = enemy & !(enemy_pawn_mask);
         let ally_without_pawn = ally & !(sq_mask);
         let rank_attack_ray =
             attack_pattern::rook_attacks_horizontal(enemy_without_pawn, ally_without_pawn, king_sq);
@@ -559,7 +564,7 @@ impl MoveGeneration {
                         .is_some()
                 });
 
-            //if the is a rook or queen attacking the king, the en passant is invalid
+            //if there is a rook or queen attacking the king, the en passant is invalid
             if horizontal_rook_attack {
                 return 0;
             }

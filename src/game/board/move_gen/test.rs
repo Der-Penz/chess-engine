@@ -1,11 +1,10 @@
-use crate::init_logging;
-
 #[test]
 fn test_position() {
-    init_logging();
+    use crate::init_logging;
     use crate::{game::Board, perft};
     use serde::{Deserialize, Serialize};
     use std::io::Read;
+    init_logging();
 
     #[derive(Serialize, Deserialize, Debug)]
     struct PerftTest {
