@@ -141,13 +141,17 @@ impl std::fmt::Display for Move {
             return write!(f, "0000");
         }
 
-        write!(f, "{}{} {:?}", self.source(), self.dest(), self.flag())
+        write!(f, "{}", self.as_uci_notation())
     }
 }
 
 impl std::fmt::Debug for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self, f)
+        if self.is_null() {
+            return write!(f, "0000");
+        }
+
+        write!(f, "{}{} {:?}", self.source(), self.dest(), self.flag())
     }
 }
 
@@ -233,11 +237,4 @@ impl MoveFlag {
             _ => None,
         }
     }
-
-    pub const PAWN_PROMOTION_FLAGS: [MoveFlag; 4] = [
-        MoveFlag::KnightPromotion,
-        MoveFlag::BishopPromotion,
-        MoveFlag::RookPromotion,
-        MoveFlag::QueenPromotion,
-    ];
 }

@@ -1,3 +1,5 @@
+use attack_pattern::direction_mask::ALIGN_MASKS;
+
 use crate::game::{
     bit_manipulation::{north_east, north_west, south_east, south_west},
     castle_rights::{CastleRights, CastleType},
@@ -48,12 +50,14 @@ impl MoveGeneration {
             Self::generate_pins(king_sq, ally, enemy, color.opposite(), board);
         let (push_mask, capture_mask) =
             Self::generate_push_and_capture_mask(in_check, checkers.into(), king_sq, board);
-        //TODO when generating pawn pushes whe should generate promotions as well
+
         //calculate moves for pinned pieces
         for sq in BitBoard::from(straight_pinned_pieces).get_occupied() {
             let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
+            let pin_move_mask =
+                ALIGN_MASKS[sq.square_value() as usize][king_sq.square_value() as usize];
 
-            let moves = match piece.ptype() {
+            match piece.ptype() {
                 PieceType::Pawn => {
                     let double_push = Self::moves_pawn_double_push(sq, enemy, ally, color);
                     legal_moves.create_and_add_moves(
@@ -62,20 +66,23 @@ impl MoveGeneration {
                         MoveFlag::DoublePawnPush,
                     );
                     let pawn_move = Self::moves_pawn(sq, enemy, ally, color);
-                    add_pawn_moves(&mut legal_moves, sq, pawn_move, color);
-                    0
+                    add_pawn_moves(&mut legal_moves, sq, pawn_move & pin_move_mask, color);
                 }
-                PieceType::Rook => Self::attacks_rook(sq, enemy, ally),
-                PieceType::Queen => Self::attacks_queen(sq, enemy, ally),
-                PieceType::Knight | PieceType::Bishop => 0, //can't move if pinned by a rook like piece
+                //if queen is straight pinned, it can only move straight
+                PieceType::Rook | PieceType::Queen => {
+                    let moves = Self::attacks_rook(sq, enemy, ally);
+                    legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
+                }
+                PieceType::Knight | PieceType::Bishop => (), //can't move if pinned by a rook like piece
                 PieceType::King => panic!("King can't be pinned"),
             };
-            legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
         }
         for sq in BitBoard::from(diagonal_pinned_pieces).get_occupied() {
             let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
+            let pin_move_mask =
+                ALIGN_MASKS[sq.square_value() as usize][king_sq.square_value() as usize];
 
-            let moves = match piece.ptype() {
+            match piece.ptype() {
                 PieceType::Pawn => {
                     let en_passant = Self::attacks_pawn_en_passant(
                         sq,
@@ -91,15 +98,17 @@ impl MoveGeneration {
                         en_passant & pin_move_mask,
                         MoveFlag::EnPassant,
                     );
-                    Self::attacks_pawn(sq, enemy, ally, color)
+                    let attacks = Self::attacks_pawn(sq, enemy, ally, color);
+                    add_pawn_moves(&mut legal_moves, sq, attacks & pin_move_mask, color);
                 }
-                PieceType::Bishop => Self::attacks_bishop(sq, enemy, ally),
-                PieceType::Queen => Self::attacks_queen(sq, enemy, ally),
-                PieceType::Knight | PieceType::Rook => 0, //can't move if pinned by a bishop like piece
+                //if queen is diagonal pinned, it can only move diagonally
+                PieceType::Bishop | PieceType::Queen => {
+                    let moves = Self::attacks_bishop(sq, enemy, ally);
+                    legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
+                }
+                PieceType::Knight | PieceType::Rook => (), //can't move if pinned by a bishop like piece
                 PieceType::King => panic!("King can't be pinned"),
             };
-
-            legal_moves.create_and_add_moves(sq, moves & pin_move_mask, MoveFlag::Normal);
         }
 
         //calculate moves for non-pinned pieces
@@ -111,13 +120,19 @@ impl MoveGeneration {
             match piece.ptype() {
                 PieceType::Pawn => {
                     let pawn_move = Self::moves_pawn(sq, enemy, ally, color);
-                    add_pawn_moves(&mut legal_moves, sq, pawn_move, color);
+                    add_pawn_moves(
+                        &mut legal_moves,
+                        sq,
+                        pawn_move & (push_mask | capture_mask),
+                        color,
+                    );
 
                     let attacks = Self::attacks_pawn(sq, enemy, ally, color);
-                    legal_moves.create_and_add_moves(
+                    add_pawn_moves(
+                        &mut legal_moves,
                         sq,
                         attacks & (push_mask | capture_mask),
-                        MoveFlag::Normal,
+                        color,
                     );
 
                     let double_push = Self::moves_pawn_double_push(sq, enemy, ally, color);
@@ -135,11 +150,7 @@ impl MoveGeneration {
                         ally,
                         board,
                     );
-                    legal_moves.create_and_add_moves(
-                        sq,
-                        en_passant & (push_mask | capture_mask),
-                        MoveFlag::EnPassant,
-                    );
+                    legal_moves.create_and_add_moves(sq, en_passant, MoveFlag::EnPassant);
                 }
                 PieceType::Knight => {
                     let moves = Self::attacks_knight(sq, ally);

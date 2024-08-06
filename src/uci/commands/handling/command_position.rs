@@ -23,7 +23,6 @@ pub fn handle_position(
     };
 
     moves.iter().for_each(|m| {
-        info!("Playing for: {}", board.side_to_move());
         board
             .make_move(m, false, true)
             .expect("UCI received invalid move that cannot be played by the engine");
