@@ -1,7 +1,7 @@
 pub mod game;
 pub mod uci;
 
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use std::io::Write;
 
 pub fn init_logging() {
@@ -22,5 +22,6 @@ pub fn init_logging() {
             .target(env_logger::Target::Pipe(Box::new(log_file)))
             .filter(None, LevelFilter::Info)
             .init();
+        info!("Log to file enabled");
     }
 }

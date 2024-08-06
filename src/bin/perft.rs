@@ -1,115 +1,107 @@
-use std::vec;
-
 use chess_bot::{
     game::{board::move_gen::MoveGeneration, Board, Move},
     init_logging,
 };
 
-fn main() {
-    init_logging();
-    //read args depth and fen from command line
-    //validate if depth must be provided fen is optional and default is startpos
-    // let args: Vec<String> = std::env::args().collect();
-
-    // let depth = args
-    //     .get(1)
-    //     .expect("Depth must be provided")
-    //     .parse::<u8>()
-    //     .expect("Depth must be a number");
-
-    // let mut board = if let Some(fen) = args.get(2) {
-    //     println!("FEN provided: {}", fen);
-    //     Board::from_fen(fen).expect("Invalid FEN")
-    // } else {
-    //     Board::default()
-    // };
-
-    // println!(
-    //     "Perft result with depth {} for FEN: {}",
-    //     depth,
-    //     board.to_fen()
-    // );
-
-    // let res = perft(depth, &mut board);
-
-    // for (mov, counter) in res.iter() {
-    //     let mut mov_str = String::with_capacity(30);
-    //     mov_str.push_str(format!("{}", mov).as_str());
-    //     if mov_str.len() < 30 {
-    //         mov_str.push_str(&" ".repeat(30 - mov_str.len()));
-    //     }
-    //     println!("{} - {}", mov_str, counter.count);
-    //     // println!("{} - {}", mov_str, counter);
-    // }
-    // println!(
-    //     "Total nodes: {}",
-    //     res.iter().map(|(_, c)| c.count).sum::<usize>()
-    // );
-
-    // for depth in 0..=depth {
-    //     let moves_at_depth = perft_depth(depth, &mut board);
-    //     println!("Depth: {} - {}", depth, moves_at_depth);
-    // }
+enum PerftMode {
+    NodeCount,
+    Divide,
+    DivideDetailed,
 }
 
-// fn perft(depth: u8, board: &mut Board) -> Vec<(Move, MoveCounter)> {
-//     if depth == 0 {
-//         return vec![];
-//     }
-//     let mut results = Vec::new();
-//     let moves = vec![];
-//     for idx in 0..moves.len() {
-//         let mut counter = MoveCounter::default();
-//         let mov = moves[idx];
-//         board.make_move(&mov, false, false).expect("Valid move");
-//         counter += perft_depth(depth - 1, board);
-//         match mov.flag() {
-//             f if f.is_en_passant() => counter.en_passant += 1,
-//             f if f.is_castle() => counter.castles += 1,
-//             f if f.is_promotion() => counter.promotions += 1,
-//             _ => {}
-//         }
-//         if board.cur_state().captured_piece.is_some() {
-//             counter.captures += 1;
-//         }
-//         if board.in_check(&board.side_to_move()) {
-//             counter.checks += 1;
-//         }
-//         board.undo_move(&mov, false).expect("Valid undo move");
-//         results.push((mov, counter));
-//     }
-//     results
-// }
+impl From<&str> for PerftMode {
+    fn from(s: &str) -> Self {
+        match s {
+            "nodecount" => Self::NodeCount,
+            "divide" => Self::Divide,
+            "dividedetailed" => Self::DivideDetailed,
+            _ => panic!("Invalid mode"),
+        }
+    }
+}
 
-// fn perft_depth(depth: u8, board: &mut Board) -> MoveCounter {
-//     if depth == 0 {
-//         return MoveCounter {
-//             count: 1,
-//             ..Default::default()
-//         };
-//     }
-//     let mut counter = MoveCounter::default();
+fn main() {
+    init_logging();
+    let args: Vec<String> = std::env::args().collect();
 
-//     let moves = vec![];
-//     for mov in moves {
-//         board.make_move(&mov, false, false).expect("Valid move");
-//         counter += perft_depth(depth - 1, board);
-//         match mov.flag() {
-//             f if f.is_en_passant() => counter.en_passant += 1,
-//             f if f.is_castle() => counter.castles += 1,
-//             f if f.is_promotion() => counter.promotions += 1,
-//             _ => {}
-//         }
-//         if board.cur_state().captured_piece.is_some() {
-//             counter.captures += 1;
-//         }
-//         if board.in_check(&board.side_to_move()) {
-//             counter.checks += 1;
-//         }
-//         board.undo_move(&mov, false).expect("Valid undo move");
-//     }
-//     counter
-// }
+    let depth = args
+        .get(1)
+        .expect("Depth must be provided")
+        .parse::<u8>()
+        .expect("Depth must be a number");
+
+    let mode = args
+        .get(2)
+        .map(|s| PerftMode::from(s.as_str()))
+        .expect("Mode must be provided (nodecount, divide, dividedetailed)");
+
+    let mut board = if let Some(fen) = args.get(3) {
+        Board::from_fen(fen).expect("Invalid FEN")
+    } else {
+        Board::default()
+    };
+
+    let perft_result = perft(depth, &mut board);
+    match mode {
+        PerftMode::NodeCount => {
+            let node_count = perft_result
+                .iter()
+                .fold(0, |acc, (_, counter)| acc + counter.count);
+            println!("Total nodes: {}", node_count);
+        }
+        PerftMode::Divide => {
+            for (mov, counter) in perft_result.iter() {
+                println!("{}: {}", mov, counter.count);
+            }
+        }
+        PerftMode::DivideDetailed => {
+            for (mov, counter) in perft_result.iter() {
+                println!("{}: {}", mov, counter);
+            }
+        }
+    }
+}
+
+fn perft(depth: u8, board: &mut Board) -> Vec<(Move, MoveCounter)> {
+    if depth == 0 {
+        return vec![];
+    }
+    let move_list = MoveGeneration::generate_legal_moves(board);
+    let mut results = Vec::with_capacity(move_list.len());
+
+    for mov in move_list.iter() {
+        board
+            .make_move(mov, false, false)
+            .expect("Move generation should generate only legal moves");
+        let mut counter = MoveCounter::default();
+        counter += perft_depth(depth - 1, board);
+        board
+            .undo_move(mov, false)
+            .expect("Undo move should be valid");
+        results.push((*mov, counter));
+    }
+
+    results
+}
+
+fn perft_depth(depth: u8, board: &mut Board) -> MoveCounter {
+    if depth == 0 {
+        return MoveCounter::new_one();
+    }
+
+    let move_list = MoveGeneration::generate_legal_moves(board);
+    let mut counter = MoveCounter::default();
+    for mov in move_list.iter() {
+        board
+            .make_move(mov, false, false)
+            .expect("Move generation should generate only legal moves");
+        counter += perft_depth(depth - 1, board);
+        board
+            .undo_move(mov, false)
+            .expect("Undo move should be valid");
+    }
+    counter
+}
 
 #[derive(Debug, Clone, Copy)]
 struct MoveCounter {
@@ -167,5 +159,18 @@ impl std::fmt::Display for MoveCounter {
             "Nodes: {:>10}| Captures: {:>10}| En passant: {:>10}| Castles: {:>10}| Promotions: {:>10} | Checks: {:>10}",
             self.count, self.captures, self.en_passant, self.castles, self.promotions, self.checks
         )
+    }
+}
+
+impl MoveCounter {
+    fn new_one() -> Self {
+        Self {
+            count: 1,
+            captures: 0,
+            en_passant: 0,
+            castles: 0,
+            promotions: 0,
+            checks: 0,
+        }
     }
 }

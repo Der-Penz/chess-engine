@@ -1,6 +1,6 @@
 pub const DIRECTION_MASKS: [[u64; 64]; 8] = generate_direction_masks();
 
-const DIRECTION_OFFSET: [isize; 8] = [8, -8, -1, 1, 7, -7, 9, -9];
+// const DIRECTION_OFFSET: [isize; 8] = [8, -8, -1, 1, 7, -7, 9, -9];
 
 /// The offsets for each direction N S W E NW SE NE SW
 const DIRECTION_OFFSET_2D: [(isize, isize); 8] = [

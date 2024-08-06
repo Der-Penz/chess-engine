@@ -46,7 +46,7 @@ impl MoveGeneration {
             return legal_moves;
         }
 
-        let (pin_move_mask, straight_pinned_pieces, diagonal_pinned_pieces) =
+        let (_pin_move_mask, straight_pinned_pieces, diagonal_pinned_pieces) =
             Self::generate_pins(king_sq, ally, enemy, color.opposite(), board);
         let (push_mask, capture_mask) =
             Self::generate_push_and_capture_mask(in_check, checkers.into(), king_sq, board);
@@ -115,7 +115,9 @@ impl MoveGeneration {
         let non_pinned = ally & !(straight_pinned_pieces | diagonal_pinned_pieces);
 
         for sq in BitBoard::from(non_pinned).get_occupied() {
-            let piece = board.get_sq_piece(sq).expect("Piece must exist");
+            let piece = board
+                .get_sq_piece(sq)
+                .expect(format!("Piece at {} must exist", sq).as_str());
 
             match piece.ptype() {
                 PieceType::Pawn => {
