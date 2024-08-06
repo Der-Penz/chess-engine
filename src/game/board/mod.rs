@@ -256,19 +256,6 @@ impl Board {
             self.get_sq_piece(dest)
         };
 
-        //handling promotions
-        if move_flag.is_promotion() {
-            self.update_bb(source_piece, dest, false);
-            new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), dest);
-
-            let promoted_piece = move_flag
-                .promotion_type()
-                .expect("Move is flagged as promotion so it must have a promotion type")
-                .as_colored_piece(move_color);
-            self.update_bb(promoted_piece, dest, true);
-            new_zobrist ^= ZOBRIST.get_rn_piece(promoted_piece.ptype(), dest);
-        }
-
         //handling captures
         if let Some(dest_piece) = dest_piece {
             if is_en_passant {
@@ -279,11 +266,25 @@ impl Board {
                 new_zobrist ^= ZOBRIST.get_rn_piece(dest_piece.ptype(), dest);
             }
         }
-        //move the source piece to the destination
+
+        //handling promotions
+        if move_flag.is_promotion() {
+            self.update_bb(source_piece, source, false);
+            new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), dest);
+
+            let promoted_piece = move_flag
+                .promotion_type()
+                .expect("Move is flagged as promotion so it must have a promotion type")
+                .as_colored_piece(move_color);
+            self.update_bb(promoted_piece, dest, true);
+            new_zobrist ^= ZOBRIST.get_rn_piece(promoted_piece.ptype(), dest);
+        } else {
+            //move the source piece to the destination (if promotion the source piece is already removed and promoted)
             self.update_bb(source_piece, source, false);
             new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), source);
             self.update_bb(source_piece, dest, true);
             new_zobrist ^= ZOBRIST.get_rn_piece(source_piece.ptype(), dest);
+        }
 
         //handling king
         if source_piece.ptype() == PieceType::King {
@@ -380,6 +381,7 @@ impl Board {
         let source = mov.source();
         let dest = mov.dest();
         let move_flag = mov.flag();
+        let color = self.side_to_move;
 
         let moved_piece = self
             .get_sq_piece(dest)
@@ -390,15 +392,16 @@ impl Board {
 
         //undo promotions ERROR TODO
         if let Some(promotion_type) = move_flag.promotion_type() {
-            let promoted_piece = promotion_type.as_colored_piece(self.side_to_move);
-            self.update_bb(promoted_piece, dest, false)
+            let promoted_piece = promotion_type.as_colored_piece(color);
+            self.update_bb(promoted_piece, source, false);
+            self.update_bb(PieceType::Pawn.as_colored_piece(color), source, true);
         }
 
         //undo captures and en passant
         if let Some(captured_piece) = captured_piece {
-            let captured_piece = captured_piece.as_colored_piece(self.side_to_move.opposite());
+            let captured_piece = captured_piece.as_colored_piece(color.opposite());
             if move_flag.is_en_passant() {
-                let captured_sq = dest - self.side_to_move.perspective() * 8;
+                let captured_sq = dest - color.perspective() * 8;
                 self.update_bb(captured_piece, captured_sq, true);
             } else {
                 self.update_bb(captured_piece, dest, true);
@@ -407,8 +410,8 @@ impl Board {
 
         //undo castling
         if let Some(castle_type) = move_flag.castle_side() {
-            let (rook_source, rook_dest) = castle_type.get_rook_positions(self.side_to_move);
-            let rook = PieceType::Rook.as_colored_piece(self.side_to_move);
+            let (rook_source, rook_dest) = castle_type.get_rook_positions(color);
+            let rook = PieceType::Rook.as_colored_piece(color);
             self.update_bb(rook, rook_dest, false);
             self.update_bb(rook, rook_source, true);
         }
