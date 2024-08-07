@@ -577,10 +577,9 @@ impl MoveGeneration {
             let horizontal_rook_attack = BitBoard::from(rank_attack_ray & enemy_without_pawn)
                 .get_occupied()
                 .any(|square| {
-                    board
-                        .get_sq_piece(square)
-                        .map(|piece| matches!(piece.ptype(), PieceType::Rook | PieceType::Queen))
-                        .is_some()
+                    let piece = board.get_sq_piece(square).map(|piece| piece.ptype());
+
+                    piece == Some(PieceType::Rook) || piece == Some(PieceType::Queen)
                 });
 
             //if there is a rook or queen attacking the king, the en passant is invalid
