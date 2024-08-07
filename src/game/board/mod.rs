@@ -10,7 +10,7 @@ use bit_board::BitBoard;
 use board_error::{FENError, UndoMoveError};
 use board_state::BoardState;
 use fen_utility::FENUtility;
-use log::{error, info};
+use log::error;
 use move_gen::MoveGeneration;
 use zobrist::ZOBRIST;
 
@@ -50,6 +50,7 @@ impl std::fmt::Debug for Board {
         writeln!(f, "Side to move: {}", self.side_to_move)?;
         writeln!(f, "Ply count: {}", self.ply_count)?;
         writeln!(f, "Current State: {:?}", self.current_state)?;
+        writeln!(f, "Previous States count: {:?}", self.previous_states.len())?;
         writeln!(
             f,
             "Repetition History count: {:?}",

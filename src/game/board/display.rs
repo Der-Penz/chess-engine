@@ -33,6 +33,12 @@ impl BoardDisplay {
 
         ascii_string.push_str("  a   b   c   d   e   f   g   h");
         ascii_string.push_str("\n\n");
+
+        ascii_string.push_str(&format!("{:?} to move\n", board.side_to_move));
+        ascii_string.push_str(&format!(
+            "Castling rights: {:?}\n",
+            board.current_state.castling_rights
+        ));
         ascii_string.push_str(&format!("FEN: {}\n", board.to_fen()));
         ascii_string.push_str(&format!("Zobrist: {}", board.current_state.zobrist));
 
