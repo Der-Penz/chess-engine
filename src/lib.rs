@@ -41,7 +41,9 @@ pub fn perft(depth: u8, board: &mut Board) -> Vec<(Move, MoveCounter)> {
             .make_move(mov, false, false)
             .expect("Move generation should generate only legal moves");
         let mut counter = MoveCounter::default();
-        counter.add_details(board, mov);
+        if depth == 1 {
+            counter.add_details(board, mov);
+        }
         counter += perft_depth(depth - 1, board);
         board
             .undo_move(mov, false)
@@ -63,7 +65,9 @@ fn perft_depth(depth: u8, board: &mut Board) -> MoveCounter {
         board
             .make_move(mov, false, false)
             .expect("Move generation should generate only legal moves");
-        counter.add_details(board, mov);
+        if depth == 1 {
+            counter.add_details(board, mov);
+        }
         counter += perft_depth(depth - 1, board);
         board
             .undo_move(mov, false)
