@@ -156,5 +156,8 @@ impl MoveCounter {
         if board.cur_state().captured_piece.is_some() {
             self.captures += 1;
         }
+        if board.in_check() {
+            self.checks += 1;
+        }
     }
 }
