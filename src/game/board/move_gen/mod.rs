@@ -1,3 +1,4 @@
+pub mod magic;
 mod test;
 use attack_pattern::direction_mask::ALIGN_MASKS;
 

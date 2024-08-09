@@ -6,6 +6,8 @@ use thiserror::Error;
 pub struct Square(u8);
 
 impl Square {
+    pub const NUM: usize = 64;
+
     pub fn new(square: u8) -> Square {
         if square < 64 {
             Square(square)
@@ -53,6 +55,17 @@ impl Square {
 
     pub fn square_value(&self) -> u8 {
         self.0
+    }
+
+    pub fn try_offset(self, file_offset: i8, rank_offset: i8) -> Option<Square> {
+        let new_file = self.file() as i8 + file_offset;
+        let new_rank = self.rank() as i8 + rank_offset;
+
+        if new_file >= 0 && new_file < 8 && new_rank >= 0 && new_rank < 8 {
+            Some(Square::new((new_file + new_rank * 8) as u8))
+        } else {
+            None
+        }
     }
 }
 

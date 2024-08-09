@@ -3,6 +3,7 @@ pub mod bishop;
 pub mod king;
 pub mod knight;
 pub mod lookup_table;
+pub mod magic;
 pub mod pawn;
 pub mod rook;
 

@@ -18,6 +18,10 @@ name = "uci"
 path = "src/bin/uci.rs"
 required-features = ["log_to_file"]
 
+[[bin]]
+name = "find_magic"
+path = "src/bin/find_magic.rs"
+
 [features]
 log_to_file = []
 default = []
