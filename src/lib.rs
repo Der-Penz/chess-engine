@@ -5,7 +5,12 @@ use game::{board::move_gen::MoveGeneration, Board, Move};
 #[cfg(feature = "log_to_file")]
 use log::info;
 use log::LevelFilter;
-use std::io::Write;
+use std::{
+    io::Write,
+    sync::{Arc, Mutex},
+    thread,
+};
+use threadpool::ThreadPool;
 
 pub fn init_logging() {
     #[cfg(not(feature = "log_to_file"))]
@@ -29,29 +34,54 @@ pub fn init_logging() {
     }
 }
 
-pub fn perft(depth: u8, board: &mut Board) -> Vec<(Move, MoveCounter)> {
+pub fn perft(depth: u8, board: &mut Board, multithreaded: bool) -> Vec<(Move, MoveCounter)> {
     if depth == 0 {
         return vec![];
     }
     let move_list = MoveGeneration::generate_legal_moves(board);
-    let mut results = Vec::with_capacity(move_list.len());
-
-    for mov in move_list.iter() {
-        board
-            .make_move(mov, false, false)
-            .expect("Move generation should generate only legal moves");
-        let mut counter = MoveCounter::default();
-        if depth == 1 {
-            counter.add_details(board, mov);
+    let mut results = Arc::new(Mutex::new(Vec::with_capacity(move_list.len())));
+    let pool = ThreadPool::new(thread::available_parallelism().unwrap().into());
+    for mov in move_list.clone().iter() {
+        let mov = mov.clone();
+        if multithreaded {
+            let mut board_clone = board.clone();
+            let results = Arc::clone(&results);
+            pool.execute(move || {
+                let mut counter = MoveCounter::default();
+                board_clone
+                    .make_move(&mov, false, false)
+                    .expect("Move generation should generate only legal moves");
+                if depth == 1 {
+                    counter.add_details(&board_clone, &mov);
+                }
+                counter += perft_depth(depth - 1, &mut board_clone);
+                board_clone
+                    .undo_move(&mov, false)
+                    .expect("Undo move should be valid");
+                results.lock().unwrap().push((mov, counter));
+            });
+        } else {
+            let mut counter = MoveCounter::default();
+            board
+                .make_move(&mov, false, false)
+                .expect("Move generation should generate only legal moves");
+            if depth == 1 {
+                counter.add_details(board, &mov);
+            }
+            counter += perft_depth(depth - 1, board);
+            board
+                .undo_move(&mov, false)
+                .expect("Undo move should be valid");
+            results.lock().unwrap().push((mov, counter));
         }
-        counter += perft_depth(depth - 1, board);
-        board
-            .undo_move(mov, false)
-            .expect("Undo move should be valid");
-        results.push((*mov, counter));
     }
 
-    results
+    if multithreaded {
+        pool.join();
+    }
+
+    let x = results.lock().unwrap().clone();
+    x
 }
 
 fn perft_depth(depth: u8, board: &mut Board) -> MoveCounter {

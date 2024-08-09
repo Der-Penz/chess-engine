@@ -639,6 +639,8 @@ fn add_pawn_moves(moves: &mut MoveList, source: Square, dest: u64, color: Color)
 
 const MAX_NUMBER_OF_MOVES_PER_POSITION: usize = 218;
 type MoveListArray = [Move; MAX_NUMBER_OF_MOVES_PER_POSITION];
+
+#[derive(Debug, Clone, Copy)]
 pub struct MoveList {
     moves: MoveListArray,
     count: usize,

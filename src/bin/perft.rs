@@ -42,23 +42,25 @@ fn main() {
         Board::default()
     };
 
+    let multithreaded = true;
+
     match mode {
         PerftMode::NodeCount => {
-            let perft_result = perft(depth, &mut board);
+            let perft_result = perft(depth, &mut board, multithreaded);
             let node_count = perft_result
                 .iter()
                 .fold(0, |acc, (_, counter)| acc + counter.count);
             println!("Total nodes: {}", node_count);
         }
         PerftMode::Divide => {
-            let perft_result = perft(depth, &mut board);
+            let perft_result = perft(depth, &mut board, multithreaded);
             for (mov, counter) in perft_result.iter() {
                 println!("{}: {}", mov, counter.count);
             }
         }
         PerftMode::DivideDetailed => {
             let start = std::time::Instant::now();
-            let perft_result = perft(depth, &mut board);
+            let perft_result = perft(depth, &mut board, multithreaded);
             let elapsed = start.elapsed();
             for (mov, counter) in perft_result.iter() {
                 println!("{}: {}", mov, counter);
@@ -81,7 +83,7 @@ fn main() {
         PerftMode::EachDepth => {
             for depth in 0..=depth {
                 let start = std::time::Instant::now();
-                let perft_result = perft(depth, &mut board);
+                let perft_result = perft(depth, &mut board, multithreaded);
                 let elapsed = start.elapsed();
                 let total = perft_result
                     .iter()

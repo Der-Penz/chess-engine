@@ -22,7 +22,7 @@ fn test_position() {
     let mut correct = 0;
     for test in &tests {
         let mut board = Board::from_fen(&test.fen).unwrap();
-        let nodes = perft(test.depth, &mut board);
+        let nodes = perft(test.depth, &mut board, false);
 
         let nodes = nodes
             .iter()
@@ -68,7 +68,7 @@ fn initial_position_perft() {
     let depth = 5;
     for depth in 0..=depth {
         let mut board = Board::default();
-        let nodes = perft(depth, &mut board);
+        let nodes = perft(depth, &mut board, false);
 
         let nodes = nodes
             .iter()
