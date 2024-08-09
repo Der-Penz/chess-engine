@@ -39,7 +39,7 @@ pub fn perft(depth: u8, board: &mut Board, multithreaded: bool) -> Vec<(Move, Mo
         return vec![];
     }
     let move_list = MoveGeneration::generate_legal_moves(board);
-    let mut results = Arc::new(Mutex::new(Vec::with_capacity(move_list.len())));
+    let results = Arc::new(Mutex::new(Vec::with_capacity(move_list.len())));
     let pool = ThreadPool::new(thread::available_parallelism().unwrap().into());
     for mov in move_list.clone().iter() {
         let mov = mov.clone();
