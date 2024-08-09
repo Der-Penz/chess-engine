@@ -42,7 +42,7 @@ fn main() {
         Board::default()
     };
 
-    let multithreaded = true;
+    let multithreaded = false;
 
     match mode {
         PerftMode::NodeCount => {
@@ -75,7 +75,7 @@ fn main() {
                 println!("Sum:  {}", total);
                 let node_count = total.count;
                 let nodes_per_second = node_count as f64 / elapsed.as_secs_f64();
-                println!("Time taken: {:.3?} s", elapsed.as_secs());
+                println!("Time taken: {:.3?} s", elapsed.as_secs_f64());
                 println!("Nodes per second: {:.*} N/s", 0, nodes_per_second);
                 std::io::stdout().flush().unwrap();
             }
@@ -93,7 +93,7 @@ fn main() {
                     print!("Depth {}:  {}", depth, total);
                     let node_count = total.count;
                     let nodes_per_second = node_count as f64 / elapsed.as_secs_f64();
-                    print!(" | Time taken: {:.3?} s", elapsed.as_secs());
+                    print!(" | Time taken: {:.3?} s", elapsed.as_secs_f64());
                     print!(" | Nodes per second: {:.*} N/s", 0, nodes_per_second);
                     println!();
                 }
