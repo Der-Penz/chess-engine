@@ -398,14 +398,14 @@ impl MoveGeneration {
 
         //Sliding attacks
         for sq in board.get_piece_positions(PieceType::Bishop.as_colored_piece(enemy_color)) {
-            danger_squares |= Self::attacks_bishop(sq, bb_enemies, bb_allies_without_king);
+            danger_squares |= Self::attacks_bishop(sq, bb_enemies | bb_allies_without_king, 0);
         }
         for sq in board.get_piece_positions(PieceType::Rook.as_colored_piece(enemy_color)) {
-            danger_squares |= Self::attacks_rook(sq, bb_enemies, bb_allies_without_king);
+            danger_squares |= Self::attacks_rook(sq, bb_enemies | bb_allies_without_king, 0);
         }
         for sq in board.get_piece_positions(PieceType::Queen.as_colored_piece(enemy_color)) {
-            danger_squares |= Self::attacks_bishop(sq, bb_enemies, bb_allies_without_king);
-            danger_squares |= Self::attacks_rook(sq, bb_enemies, bb_allies_without_king);
+            danger_squares |= Self::attacks_bishop(sq, bb_enemies | bb_allies_without_king, 0);
+            danger_squares |= Self::attacks_rook(sq, bb_enemies | bb_allies_without_king, 0);
         }
 
         danger_squares
