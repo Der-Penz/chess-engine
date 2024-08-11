@@ -391,30 +391,6 @@ impl MoveGeneration {
     }
 }
 
-/// returns a mask of squares between two squares in vertical or horizontal direction
-/// If the squares are not in the same rank or file, the mask will be invalid and should not be used
-fn sq_betweens_rook_rays(first: Square, second: Square) -> u64 {
-    let first_mask = first.to_mask();
-    let second_mask = second.to_mask();
-    let mut ray_first = attack_pattern::rook_attacks_vertical(0, second_mask, first);
-    ray_first |= attack_pattern::rook_attacks_horizontal(0, second_mask, first);
-    let mut ray_second = attack_pattern::rook_attacks_vertical(0, first_mask, second);
-    ray_second |= attack_pattern::rook_attacks_horizontal(0, first_mask, second);
-    ray_first & ray_second
-}
-
-/// returns a mask of squares between two squares in diagonal or anti-diagonal direction
-/// If the squares are not in the same rank or file, the mask will be invalid and should not be used
-fn sq_betweens_bishop_rays(first: Square, second: Square) -> u64 {
-    let first_mask = first.to_mask();
-    let second_mask = second.to_mask();
-    let mut ray_first = attack_pattern::bishop_attacks_main(0, second_mask, first);
-    ray_first |= attack_pattern::bishop_attacks_anti(0, second_mask, first);
-    let mut ray_second = attack_pattern::bishop_attacks_main(0, first_mask, second);
-    ray_second |= attack_pattern::bishop_attacks_anti(0, first_mask, second);
-    ray_first & ray_second
-}
-
 /// Adds pawn moves to the move list for a given source and destination square
 /// handles promotions as well
 fn add_pawn_moves(moves: &mut MoveList, source: Square, dest: u64, color: Color) {

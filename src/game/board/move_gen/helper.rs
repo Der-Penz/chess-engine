@@ -1,10 +1,13 @@
 use crate::game::{
-    bit_manipulation::{north_east, north_west, south_east, south_west},
+    bit_manipulation::{bit_scan_lsb, drop_lsb, north_east, north_west, south_east, south_west},
     board::bit_board::BitBoard,
     Board, Color, PieceType, Square,
 };
 
-use super::{attack_pattern, sq_betweens_bishop_rays, sq_betweens_rook_rays, MoveGeneration};
+use super::{
+    attack_pattern::{self, direction_mask::CONNECTION_MASK},
+    MoveGeneration,
+};
 
 /// Data used for move generation.
 /// Helper struct to avoid passing multiple arguments to the functions. and to avoid recomputing the same values.
@@ -186,9 +189,6 @@ impl MoveGenerationMasks {
 
     //must be called after calculate_king_danger to have the checkers mask available
     pub fn calculate_push_and_capture(&mut self, data: &MoveGenerationData, board: &Board) {
-        self.capture_mask = 0xFFFFFFFFFFFFFFFFu64;
-        self.push_mask = 0xFFFFFFFFFFFFFFFFu64;
-
         //if only one check is present, we can capture the checking piece or block the check
         if self.in_check && !self.multi_check {
             self.capture_mask = self.checkers;
@@ -196,21 +196,18 @@ impl MoveGenerationMasks {
             //if we are in check by a sliding piece, we can block the check
             if (*board.bb_sliders[data.color_opp] & self.checkers) != 0 {
                 //calculate the squares between the king and the checker
-                let check_sq = BitBoard::from(self.checkers).drop_lowest_bit();
-
-                let same_file_or_rank = check_sq.file() == data.king_sq.file()
-                    || check_sq.rank() == data.king_sq.rank();
-
-                //TODO could maybe be made faster with with the help of direction masks
-                self.push_mask = if same_file_or_rank {
-                    sq_betweens_rook_rays(check_sq, data.king_sq)
-                } else {
-                    sq_betweens_bishop_rays(check_sq, data.king_sq)
-                };
+                self.push_mask =
+                    CONNECTION_MASK[bit_scan_lsb(self.checkers) as usize][data.king_sq];
             } else {
                 //if we are in check by a non-sliding piece, we can only capture the piece
                 self.push_mask = 0;
             }
+        } else if self.multi_check {
+            self.push_mask = 0;
+            self.capture_mask = 0;
+        } else {
+            self.capture_mask = 0xFFFFFFFFFFFFFFFFu64;
+            self.push_mask = 0xFFFFFFFFFFFFFFFFu64;
         }
 
         self.push_capture_mask = self.push_mask | self.capture_mask;
