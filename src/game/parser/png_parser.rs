@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::game::{
-    board::move_gen::MoveGeneration, castle_rights::CastleType, Board, Move, PieceType, Square,
+    board::move_gen::MoveGeneration, castle_rights::CastleType, Board, Move, PieceType,
 };
 
 pub struct PGNParser();
@@ -188,7 +188,7 @@ impl PGNParser {
 }
 
 #[derive(Error, Debug)]
-enum ToSANError {
+pub enum ToSANError {
     #[error("Move is not a legal move from this position")]
     InvalidMove,
     #[error("Error making move")]
@@ -198,7 +198,7 @@ enum ToSANError {
 }
 
 #[derive(Error, Debug)]
-enum FromSANError {
+pub enum FromSANError {
     #[error("Move is not a legal move from this position")]
     InvalidMove,
 }

@@ -1,11 +1,10 @@
 use crate::game::{
-    bit_manipulation::{bit_scan_lsb, drop_lsb, north_east, north_west, south_east, south_west},
-    board::bit_board::BitBoard,
+    bit_manipulation::{bit_scan_lsb, north_east, north_west, south_east, south_west},
     Board, Color, PieceType, Square,
 };
 
 use super::{
-    attack_pattern::{self, direction_mask::CONNECTION_MASK},
+    attack_pattern::direction_mask::CONNECTION_MASK,
     magic::{get_bishop_moves, get_rook_moves},
     MoveGeneration,
 };
