@@ -44,13 +44,10 @@ fn init_lookup_table(slider: &Slider) -> LookUpTable {
     let mut attack_table: LookUpTable = [EMPTY; 64];
 
     let size = if *slider == Slider::ROOK {
-        println!("rook");
         ROOK_TABLE_SIZE
     } else {
-        println!("BISHOP");
         BISHOP_TABLE_SIZE
     };
-    println!("init");
     for square in Square::iter_ah_18() {
         attack_table[square].resize(size, BitBoard::default());
 
@@ -74,6 +71,5 @@ fn init_lookup_table(slider: &Slider) -> LookUpTable {
             }
         }
     }
-    println!("init done");
     attack_table
 }
