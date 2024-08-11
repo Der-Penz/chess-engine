@@ -73,3 +73,8 @@ fn init_lookup_table(slider: &Slider) -> LookUpTable {
     }
     attack_table
 }
+
+pub fn lazy_static_attack_table_init() {
+    lazy_static::initialize(&BISHOP_ATTACKS);
+    lazy_static::initialize(&ROOK_ATTACKS);
+}

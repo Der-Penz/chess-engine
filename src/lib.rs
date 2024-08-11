@@ -1,7 +1,10 @@
 pub mod game;
 pub mod uci;
 
-use game::{board::move_gen::MoveGeneration, Board, Move};
+use game::{
+    board::move_gen::{magic::lazy_static_attack_table_init, MoveGeneration},
+    Board, Move,
+};
 #[cfg(feature = "log_to_file")]
 use log::info;
 use log::LevelFilter;
@@ -12,7 +15,9 @@ use std::{
 };
 use threadpool::ThreadPool;
 
-pub fn init_logging() {
+pub fn init() {
+    lazy_static_attack_table_init();
+
     #[cfg(not(feature = "log_to_file"))]
     {
         env_logger::builder()

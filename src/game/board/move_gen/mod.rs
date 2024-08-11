@@ -242,26 +242,18 @@ impl MoveGeneration {
 
     #[inline(always)]
     pub fn attacks_rook(sq: Square, enemy: u64, ally: u64) -> u64 {
-        let mut attacks = 0;
-        attacks |= attack_pattern::rook_attacks_vertical(enemy, ally, sq);
-        attacks |= attack_pattern::rook_attacks_horizontal(enemy, ally, sq);
-        attacks
+        (*magic::get_rook_moves(sq, enemy | ally)) & !ally
     }
 
     #[inline(always)]
     pub fn attacks_bishop(sq: Square, enemy: u64, ally: u64) -> u64 {
-        let mut attacks = 0;
-        attacks |= attack_pattern::bishop_attacks_main(enemy, ally, sq);
-        attacks |= attack_pattern::bishop_attacks_anti(enemy, ally, sq);
-        attacks
+        (*magic::get_bishop_moves(sq, enemy | ally)) & !ally
     }
 
     #[inline(always)]
     pub fn attacks_queen(sq: Square, enemy: u64, ally: u64) -> u64 {
-        let mut attacks = 0;
-        attacks |= Self::attacks_rook(sq, enemy, ally);
-        attacks |= Self::attacks_bishop(sq, enemy, ally);
-        attacks
+        ((*magic::get_bishop_moves(sq, enemy | ally)) & !ally)
+            | ((*magic::get_rook_moves(sq, enemy | ally)) & !ally)
     }
 
     #[inline(always)]

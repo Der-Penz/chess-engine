@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use chess_bot::{game::Board, init_logging, perft};
+use chess_bot::{game::Board, init, perft};
 
 enum PerftMode {
     NodeCount,
@@ -22,7 +22,7 @@ impl From<&str> for PerftMode {
 }
 
 fn main() {
-    init_logging();
+    init();
     let args: Vec<String> = std::env::args().collect();
 
     let depth = args
