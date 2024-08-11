@@ -155,7 +155,7 @@ const fn generate_connection_masks() -> [[u64; 64]; 64] {
                 while i < 8 {
                     let (file_new, rank_new) = (file_smaller, rank_smaller + i);
 
-                    if rank_new < 8 && rank_new <= rank_larger {
+                    if rank_new < 8 && rank_new < rank_larger {
                         let coord = (rank_new * 8 + file_new) as usize;
                         connection_masks[square_a as usize][square_b as usize] |= 1u64 << coord;
                     } else {
@@ -170,7 +170,7 @@ const fn generate_connection_masks() -> [[u64; 64]; 64] {
                 while i < 8 {
                     let (file_new, rank_new) = (file_smaller + i, rank_smaller);
 
-                    if file_new < 8 && file_new <= file_larger {
+                    if file_new < 8 && file_new < file_larger {
                         let coord = (rank_new * 8 + file_new) as usize;
                         connection_masks[square_a as usize][square_b as usize] |= 1u64 << coord;
                     } else {
@@ -191,8 +191,8 @@ const fn generate_connection_masks() -> [[u64; 64]; 64] {
 
                         if file_new >= 0
                             && rank_new < 8
-                            && file_new >= file_larger
-                            && rank_new <= rank_larger
+                            && file_new > file_larger
+                            && rank_new < rank_larger
                         {
                             let coord = (rank_new * 8 + file_new) as usize;
                             connection_masks[square_a as usize][square_b as usize] |= 1u64 << coord;
@@ -207,8 +207,8 @@ const fn generate_connection_masks() -> [[u64; 64]; 64] {
 
                         if file_new < 8
                             && rank_new < 8
-                            && file_new <= file_larger
-                            && rank_new <= rank_larger
+                            && file_new < file_larger
+                            && rank_new < rank_larger
                         {
                             let coord = (rank_new * 8 + file_new) as usize;
                             connection_masks[square_a as usize][square_b as usize] |= 1u64 << coord;

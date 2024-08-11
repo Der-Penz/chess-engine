@@ -426,6 +426,10 @@ impl std::default::Default for MoveList {
 
 impl MoveList {
     pub fn add_move(&mut self, m: Move) {
+        if self.count == MAX_NUMBER_OF_MOVES_PER_POSITION {
+            return;
+        }
+
         self.moves[self.count] = m;
         self.count += 1;
     }
@@ -477,7 +481,7 @@ impl MoveList {
 
 impl std::fmt::Display for MoveList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Moves: ")?;
+        write!(f, "{} Moves: ", self.count)?;
         for m in self.iter() {
             write!(f, "{}, ", m)?;
         }

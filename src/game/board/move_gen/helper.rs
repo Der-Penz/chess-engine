@@ -6,6 +6,7 @@ use crate::game::{
 
 use super::{
     attack_pattern::{self, direction_mask::CONNECTION_MASK},
+    magic::{get_bishop_moves, get_rook_moves},
     MoveGeneration,
 };
 
@@ -144,44 +145,32 @@ impl MoveGenerationMasks {
     }
 
     pub fn calculate_pins(&mut self, data: &MoveGenerationData, board: &Board) {
-        //TODO could be faster if I use a table with the directions and & those to (king in direction) & (slider in opposite direction)
-        for sq in board.get_bb_rook_slider(data.color_opp).get_occupied() {
-            let slider_mask = sq.to_mask();
-            let slider_vertical = attack_pattern::rook_attacks_vertical(0, data.king_mask, sq);
-            let slider_horizontal = attack_pattern::rook_attacks_horizontal(0, data.king_mask, sq);
-            let king_vertical = attack_pattern::rook_attacks_vertical(0, slider_mask, data.king_sq);
-            let king_horizontal =
-                attack_pattern::rook_attacks_horizontal(0, slider_mask, data.king_sq);
-            let ray = king_vertical & slider_vertical;
-            if ray != 0 {
-                if (ray & data.ally).count_ones() == 1 && ray & data.enemy == 0 {
-                    self.orthogonal_pinned |= ray & data.ally;
-                }
-            }
-            let ray = king_horizontal & slider_horizontal;
-            if ray != 0 {
-                if (ray & data.ally).count_ones() == 1 && ray & data.enemy == 0 {
-                    self.orthogonal_pinned |= ray & data.ally;
-                }
-            }
-        }
+        for sq in board.bb_sliders[data.color_opp].get_occupied() {
+            let ray = CONNECTION_MASK[sq][data.king_sq];
 
-        for sq in board.get_bb_bishop_slider(data.color_opp).get_occupied() {
-            let slider_mask = sq.to_mask();
-            let slider_main = attack_pattern::bishop_attacks_main(0, data.king_mask, sq);
-            let slider_anti = attack_pattern::bishop_attacks_anti(0, data.king_mask, sq);
-            let king_main = attack_pattern::bishop_attacks_main(0, slider_mask, data.king_sq);
-            let king_anti = attack_pattern::bishop_attacks_anti(0, slider_mask, data.king_sq);
-            let ray = king_main & slider_main;
             if ray != 0 {
                 if (ray & data.ally).count_ones() == 1 && ray & data.enemy == 0 {
-                    self.diagonal_pinned |= ray & data.ally;
-                }
-            }
-            let ray = king_anti & slider_anti;
-            if ray != 0 {
-                if (ray & data.ally).count_ones() == 1 && ray & data.enemy == 0 {
-                    self.diagonal_pinned |= ray & data.ally;
+                    match board.get_sq_piece_variation(sq) {
+                        Some(PieceType::Rook) => {
+                            if *get_rook_moves(sq, 0) & ray != 0 {
+                                self.orthogonal_pinned |= ray & data.ally;
+                            }
+                        }
+                        Some(PieceType::Bishop) => {
+                            if *get_bishop_moves(sq, 0) & ray != 0 {
+                                self.diagonal_pinned |= ray & data.ally;
+                            }
+                        }
+                        Some(PieceType::Queen) => {
+                            if *get_rook_moves(sq, 0) & ray != 0 {
+                                self.orthogonal_pinned |= ray & data.ally;
+                            } else if *get_bishop_moves(sq, 0) & ray != 0 {
+                                self.diagonal_pinned |= ray & data.ally;
+                            }
+                        }
+                        Some(other) => panic!("{} is not a slider", other),
+                        None => panic!("on {} must be a piece", sq),
+                    };
                 }
             }
         }
