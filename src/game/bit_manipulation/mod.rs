@@ -47,6 +47,15 @@ const DEBRUIJN_INDEX_64: [u8; 64] = [
 ];
 
 #[inline(always)]
+/// get the least significant bit as a Square and remove it from the bit board
+/// Fails if the bit board is empty
+pub fn drop_lsb(bb: &mut u64) -> Square {
+    let lsb = bit_scan_lsb(*bb);
+    *bb = ls_bit_reset(*bb);
+    Square::new(lsb)
+}
+
+#[inline(always)]
 /// Mirrors the bit board horizontally
 pub fn mirror_horizontal(bb: u64) -> u64 {
     let mut bb = bb;

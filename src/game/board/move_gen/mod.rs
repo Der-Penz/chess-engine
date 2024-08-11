@@ -5,6 +5,7 @@ use attack_pattern::direction_mask::ALIGN_MASKS;
 use helper::{MoveGenerationData, MoveGenerationMasks};
 
 use crate::game::{
+    bit_manipulation::drop_lsb,
     castle_rights::{CastleRights, CastleType},
     color::Color,
     move_notation::{Move, MoveFlag},
@@ -29,6 +30,7 @@ impl MoveGeneration {
 
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
         let king_moves = Self::attacks_king(data.king_sq, data.ally) & !masks.king_danger;
+
         legal_moves.create_and_add_moves(data.king_sq, king_moves, MoveFlag::Normal);
         if masks.multi_check {
             return legal_moves;
@@ -461,9 +463,15 @@ impl MoveList {
     }
 
     pub fn create_and_add_moves(&mut self, source: Square, moves: u64, flag: MoveFlag) {
-        BitBoard::from(moves).get_occupied().for_each(|dest| {
+        let mut moves = moves;
+        loop {
+            if moves == 0 {
+                break;
+            }
+
+            let dest = drop_lsb(&mut moves);
             self.add_move(Move::new(source, dest, flag));
-        });
+        }
     }
 
     pub fn len(&self) -> usize {
