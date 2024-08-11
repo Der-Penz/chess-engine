@@ -1,9 +1,10 @@
+mod helper;
 pub mod magic;
 mod test;
 use attack_pattern::direction_mask::ALIGN_MASKS;
+use helper::{MoveGenerationData, MoveGenerationMasks};
 
 use crate::game::{
-    bit_manipulation::{north_east, north_west, south_east, south_west},
     castle_rights::{CastleRights, CastleType},
     color::Color,
     move_notation::{Move, MoveFlag},
@@ -21,59 +22,42 @@ impl MoveGeneration {
     pub fn generate_legal_moves(board: &Board) -> MoveList {
         let mut legal_moves = MoveList::default();
 
-        let color = board.side_to_move();
-        let ally = *board.get_bb_occupied(color);
-        let enemy = *board.get_bb_occupied(color.opposite());
-        let bb_king = *board.get_bb_for(PieceType::King.as_colored_piece(color));
-        let king_sq = board.get_king_pos(color);
+        let data = MoveGenerationData::from_board(&board);
+        let mut masks = MoveGenerationMasks::default();
 
-        let king_danger_squares =
-            Self::generate_king_danger_squares(ally, enemy, bb_king, color, &board);
-
-        let in_check = (king_danger_squares & king_sq.to_mask()) != 0;
-
-        //calculate checkers
-        let checkers = if !in_check {
-            0
-        } else {
-            Self::generate_checkers(king_sq, color, board)
-        };
-
-        let multi_check = checkers.count_ones() > 1;
+        masks.calculate_king_danger(&data, &board);
 
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
-        let king_moves = Self::attacks_king(king_sq, ally) & !king_danger_squares;
-        legal_moves.create_and_add_moves(king_sq, king_moves, MoveFlag::Normal);
-        if multi_check {
+        let king_moves = Self::attacks_king(data.king_sq, data.ally) & !masks.king_danger;
+        legal_moves.create_and_add_moves(data.king_sq, king_moves, MoveFlag::Normal);
+        if masks.multi_check {
             return legal_moves;
         }
 
-        let (_pin_move_mask, straight_pinned_pieces, diagonal_pinned_pieces) =
-            Self::generate_pins(king_sq, ally, enemy, color.opposite(), board);
-        let (push_mask, capture_mask) =
-            Self::generate_push_and_capture_mask(in_check, checkers, king_sq, board);
+        masks.calculate_pins(&data, board);
+        masks.calculate_push_and_capture(&data, board);
 
         //calculate moves for pinned pieces
-        if !in_check {
-            for sq in BitBoard::from(straight_pinned_pieces).get_occupied() {
+        if !masks.in_check {
+            for sq in BitBoard::from(masks.orthogonal_pinned).get_occupied() {
                 let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
-                let pin_move_mask =
-                    ALIGN_MASKS[sq.square_value() as usize][king_sq.square_value() as usize];
+                let pin_move_mask = ALIGN_MASKS[sq][data.king_sq];
 
                 match piece.ptype() {
                     PieceType::Pawn => {
-                        let double_push = Self::moves_pawn_double_push(sq, enemy, ally, color);
+                        let double_push =
+                            Self::moves_pawn_double_push(sq, data.enemy, data.ally, data.color);
                         legal_moves.create_and_add_moves(
                             sq,
                             double_push & pin_move_mask,
                             MoveFlag::DoublePawnPush,
                         );
-                        let pawn_move = Self::moves_pawn(sq, enemy, ally, color);
-                        add_pawn_moves(&mut legal_moves, sq, pawn_move & pin_move_mask, color);
+                        let pawn_move = Self::moves_pawn(sq, data.enemy, data.ally, data.color);
+                        add_pawn_moves(&mut legal_moves, sq, pawn_move & pin_move_mask, data.color);
                     }
                     //if queen is straight pinned, it can only move straight
                     PieceType::Rook | PieceType::Queen => {
-                        let moves = Self::attacks_rook(sq, enemy, ally);
+                        let moves = Self::attacks_rook(sq, data.enemy, data.ally);
                         legal_moves.create_and_add_moves(
                             sq,
                             moves & pin_move_mask,
@@ -84,20 +68,19 @@ impl MoveGeneration {
                     PieceType::King => panic!("King can't be pinned"),
                 };
             }
-            for sq in BitBoard::from(diagonal_pinned_pieces).get_occupied() {
+            for sq in BitBoard::from(masks.diagonal_pinned).get_occupied() {
                 let piece = board.get_sq_piece(sq).expect("Pinned piece must exist");
-                let pin_move_mask =
-                    ALIGN_MASKS[sq.square_value() as usize][king_sq.square_value() as usize];
+                let pin_move_mask = ALIGN_MASKS[sq][data.king_sq];
 
                 match piece.ptype() {
                     PieceType::Pawn => {
                         let en_passant = Self::attacks_pawn_en_passant(
                             sq,
-                            color,
+                            data.color,
                             board.cur_state().en_passant.as_ref(),
-                            king_sq,
-                            enemy,
-                            ally,
+                            data.king_sq,
+                            data.enemy,
+                            data.ally,
                             board,
                         );
                         legal_moves.create_and_add_moves(
@@ -105,12 +88,12 @@ impl MoveGeneration {
                             en_passant & pin_move_mask,
                             MoveFlag::EnPassant,
                         );
-                        let attacks = Self::attacks_pawn(sq, enemy, ally, color);
-                        add_pawn_moves(&mut legal_moves, sq, attacks & pin_move_mask, color);
+                        let attacks = Self::attacks_pawn(sq, data.enemy, data.ally, data.color);
+                        add_pawn_moves(&mut legal_moves, sq, attacks & pin_move_mask, data.color);
                     }
                     //if queen is diagonal pinned, it can only move diagonally
                     PieceType::Bishop | PieceType::Queen => {
-                        let moves = Self::attacks_bishop(sq, enemy, ally);
+                        let moves = Self::attacks_bishop(sq, data.enemy, data.ally);
                         legal_moves.create_and_add_moves(
                             sq,
                             moves & pin_move_mask,
@@ -124,8 +107,7 @@ impl MoveGeneration {
         }
 
         //calculate moves for non-pinned pieces
-        let non_pinned = ally & !(straight_pinned_pieces | diagonal_pinned_pieces);
-
+        let non_pinned = data.ally & !(masks.diagonal_pinned | masks.orthogonal_pinned);
         for sq in BitBoard::from(non_pinned).get_occupied() {
             let piece = board
                 .get_sq_piece(sq)
@@ -133,99 +115,100 @@ impl MoveGeneration {
 
             match piece.ptype() {
                 PieceType::Pawn => {
-                    let pawn_move = Self::moves_pawn(sq, enemy, ally, color);
+                    let pawn_move = Self::moves_pawn(sq, data.enemy, data.ally, data.color);
                     add_pawn_moves(
                         &mut legal_moves,
                         sq,
-                        pawn_move & (push_mask | capture_mask),
-                        color,
+                        pawn_move & masks.push_capture_mask,
+                        data.color,
                     );
 
-                    let attacks = Self::attacks_pawn(sq, enemy, ally, color);
+                    let attacks = Self::attacks_pawn(sq, data.enemy, data.ally, data.color);
                     add_pawn_moves(
                         &mut legal_moves,
                         sq,
-                        attacks & (push_mask | capture_mask),
-                        color,
+                        attacks & masks.push_capture_mask,
+                        data.color,
                     );
 
-                    let double_push = Self::moves_pawn_double_push(sq, enemy, ally, color);
+                    let double_push =
+                        Self::moves_pawn_double_push(sq, data.enemy, data.ally, data.color);
                     legal_moves.create_and_add_moves(
                         sq,
-                        double_push & (push_mask | capture_mask),
+                        double_push & masks.push_capture_mask,
                         MoveFlag::DoublePawnPush,
                     );
                     let en_passant = Self::attacks_pawn_en_passant(
                         sq,
-                        color,
+                        data.color,
                         board.cur_state().en_passant.as_ref(),
-                        king_sq,
-                        enemy,
-                        ally,
+                        data.king_sq,
+                        data.enemy,
+                        data.ally,
                         board,
                     );
                     legal_moves.create_and_add_moves(
                         sq,
-                        en_passant & push_mask,
+                        en_passant & masks.push_mask,
                         MoveFlag::EnPassant,
                     );
                     if en_passant != 0 {
                         let en_passant_pawn = board.cur_state().en_passant.unwrap().square_value()
                             as i8
-                            - color.perspective() * 8;
+                            - data.color.perspective() * 8;
 
-                        if checkers & (1u64 << en_passant_pawn) != 0 {
+                        if masks.checkers & (1u64 << en_passant_pawn) != 0 {
                             legal_moves.create_and_add_moves(sq, en_passant, MoveFlag::EnPassant);
                         }
                     }
                 }
                 PieceType::Knight => {
-                    let moves = Self::attacks_knight(sq, ally);
+                    let moves = Self::attacks_knight(sq, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
-                        moves & (push_mask | capture_mask),
+                        moves & masks.push_capture_mask,
                         MoveFlag::Normal,
                     );
                 }
                 PieceType::Bishop => {
-                    let moves = Self::attacks_bishop(sq, enemy, ally);
+                    let moves = Self::attacks_bishop(sq, data.enemy, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
-                        moves & (push_mask | capture_mask),
+                        moves & masks.push_capture_mask,
                         MoveFlag::Normal,
                     );
                 }
                 PieceType::Rook => {
-                    let moves = Self::attacks_rook(sq, enemy, ally);
+                    let moves = Self::attacks_rook(sq, data.enemy, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
-                        moves & (push_mask | capture_mask),
+                        moves & masks.push_capture_mask,
                         MoveFlag::Normal,
                     );
                 }
                 PieceType::Queen => {
-                    let moves = Self::attacks_queen(sq, enemy, ally);
+                    let moves = Self::attacks_queen(sq, data.enemy, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
-                        moves & (push_mask | capture_mask),
+                        moves & masks.push_capture_mask,
                         MoveFlag::Normal,
                     );
                 }
                 PieceType::King => {
-                    if !in_check {
+                    if !masks.in_check {
                         if board
                             .cur_state()
                             .castling_rights
-                            .has(color, CastleType::KingSide)
+                            .has(data.color, CastleType::KingSide)
                         {
                             legal_moves.create_and_add_moves(
                                 sq,
                                 Self::moves_king_castle_king_side(
                                     sq,
-                                    enemy,
-                                    ally,
-                                    king_danger_squares,
-                                    color,
+                                    data.enemy,
+                                    data.ally,
+                                    masks.king_danger,
+                                    data.color,
                                 ),
                                 MoveFlag::KingSideCastle,
                             );
@@ -233,16 +216,16 @@ impl MoveGeneration {
                         if board
                             .cur_state()
                             .castling_rights
-                            .has(color, CastleType::QueenSide)
+                            .has(data.color, CastleType::QueenSide)
                         {
                             legal_moves.create_and_add_moves(
                                 sq,
                                 Self::moves_king_castle_queen_side(
                                     sq,
-                                    enemy,
-                                    ally,
-                                    king_danger_squares,
-                                    color,
+                                    data.enemy,
+                                    data.ally,
+                                    masks.king_danger,
+                                    data.color,
                                 ),
                                 MoveFlag::QueenSideCastle,
                             );
@@ -253,190 +236,6 @@ impl MoveGeneration {
         }
 
         legal_moves
-    }
-
-    fn generate_push_and_capture_mask(
-        in_check: bool,
-        checkers: u64,
-        king_sq: Square,
-        board: &Board,
-    ) -> (u64, u64) {
-        let mut capture_mask = 0xFFFFFFFFFFFFFFFFu64;
-        let mut push_mask = 0xFFFFFFFFFFFFFFFFu64;
-
-        //if only one check is present, we can capture the checking piece or block the check
-        if in_check {
-            capture_mask = checkers;
-
-            let check_sq = BitBoard::from(checkers)
-                .get_occupied()
-                .next()
-                .expect("Checkers board must not be empty if in check");
-            let check_piece = board
-                .get_sq_piece(check_sq)
-                .expect("Checker piece must be present if in check");
-
-            //check can only be blocked if it is a sliding piece
-            if check_piece.ptype().is_sliding_piece() {
-                //calculate the squares between the king and the checker
-                let same_file_or_rank =
-                    check_sq.file() == king_sq.file() || check_sq.rank() == king_sq.rank();
-
-                push_mask = if same_file_or_rank {
-                    sq_betweens_rook_rays(check_sq, king_sq)
-                } else {
-                    sq_betweens_bishop_rays(check_sq, king_sq)
-                };
-            } else {
-                push_mask = 0;
-            }
-        }
-        (push_mask, capture_mask)
-    }
-
-    fn generate_pins(
-        king_sq: Square,
-        ally: u64,
-        enemy: u64,
-        enemy_color: Color,
-        board: &Board,
-    ) -> (u64, u64, u64) {
-        let mut pin_move_mask = 0u64;
-        let mut straight_pinned_pieces = 0u64;
-        let mut diagonal_pinned_pieces = 0u64;
-
-        let king_mask = king_sq.to_mask();
-
-        //TODO could be faster if I use a table with the directions and & those to (king in direction) & (slider in opposite direction)
-        for sq in board.get_bb_rook_slider(enemy_color).get_occupied() {
-            let slider_mask = sq.to_mask();
-            let slider_vertical = attack_pattern::rook_attacks_vertical(0, king_mask, sq);
-            let slider_horizontal = attack_pattern::rook_attacks_horizontal(0, king_mask, sq);
-            let king_vertical = attack_pattern::rook_attacks_vertical(0, slider_mask, king_sq);
-            let king_horizontal = attack_pattern::rook_attacks_horizontal(0, slider_mask, king_sq);
-            let ray = king_vertical & slider_vertical;
-            if ray != 0 {
-                if (ray & ally).count_ones() == 1 && ray & enemy == 0 {
-                    straight_pinned_pieces |= ray & ally;
-                }
-                pin_move_mask |= ray | slider_mask;
-            }
-            let ray = king_horizontal & slider_horizontal;
-            if ray != 0 {
-                if (ray & ally).count_ones() == 1 && ray & enemy == 0 {
-                    straight_pinned_pieces |= ray & ally;
-                }
-                pin_move_mask |= ray | slider_mask;
-            }
-        }
-
-        for sq in board.get_bb_bishop_slider(enemy_color).get_occupied() {
-            let slider_mask = sq.to_mask();
-            let slider_main = attack_pattern::bishop_attacks_main(0, king_mask, sq);
-            let slider_anti = attack_pattern::bishop_attacks_anti(0, king_mask, sq);
-            let king_main = attack_pattern::bishop_attacks_main(0, slider_mask, king_sq);
-            let king_anti = attack_pattern::bishop_attacks_anti(0, slider_mask, king_sq);
-            let ray = king_main & slider_main;
-            if ray != 0 {
-                if (ray & ally).count_ones() == 1 && ray & enemy == 0 {
-                    diagonal_pinned_pieces |= ray & ally;
-                }
-                pin_move_mask |= ray | slider_mask;
-            }
-            let ray = king_anti & slider_anti;
-            if ray != 0 {
-                if (ray & ally).count_ones() == 1 && ray & enemy == 0 {
-                    diagonal_pinned_pieces |= ray & ally;
-                }
-                pin_move_mask |= ray | slider_mask;
-            }
-        }
-
-        (
-            pin_move_mask,
-            straight_pinned_pieces,
-            diagonal_pinned_pieces,
-        )
-    }
-
-    fn generate_king_danger_squares(
-        bb_allies: u64,
-        bb_enemies: u64,
-        bb_king: u64,
-        color: Color,
-        board: &Board,
-    ) -> u64 {
-        let mut danger_squares = 0u64;
-
-        let enemy_color = color.opposite();
-
-        //King attacks
-        danger_squares |= Self::attacks_king(board.get_king_pos(enemy_color), 0);
-
-        //Pawn attacks
-        let bb_pawns = *board.get_bb_for(PieceType::Pawn.as_colored_piece(enemy_color));
-        if enemy_color == Color::White {
-            danger_squares |= north_east(bb_pawns, 1);
-            danger_squares |= north_west(bb_pawns, 1);
-        } else {
-            danger_squares |= south_east(bb_pawns, 1);
-            danger_squares |= south_west(bb_pawns, 1);
-        }
-
-        //Knight attacks
-        for knight_sq in board.get_piece_positions(PieceType::Knight.as_colored_piece(enemy_color))
-        {
-            danger_squares |= Self::attacks_knight(knight_sq, 0);
-        }
-
-        //skip more expensive slider calculations if there are no sliders
-        if *board.bb_sliders[enemy_color] == 0 {
-            return danger_squares;
-        }
-
-        let bb_allies_without_king = bb_allies & !bb_king;
-
-        //Sliding attacks
-        for sq in board.get_piece_positions(PieceType::Bishop.as_colored_piece(enemy_color)) {
-            danger_squares |= Self::attacks_bishop(sq, bb_enemies | bb_allies_without_king, 0);
-        }
-        for sq in board.get_piece_positions(PieceType::Rook.as_colored_piece(enemy_color)) {
-            danger_squares |= Self::attacks_rook(sq, bb_enemies | bb_allies_without_king, 0);
-        }
-        for sq in board.get_piece_positions(PieceType::Queen.as_colored_piece(enemy_color)) {
-            danger_squares |= Self::attacks_bishop(sq, bb_enemies | bb_allies_without_king, 0);
-            danger_squares |= Self::attacks_rook(sq, bb_enemies | bb_allies_without_king, 0);
-        }
-
-        danger_squares
-    }
-
-    /// Generates the checkers BB for a given square and color. Square is the king square. Checkers are from the opposite color
-    fn generate_checkers(king_pos: Square, color: Color, board: &Board) -> u64 {
-        let attack_color = color.opposite();
-        let ally = *board.get_bb_occupied(color);
-        let enemy = *board.get_bb_occupied(attack_color);
-        let enemy_bb = board.get_bb_pieces()[attack_color];
-
-        let mut checkers = 0u64;
-
-        //check for attacks from non-sliding pieces
-        //no need to check for king attacks, as a king can't attack another king
-        checkers |= MoveGeneration::attacks_knight(king_pos, ally) & *enemy_bb[PieceType::Knight];
-        checkers |=
-            MoveGeneration::attacks_pawn(king_pos, enemy, ally, color) & *enemy_bb[PieceType::Pawn];
-
-        //if no sliding pieces are available, we won't need to check for attacks
-        if *board.bb_sliders[attack_color] == 0 {
-            return checkers;
-        }
-
-        checkers |= MoveGeneration::attacks_bishop(king_pos, enemy, ally)
-            & (*enemy_bb[PieceType::Bishop] | *enemy_bb[PieceType::Queen]);
-        checkers |= MoveGeneration::attacks_rook(king_pos, enemy, ally)
-            & (*enemy_bb[PieceType::Rook] | *enemy_bb[PieceType::Queen]);
-
-        checkers
     }
 
     #[inline(always)]

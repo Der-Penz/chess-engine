@@ -43,6 +43,12 @@ impl BitBoard {
     pub fn get_occupied(&self) -> impl Iterator<Item = Square> {
         crate::game::bit_manipulation::iter_set_bits(self.0).map(Square::new)
     }
+
+    pub fn drop_lowest_bit(&mut self) -> Square {
+        let lsb = crate::game::bit_manipulation::bit_scan_lsb(self.0);
+        self.0 = crate::game::bit_manipulation::ls_bit_reset(self.0);
+        Square::new(lsb)
+    }
 }
 
 impl std::fmt::Debug for BitBoard {
@@ -98,19 +104,51 @@ impl std::ops::BitAnd for BitBoard {
     }
 }
 
-impl std::ops::BitXor for BitBoard {
-    type Output = Self;
-
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        BitBoard(self.0 ^ rhs.0)
-    }
-}
-
 impl std::ops::Not for BitBoard {
     type Output = Self;
 
     fn not(self) -> Self::Output {
         BitBoard(!self.0)
+    }
+}
+
+impl std::ops::BitOrAssign for BitBoard {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl std::ops::BitAndAssign for BitBoard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl std::ops::BitOr<u64> for BitBoard {
+    type Output = Self;
+
+    fn bitor(self, rhs: u64) -> Self::Output {
+        BitBoard(self.0 | rhs)
+    }
+}
+
+impl std::ops::BitAnd<u64> for BitBoard {
+    type Output = Self;
+
+    fn bitand(self, rhs: u64) -> Self::Output {
+        BitBoard(self.0 & rhs)
+    }
+}
+
+impl std::ops::BitOrAssign<u64> for BitBoard {
+    fn bitor_assign(&mut self, rhs: u64) {
+        self.0 |= rhs;
+    }
+}
+
+impl std::ops::BitAndAssign<u64> for BitBoard {
+    fn bitand_assign(&mut self, rhs: u64) {
+        self.0 &= rhs;
     }
 }
 
