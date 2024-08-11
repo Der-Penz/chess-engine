@@ -1,3 +1,4 @@
+pub mod parser;
 pub mod bit_manipulation;
 pub mod board;
 pub mod castle_rights;

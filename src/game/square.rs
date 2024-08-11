@@ -53,6 +53,14 @@ impl Square {
         self.0 % 8
     }
 
+    pub fn rank_str(&self) -> String {
+        (self.rank() + 1).to_string()
+    }
+
+    pub fn file_str(&self) -> String {
+        FILES[self.file() as usize].to_string()
+    }
+
     pub fn square_value(&self) -> u8 {
         self.0
     }
@@ -69,7 +77,7 @@ impl Square {
     }
 }
 
-const FILES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
+pub const FILES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
 impl std::fmt::Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}{}", FILES[self.file() as usize], self.rank() + 1)
@@ -121,7 +129,6 @@ impl TryFrom<u8> for Square {
         }
     }
 }
-
 impl<T, const N: usize> std::ops::Index<Square> for [T; N] {
     type Output = T;
 
