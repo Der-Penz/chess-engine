@@ -1,8 +1,9 @@
 mod helper;
 pub mod magic;
 mod test;
-use attack_pattern::direction_mask::ALIGN_MASKS;
+use attack_pattern::direction_mask::{get_direction_mask, Direction, ALIGN_MASKS};
 use helper::{MoveGenerationData, MoveGenerationMasks};
+use magic::get_rook_moves;
 
 use crate::game::{
     bit_manipulation::drop_lsb,
@@ -364,8 +365,10 @@ impl MoveGeneration {
         //and check if this ray would attack a enemy rook or queen
         let enemy_without_pawn = enemy & !(enemy_pawn_mask);
         let ally_without_pawn = ally & !(sq_mask);
-        let rank_attack_ray =
-            attack_pattern::rook_attacks_horizontal(enemy_without_pawn, ally_without_pawn, king_sq);
+
+        let mut rank_attack_ray =
+            *get_rook_moves(king_sq, enemy_without_pawn | ally_without_pawn) & !ally_without_pawn;
+        rank_attack_ray &= get_direction_mask(king_sq, Direction::WestToEast);
 
         if king_sq.rank() == sq.rank() && rank_attack_ray & enemy_without_pawn != 0 {
             let horizontal_rook_attack = BitBoard::from(rank_attack_ray & enemy_without_pawn)
