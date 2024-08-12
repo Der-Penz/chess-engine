@@ -18,7 +18,6 @@ use super::{
     castle_rights::CastleType, color::Color, move_notation::Move, piece::Piece,
     piece_type::PieceType, square::Square,
 };
-
 #[derive(Clone)]
 pub struct Board {
     bb_pieces: [[BitBoard; 6]; 2], //stores the bit boards for each piece type for each color

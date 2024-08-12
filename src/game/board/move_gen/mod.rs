@@ -49,7 +49,7 @@ impl MoveGeneration {
                 match piece.ptype() {
                     PieceType::Pawn => {
                         let double_push =
-                            Self::moves_pawn_double_push(sq, data.enemy, data.ally, data.color);
+                            Self::moves_pawn_double_push(sq, data.occupied, data.color);
                         legal_moves.create_and_add_moves(
                             sq,
                             double_push & pin_move_mask,
@@ -134,8 +134,7 @@ impl MoveGeneration {
                         data.color,
                     );
 
-                    let double_push =
-                        Self::moves_pawn_double_push(sq, data.enemy, data.ally, data.color);
+                    let double_push = Self::moves_pawn_double_push(sq, data.occupied, data.color);
                     legal_moves.create_and_add_moves(
                         sq,
                         double_push & masks.push_capture_mask,
@@ -208,8 +207,7 @@ impl MoveGeneration {
                                 sq,
                                 Self::moves_king_castle_king_side(
                                     sq,
-                                    data.enemy,
-                                    data.ally,
+                                    data.occupied,
                                     masks.king_danger,
                                     data.color,
                                 ),
@@ -225,8 +223,7 @@ impl MoveGeneration {
                                 sq,
                                 Self::moves_king_castle_queen_side(
                                     sq,
-                                    data.enemy,
-                                    data.ally,
+                                    data.occupied,
                                     masks.king_danger,
                                     data.color,
                                 ),
@@ -269,8 +266,7 @@ impl MoveGeneration {
 
     pub fn moves_king_castle_queen_side(
         sq: Square,
-        enemy: u64,
-        ally: u64,
+        occupied: u64,
         attacked: u64,
         color: Color,
     ) -> u64 {
@@ -278,13 +274,12 @@ impl MoveGeneration {
             return 0;
         }
 
-        let all = ally | enemy;
         let queen_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::QueenSide];
         let queen_side_attack_free =
             attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::QueenSide];
 
         let queen_side_possible =
-            (queen_side_free & all) == 0 && (queen_side_attack_free & attacked) == 0;
+            (queen_side_free & occupied) == 0 && (queen_side_attack_free & attacked) == 0;
 
         if queen_side_possible {
             CastleType::KING_DEST[CastleRights::to_index(color, CastleType::QueenSide) as usize]
@@ -296,8 +291,7 @@ impl MoveGeneration {
 
     pub fn moves_king_castle_king_side(
         sq: Square,
-        enemy: u64,
-        ally: u64,
+        occupied: u64,
         attacked: u64,
         color: Color,
     ) -> u64 {
@@ -305,13 +299,12 @@ impl MoveGeneration {
             return 0;
         }
 
-        let all = ally | enemy;
         let king_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::KingSide];
         let king_side_attack_free =
             attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::KingSide];
 
         let king_side_possible =
-            (king_side_free & all) == 0 && (king_side_attack_free & attacked) == 0;
+            (king_side_free & occupied) == 0 && (king_side_attack_free & attacked) == 0;
 
         if king_side_possible {
             CastleType::KING_DEST[CastleRights::to_index(color, CastleType::KingSide) as usize]
@@ -327,17 +320,16 @@ impl MoveGeneration {
     }
 
     #[inline(always)]
-    pub fn moves_pawn_double_push(sq: Square, enemy: u64, ally: u64, color: Color) -> u64 {
+    pub fn moves_pawn_double_push(sq: Square, occupied: u64, color: Color) -> u64 {
         if sq.rank() != color.pawn_rank() {
             return 0;
         }
         let index = (sq.square_value() as i8 + (color.perspective() * 8)) as u8;
-        let all = BitBoard::new(ally | enemy);
-        if all.is_occupied(Square::new(index)) {
+        if occupied & (1 << index) != 0 {
             return 0;
         }
 
-        attack_pattern::MOVE_PATTERN_PAWN[color][index as usize] & !*all
+        attack_pattern::MOVE_PATTERN_PAWN[color][index as usize] & !occupied
     }
 
     #[inline(always)]
