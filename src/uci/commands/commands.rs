@@ -1,4 +1,6 @@
-use crate::game::Move;
+// use crate::game::Move;
+
+use crate::game::move_notation::Move;
 
 #[derive(Debug)]
 pub enum Command {

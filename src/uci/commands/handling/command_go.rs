@@ -1,19 +1,18 @@
-use crate::game::Board;
+use crate::game::{board::move_gen::MoveGeneration, Board};
 use log::info;
-use rand::seq::SliceRandom;
+use rand::Rng;
 
-pub fn handle_go(board: &mut Board) -> Option<String> {
-    let moves = board.get_all_possible_moves();
-    let best_move = moves.choose(&mut rand::thread_rng());
+pub fn handle_go(board: &Board) -> Option<String> {
+    let moves = MoveGeneration::generate_legal_moves(board);
 
-    match best_move {
-        Some(best_move) => {
-            info!("Engine Calculation best move: {}", best_move);
-            Some(format!("bestmove {}", best_move.as_source_dest()))
-        }
-        _ => {
-            info!("No moves found for the current position");
-            None
-        }
+    if moves.is_empty() {
+        info!("No moves found for the current position");
+        return None;
     }
+
+    let idx = rand::thread_rng().gen_range(0..moves.len());
+    let best_move = moves.get(idx).expect("Checked bounds must be valid");
+
+    info!("Engine Calculation best move: {}", best_move);
+    Some(format!("bestmove {}", best_move.as_uci_notation()))
 }

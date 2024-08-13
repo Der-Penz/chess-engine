@@ -1,17 +1,17 @@
 pub mod bit_manipulation;
 pub mod board;
+pub mod castle_rights;
 pub mod color;
-pub mod display;
-pub mod moves;
+pub mod move_notation;
+pub mod parser;
 pub mod piece;
-pub mod piece_variation;
-pub mod position;
+pub mod piece_type;
+pub mod square;
 
-pub use bit_manipulation::*;
-pub use board::*;
-pub use color::*;
-pub use display::*;
-pub use moves::*;
-pub use piece::*;
-pub use piece_variation::*;
-pub use position::*;
+// Re-export the most important types
+pub use board::Board;
+pub use color::Color;
+pub use move_notation::Move;
+pub use piece::Piece;
+pub use piece_type::PieceType;
+pub use square::Square;

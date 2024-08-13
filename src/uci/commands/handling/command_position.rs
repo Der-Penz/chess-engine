@@ -2,7 +2,7 @@ use itertools::Itertools;
 use log::error;
 
 use crate::{
-    game::{Board, Move},
+    game::{move_notation::Move, Board},
     uci::commands::{Command, CommandParseError},
 };
 
@@ -24,8 +24,9 @@ pub fn handle_position(
 
     moves.iter().for_each(|m| {
         board
-            .play_move(m, false)
+            .make_move(m, false, true)
             .expect("UCI received invalid move that cannot be played by the engine");
+        // .expect("UCI received invalid move that cannot be played by the engine");
     });
     None
 }
@@ -47,8 +48,20 @@ pub fn parse_position(str: &str) -> Result<Command, CommandParseError> {
         }
     };
 
+    let mut board = Board::default();
     if parts.next() == Some("moves") {
-        let moves = parts.map(|s| Move::from_source_dest(s)).collect_vec();
+        let moves: Vec<Move> = parts
+            .map(|s: &str| {
+                let mov = Move::from_uci_notation(s, &board)
+                    .expect("Should be a parsable move from uci gui");
+
+                board
+                    .make_move(&mov, false, true)
+                    .expect("Move should be valid");
+                return mov;
+            })
+            .collect();
+
         Ok(Command::Position(fen, moves))
     } else {
         Ok(Command::Position(fen, Vec::new()))
