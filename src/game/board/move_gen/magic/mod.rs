@@ -24,6 +24,7 @@ struct MagicEntry {
     pub offset: usize,
 }
 
+#[inline(always)]
 fn magic_index(entry: &MagicEntry, blockers: u64) -> usize {
     let blockers = blockers & entry.mask;
     let hash = blockers.wrapping_mul(entry.magic);
@@ -31,10 +32,12 @@ fn magic_index(entry: &MagicEntry, blockers: u64) -> usize {
     entry.offset + index as usize
 }
 
+#[inline(always)]
 pub fn get_rook_moves(square: Square, blockers: u64) -> BitBoard {
     ROOK_ATTACKS[square][magic_index(&ROOK_MAGICS[square], blockers)]
 }
 
+#[inline(always)]
 pub fn get_bishop_moves(square: Square, blockers: u64) -> BitBoard {
     BISHOP_ATTACKS[square][magic_index(&BISHOP_MAGICS[square], blockers)]
 }

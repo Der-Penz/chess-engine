@@ -30,7 +30,7 @@ impl MoveGeneration {
         masks.calculate_king_danger(&data, &board);
 
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
-        let king_moves = Self::attacks_king(data.king_sq, data.ally) & !masks.king_danger;
+        let king_moves = attacks_king(data.king_sq, data.ally) & !masks.king_danger;
 
         legal_moves.create_and_add_moves(data.king_sq, king_moves, MoveFlag::Normal);
         if masks.multi_check {
@@ -48,19 +48,18 @@ impl MoveGeneration {
 
                 match piece.ptype() {
                     PieceType::Pawn => {
-                        let double_push =
-                            Self::moves_pawn_double_push(sq, data.occupied, data.color);
+                        let double_push = moves_pawn_double_push(sq, data.occupied, data.color);
                         legal_moves.create_and_add_moves(
                             sq,
                             double_push & pin_move_mask,
                             MoveFlag::DoublePawnPush,
                         );
-                        let pawn_move = Self::moves_pawn(sq, data.enemy, data.ally, data.color);
+                        let pawn_move = moves_pawn(sq, data.enemy, data.ally, data.color);
                         add_pawn_moves(&mut legal_moves, sq, pawn_move & pin_move_mask, data.color);
                     }
                     //if queen is straight pinned, it can only move straight
                     PieceType::Rook | PieceType::Queen => {
-                        let moves = Self::attacks_rook(sq, data.enemy, data.ally);
+                        let moves = attacks_rook(sq, data.enemy, data.ally);
                         legal_moves.create_and_add_moves(
                             sq,
                             moves & pin_move_mask,
@@ -77,7 +76,7 @@ impl MoveGeneration {
 
                 match piece.ptype() {
                     PieceType::Pawn => {
-                        let en_passant = Self::attacks_pawn_en_passant(
+                        let en_passant = attacks_pawn_en_passant(
                             sq,
                             data.color,
                             board.cur_state().en_passant.as_ref(),
@@ -91,12 +90,12 @@ impl MoveGeneration {
                             en_passant & pin_move_mask,
                             MoveFlag::EnPassant,
                         );
-                        let attacks = Self::attacks_pawn(sq, data.enemy, data.ally, data.color);
+                        let attacks = attacks_pawn(sq, data.enemy, data.ally, data.color);
                         add_pawn_moves(&mut legal_moves, sq, attacks & pin_move_mask, data.color);
                     }
                     //if queen is diagonal pinned, it can only move diagonally
                     PieceType::Bishop | PieceType::Queen => {
-                        let moves = Self::attacks_bishop(sq, data.enemy, data.ally);
+                        let moves = attacks_bishop(sq, data.enemy, data.ally);
                         legal_moves.create_and_add_moves(
                             sq,
                             moves & pin_move_mask,
@@ -118,7 +117,7 @@ impl MoveGeneration {
 
             match piece.ptype() {
                 PieceType::Pawn => {
-                    let pawn_move = Self::moves_pawn(sq, data.enemy, data.ally, data.color);
+                    let pawn_move = moves_pawn(sq, data.enemy, data.ally, data.color);
                     add_pawn_moves(
                         &mut legal_moves,
                         sq,
@@ -126,7 +125,7 @@ impl MoveGeneration {
                         data.color,
                     );
 
-                    let attacks = Self::attacks_pawn(sq, data.enemy, data.ally, data.color);
+                    let attacks = attacks_pawn(sq, data.enemy, data.ally, data.color);
                     add_pawn_moves(
                         &mut legal_moves,
                         sq,
@@ -134,13 +133,13 @@ impl MoveGeneration {
                         data.color,
                     );
 
-                    let double_push = Self::moves_pawn_double_push(sq, data.occupied, data.color);
+                    let double_push = moves_pawn_double_push(sq, data.occupied, data.color);
                     legal_moves.create_and_add_moves(
                         sq,
                         double_push & masks.push_capture_mask,
                         MoveFlag::DoublePawnPush,
                     );
-                    let en_passant = Self::attacks_pawn_en_passant(
+                    let en_passant = attacks_pawn_en_passant(
                         sq,
                         data.color,
                         board.cur_state().en_passant.as_ref(),
@@ -165,7 +164,7 @@ impl MoveGeneration {
                     }
                 }
                 PieceType::Knight => {
-                    let moves = Self::attacks_knight(sq, data.ally);
+                    let moves = attacks_knight(sq, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
                         moves & masks.push_capture_mask,
@@ -173,7 +172,7 @@ impl MoveGeneration {
                     );
                 }
                 PieceType::Bishop => {
-                    let moves = Self::attacks_bishop(sq, data.enemy, data.ally);
+                    let moves = attacks_bishop(sq, data.enemy, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
                         moves & masks.push_capture_mask,
@@ -181,7 +180,7 @@ impl MoveGeneration {
                     );
                 }
                 PieceType::Rook => {
-                    let moves = Self::attacks_rook(sq, data.enemy, data.ally);
+                    let moves = attacks_rook(sq, data.enemy, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
                         moves & masks.push_capture_mask,
@@ -189,7 +188,7 @@ impl MoveGeneration {
                     );
                 }
                 PieceType::Queen => {
-                    let moves = Self::attacks_queen(sq, data.enemy, data.ally);
+                    let moves = attacks_queen(sq, data.enemy, data.ally);
                     legal_moves.create_and_add_moves(
                         sq,
                         moves & masks.push_capture_mask,
@@ -205,7 +204,7 @@ impl MoveGeneration {
                         {
                             legal_moves.create_and_add_moves(
                                 sq,
-                                Self::moves_king_castle_king_side(
+                                moves_king_castle_king_side(
                                     sq,
                                     data.occupied,
                                     masks.king_danger,
@@ -221,7 +220,7 @@ impl MoveGeneration {
                         {
                             legal_moves.create_and_add_moves(
                                 sq,
-                                Self::moves_king_castle_queen_side(
+                                moves_king_castle_queen_side(
                                     sq,
                                     data.occupied,
                                     masks.king_danger,
@@ -237,153 +236,142 @@ impl MoveGeneration {
 
         legal_moves
     }
+}
+#[inline(always)]
+pub fn attacks_rook(sq: Square, enemy: u64, ally: u64) -> u64 {
+    (*magic::get_rook_moves(sq, enemy | ally)) & !ally
+}
 
-    #[inline(always)]
-    pub fn attacks_rook(sq: Square, enemy: u64, ally: u64) -> u64 {
-        (*magic::get_rook_moves(sq, enemy | ally)) & !ally
+#[inline(always)]
+pub fn attacks_bishop(sq: Square, enemy: u64, ally: u64) -> u64 {
+    (*magic::get_bishop_moves(sq, enemy | ally)) & !ally
+}
+
+#[inline(always)]
+pub fn attacks_queen(sq: Square, enemy: u64, ally: u64) -> u64 {
+    ((*magic::get_bishop_moves(sq, enemy | ally)) & !ally)
+        | ((*magic::get_rook_moves(sq, enemy | ally)) & !ally)
+}
+
+#[inline(always)]
+pub fn attacks_knight(sq: Square, ally: u64) -> u64 {
+    attack_pattern::ATTACK_PATTERN_KNIGHT[sq] & !ally
+}
+
+#[inline(always)]
+pub fn attacks_king(sq: Square, ally: u64) -> u64 {
+    attack_pattern::ATTACK_PATTERN_KING[sq] & !ally
+}
+
+pub fn moves_king_castle_queen_side(sq: Square, occupied: u64, attacked: u64, color: Color) -> u64 {
+    if sq != CastleType::KING_SOURCE[color] {
+        return 0;
     }
 
-    #[inline(always)]
-    pub fn attacks_bishop(sq: Square, enemy: u64, ally: u64) -> u64 {
-        (*magic::get_bishop_moves(sq, enemy | ally)) & !ally
+    let queen_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::QueenSide];
+    let queen_side_attack_free =
+        attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::QueenSide];
+
+    let queen_side_possible =
+        (queen_side_free & occupied) == 0 && (queen_side_attack_free & attacked) == 0;
+
+    if queen_side_possible {
+        CastleType::KING_DEST[CastleRights::to_index(color, CastleType::QueenSide) as usize]
+            .to_mask()
+    } else {
+        0
+    }
+}
+
+pub fn moves_king_castle_king_side(sq: Square, occupied: u64, attacked: u64, color: Color) -> u64 {
+    if sq != CastleType::KING_SOURCE[color] {
+        return 0;
     }
 
-    #[inline(always)]
-    pub fn attacks_queen(sq: Square, enemy: u64, ally: u64) -> u64 {
-        ((*magic::get_bishop_moves(sq, enemy | ally)) & !ally)
-            | ((*magic::get_rook_moves(sq, enemy | ally)) & !ally)
+    let king_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::KingSide];
+    let king_side_attack_free =
+        attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::KingSide];
+
+    let king_side_possible =
+        (king_side_free & occupied) == 0 && (king_side_attack_free & attacked) == 0;
+
+    if king_side_possible {
+        CastleType::KING_DEST[CastleRights::to_index(color, CastleType::KingSide) as usize]
+            .to_mask()
+    } else {
+        0
+    }
+}
+
+#[inline(always)]
+pub fn attacks_pawn(sq: Square, enemy: u64, ally: u64, color: Color) -> u64 {
+    (attack_pattern::ATTACK_PATTERN_PAWN[color][sq] & !ally) & enemy
+}
+
+#[inline(always)]
+pub fn moves_pawn_double_push(sq: Square, occupied: u64, color: Color) -> u64 {
+    if sq.rank() != color.pawn_rank() {
+        return 0;
+    }
+    let index = (sq.square_value() as i8 + (color.perspective() * 8)) as u8;
+    if occupied & (1 << index) != 0 {
+        return 0;
     }
 
-    #[inline(always)]
-    pub fn attacks_knight(sq: Square, ally: u64) -> u64 {
-        attack_pattern::ATTACK_PATTERN_KNIGHT[sq] & !ally
-    }
+    attack_pattern::MOVE_PATTERN_PAWN[color][index as usize] & !occupied
+}
 
-    #[inline(always)]
-    pub fn attacks_king(sq: Square, ally: u64) -> u64 {
-        attack_pattern::ATTACK_PATTERN_KING[sq] & !ally
+#[inline(always)]
+pub fn attacks_pawn_en_passant(
+    sq: Square,
+    color: Color,
+    en_passant: Option<&Square>,
+    king_sq: Square,
+    enemy: u64,
+    ally: u64,
+    board: &Board,
+) -> u64 {
+    if en_passant.is_none() {
+        return 0;
     }
+    let en_passant_square = en_passant.unwrap();
 
-    pub fn moves_king_castle_queen_side(
-        sq: Square,
-        occupied: u64,
-        attacked: u64,
-        color: Color,
-    ) -> u64 {
-        if sq != CastleType::KING_SOURCE[color] {
+    let enemy_pawn_mask =
+        1u64 << (en_passant_square.square_value() as i8 - (color.perspective() * 8));
+    let sq_mask = sq.to_mask();
+
+    //check for if the en passant capture would expose a discovered attack on the king
+    //by removing the pawn and the en passant pawn from the board, we can check if there
+    //is a rook or queen attacking the king by using the rook horizontal attack pattern from the king square
+    //and check if this ray would attack a enemy rook or queen
+    let enemy_without_pawn = enemy & !(enemy_pawn_mask);
+    let ally_without_pawn = ally & !(sq_mask);
+
+    let mut rank_attack_ray =
+        *get_rook_moves(king_sq, enemy_without_pawn | ally_without_pawn) & !ally_without_pawn;
+    rank_attack_ray &= get_direction_mask(king_sq, Direction::WestToEast);
+
+    if king_sq.rank() == sq.rank() && rank_attack_ray & enemy_without_pawn != 0 {
+        let horizontal_rook_attack = BitBoard::from(rank_attack_ray & enemy_without_pawn)
+            .get_occupied()
+            .any(|square| {
+                let piece = board.get_sq_piece(square).map(|piece| piece.ptype());
+
+                piece == Some(PieceType::Rook) || piece == Some(PieceType::Queen)
+            });
+
+        //if there is a rook or queen attacking the king, the en passant is invalid
+        if horizontal_rook_attack {
             return 0;
         }
-
-        let queen_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::QueenSide];
-        let queen_side_attack_free =
-            attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::QueenSide];
-
-        let queen_side_possible =
-            (queen_side_free & occupied) == 0 && (queen_side_attack_free & attacked) == 0;
-
-        if queen_side_possible {
-            CastleType::KING_DEST[CastleRights::to_index(color, CastleType::QueenSide) as usize]
-                .to_mask()
-        } else {
-            0
-        }
     }
 
-    pub fn moves_king_castle_king_side(
-        sq: Square,
-        occupied: u64,
-        attacked: u64,
-        color: Color,
-    ) -> u64 {
-        if sq != CastleType::KING_SOURCE[color] {
-            return 0;
-        }
+    attack_pattern::ATTACK_PATTERN_PAWN[color][sq] & en_passant_square.to_mask()
+}
 
-        let king_side_free = attack_pattern::CASTLE_FREE_SQUARES[color][CastleType::KingSide];
-        let king_side_attack_free =
-            attack_pattern::CASTLE_ATTACK_FREE_SQUARES[color][CastleType::KingSide];
-
-        let king_side_possible =
-            (king_side_free & occupied) == 0 && (king_side_attack_free & attacked) == 0;
-
-        if king_side_possible {
-            CastleType::KING_DEST[CastleRights::to_index(color, CastleType::KingSide) as usize]
-                .to_mask()
-        } else {
-            0
-        }
-    }
-
-    #[inline(always)]
-    pub fn attacks_pawn(sq: Square, enemy: u64, ally: u64, color: Color) -> u64 {
-        (attack_pattern::ATTACK_PATTERN_PAWN[color][sq] & !ally) & enemy
-    }
-
-    #[inline(always)]
-    pub fn moves_pawn_double_push(sq: Square, occupied: u64, color: Color) -> u64 {
-        if sq.rank() != color.pawn_rank() {
-            return 0;
-        }
-        let index = (sq.square_value() as i8 + (color.perspective() * 8)) as u8;
-        if occupied & (1 << index) != 0 {
-            return 0;
-        }
-
-        attack_pattern::MOVE_PATTERN_PAWN[color][index as usize] & !occupied
-    }
-
-    #[inline(always)]
-    pub fn attacks_pawn_en_passant(
-        sq: Square,
-        color: Color,
-        en_passant: Option<&Square>,
-        king_sq: Square,
-        enemy: u64,
-        ally: u64,
-        board: &Board,
-    ) -> u64 {
-        if en_passant.is_none() {
-            return 0;
-        }
-        let en_passant_square = en_passant.unwrap();
-
-        let enemy_pawn_mask =
-            1u64 << (en_passant_square.square_value() as i8 - (color.perspective() * 8));
-        let sq_mask = sq.to_mask();
-
-        //check for if the en passant capture would expose a discovered attack on the king
-        //by removing the pawn and the en passant pawn from the board, we can check if there
-        //is a rook or queen attacking the king by using the rook horizontal attack pattern from the king square
-        //and check if this ray would attack a enemy rook or queen
-        let enemy_without_pawn = enemy & !(enemy_pawn_mask);
-        let ally_without_pawn = ally & !(sq_mask);
-
-        let mut rank_attack_ray =
-            *get_rook_moves(king_sq, enemy_without_pawn | ally_without_pawn) & !ally_without_pawn;
-        rank_attack_ray &= get_direction_mask(king_sq, Direction::WestToEast);
-
-        if king_sq.rank() == sq.rank() && rank_attack_ray & enemy_without_pawn != 0 {
-            let horizontal_rook_attack = BitBoard::from(rank_attack_ray & enemy_without_pawn)
-                .get_occupied()
-                .any(|square| {
-                    let piece = board.get_sq_piece(square).map(|piece| piece.ptype());
-
-                    piece == Some(PieceType::Rook) || piece == Some(PieceType::Queen)
-                });
-
-            //if there is a rook or queen attacking the king, the en passant is invalid
-            if horizontal_rook_attack {
-                return 0;
-            }
-        }
-
-        attack_pattern::ATTACK_PATTERN_PAWN[color][sq] & en_passant_square.to_mask()
-    }
-
-    #[inline(always)]
-    pub fn moves_pawn(sq: Square, enemy: u64, ally: u64, color: Color) -> u64 {
-        attack_pattern::MOVE_PATTERN_PAWN[color][sq] & !(ally | enemy)
-    }
+#[inline(always)]
+pub fn moves_pawn(sq: Square, enemy: u64, ally: u64, color: Color) -> u64 {
+    attack_pattern::MOVE_PATTERN_PAWN[color][sq] & !(ally | enemy)
 }
 
 /// Adds pawn moves to the move list for a given source and destination square

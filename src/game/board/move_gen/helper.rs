@@ -5,6 +5,7 @@ use crate::game::{
 
 use super::{
     attack_pattern::direction_mask::CONNECTION_MASK,
+    attacks_bishop, attacks_king, attacks_knight, attacks_pawn, attacks_rook,
     magic::{get_bishop_moves, get_rook_moves},
     MoveGeneration,
 };
@@ -76,7 +77,7 @@ impl std::default::Default for MoveGenerationMasks {
 impl MoveGenerationMasks {
     pub fn calculate_king_danger(&mut self, data: &MoveGenerationData, board: &Board) {
         //King attacks
-        self.king_danger |= MoveGeneration::attacks_king(data.king_sq_opp, 0);
+        self.king_danger |= attacks_king(data.king_sq_opp, 0);
 
         //Pawn attacks
         let bb_pawns = *board.get_bb_for(PieceType::Pawn.as_colored_piece(data.color_opp));
@@ -92,7 +93,7 @@ impl MoveGenerationMasks {
         for knight_sq in
             board.get_piece_positions(PieceType::Knight.as_colored_piece(data.color_opp))
         {
-            self.king_danger |= MoveGeneration::attacks_knight(knight_sq, 0);
+            self.king_danger |= attacks_knight(knight_sq, 0);
         }
 
         //if we have no sliding pieces, we can skip
@@ -102,14 +103,14 @@ impl MoveGenerationMasks {
             //Sliding attacks
             for sq in board.get_piece_positions(PieceType::Bishop.as_colored_piece(data.color_opp))
             {
-                self.king_danger |= MoveGeneration::attacks_bishop(sq, occupied_without_king, 0);
+                self.king_danger |= attacks_bishop(sq, occupied_without_king, 0);
             }
             for sq in board.get_piece_positions(PieceType::Rook.as_colored_piece(data.color_opp)) {
-                self.king_danger |= MoveGeneration::attacks_rook(sq, occupied_without_king, 0);
+                self.king_danger |= attacks_rook(sq, occupied_without_king, 0);
             }
             for sq in board.get_piece_positions(PieceType::Queen.as_colored_piece(data.color_opp)) {
-                self.king_danger |= MoveGeneration::attacks_bishop(sq, occupied_without_king, 0);
-                self.king_danger |= MoveGeneration::attacks_rook(sq, occupied_without_king, 0);
+                self.king_danger |= attacks_bishop(sq, occupied_without_king, 0);
+                self.king_danger |= attacks_rook(sq, occupied_without_king, 0);
             }
         }
 
@@ -127,16 +128,15 @@ impl MoveGenerationMasks {
 
         //check for attacks from non-sliding pieces
         //no need to check for king attacks, as a king can't attack another king
+        self.checkers |= attacks_knight(data.king_sq, ally) & *enemy_bb[PieceType::Knight];
         self.checkers |=
-            MoveGeneration::attacks_knight(data.king_sq, ally) & *enemy_bb[PieceType::Knight];
-        self.checkers |= MoveGeneration::attacks_pawn(data.king_sq, enemy, ally, data.color)
-            & *enemy_bb[PieceType::Pawn];
+            attacks_pawn(data.king_sq, enemy, ally, data.color) & *enemy_bb[PieceType::Pawn];
 
         //if no sliding pieces are available, we won't need to check for attacks
         if *board.bb_sliders[data.color_opp] != 0 {
-            self.checkers |= MoveGeneration::attacks_bishop(data.king_sq, enemy, ally)
+            self.checkers |= attacks_bishop(data.king_sq, enemy, ally)
                 & (*enemy_bb[PieceType::Bishop] | *enemy_bb[PieceType::Queen]);
-            self.checkers |= MoveGeneration::attacks_rook(data.king_sq, enemy, ally)
+            self.checkers |= attacks_rook(data.king_sq, enemy, ally)
                 & (*enemy_bb[PieceType::Rook] | *enemy_bb[PieceType::Queen]);
         }
 

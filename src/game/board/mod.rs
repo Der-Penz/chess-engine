@@ -11,7 +11,7 @@ use board_error::{FENError, UndoMoveError};
 use board_state::BoardState;
 use fen_utility::FENUtility;
 use log::error;
-use move_gen::MoveGeneration;
+use move_gen::{attacks_bishop, attacks_knight, attacks_pawn, attacks_rook, MoveGeneration};
 use zobrist::ZOBRIST;
 
 use super::{
@@ -162,21 +162,20 @@ impl Board {
         let bb = self.get_bb_pieces()[color];
 
         //check for attacks from non-sliding pieces
-        let mut attacks = MoveGeneration::attacks_knight(square, *ally) & *bb[PieceType::Knight];
-        attacks |= MoveGeneration::attacks_pawn(square, *enemy, *ally, color.opposite())
-            & *bb[PieceType::Pawn];
+        let mut attacks = attacks_knight(square, *ally) & *bb[PieceType::Knight];
+        attacks |= attacks_pawn(square, *enemy, *ally, color.opposite()) & *bb[PieceType::Pawn];
         if attacks != 0 {
             return true;
         }
 
         //if no sliding pieces are available, we won't need to check for attacks
         if *self.bb_sliders[self.side_to_move.opposite()] != 0 {
-            let attacks = MoveGeneration::attacks_bishop(square, *enemy, *ally)
+            let attacks = attacks_bishop(square, *enemy, *ally)
                 & (*bb[PieceType::Bishop] | *bb[PieceType::Queen]);
             if attacks != 0 {
                 return true;
             }
-            let attacks = MoveGeneration::attacks_rook(square, *enemy, *ally)
+            let attacks = attacks_rook(square, *enemy, *ally)
                 & (*bb[PieceType::Rook] | *bb[PieceType::Queen]);
             if attacks != 0 {
                 return true;
