@@ -3,19 +3,22 @@ use std::io;
 use commands::{handle_uci_command, Command, CommandParseError};
 use log::{info, warn};
 
-use crate::game::Board;
+use crate::{
+    bot::{search::min_max::MinMaxSearch, Bot},
+    game::Board,
+};
 
 mod commands;
 
 #[derive(Debug, PartialEq)]
-pub enum UCISTATE {
+pub enum UCIState {
     Idle,
     Playing,
 }
 
 pub fn start_uci_protocol() {
-    let mut board: Board = Board::default();
-    let mut state = UCISTATE::Idle;
+    let mut bot = Bot::new(Box::new(MinMaxSearch {}));
+    let mut state = UCIState::Idle;
     loop {
         let command = read_uci_input();
         if let Err(e) = command {
@@ -25,23 +28,22 @@ pub fn start_uci_protocol() {
         let command = command.unwrap();
         info!("Received Command: {:?}", command);
 
-        if command.is_quit() {
+        if command == Command::Quit {
             info!("Quitting UCI Protocol");
             break;
         }
-        if command.is_start() && state == UCISTATE::Idle {
+        if command == Command::UCI && state == UCIState::Idle {
             info!("Starting UCI Protocol");
-            state = UCISTATE::Playing;
+            state = UCIState::Playing;
         }
 
-        if state == UCISTATE::Idle {
+        if state == UCIState::Idle {
             info!("Ignoring command {:?} while in idle state", command);
             continue;
         }
 
-        match handle_uci_command(command, &mut board) {
-            Some(message) => send_message(&message),
-            None => (),
+        if let Some(message) = handle_uci_command(command, &mut bot) {
+            send_message(&message);
         };
     }
 }

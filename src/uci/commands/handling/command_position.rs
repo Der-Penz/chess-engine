@@ -1,17 +1,14 @@
 use itertools::Itertools;
-use log::error;
+use log::{error, info};
 
 use crate::{
+    bot::Bot,
     game::{move_notation::Move, Board},
     uci::commands::{Command, CommandParseError},
 };
 
-pub fn handle_position(
-    board: &mut Board,
-    pos: &Option<String>,
-    moves: &Vec<Move>,
-) -> Option<String> {
-    *board = match pos {
+pub fn handle_position(bot: &mut Bot, pos: &Option<String>, moves: &Vec<Move>) -> Option<String> {
+    let mut board = match pos {
         Some(fen) => match Board::from_fen(&fen) {
             Ok(b) => b,
             Err(err) => {
@@ -26,8 +23,10 @@ pub fn handle_position(
         board
             .make_move(m, false, true)
             .expect("UCI received invalid move that cannot be played by the engine");
-        // .expect("UCI received invalid move that cannot be played by the engine");
     });
+
+    info!("Position set to: {}", board.to_fen());
+    bot.set_board(board);
     None
 }
 
