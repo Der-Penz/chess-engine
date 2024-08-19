@@ -1,9 +1,32 @@
 mod piece_square_table;
-use crate::game::{bit_manipulation::iter_set_bits, castle_rights::CastleType, Color, PieceType};
+use crate::game::{
+    bit_manipulation::iter_set_bits,
+    board::move_gen::MoveGeneration,
+    castle_rights::{CastleRights, CastleType},
+    Color, PieceType,
+};
 
 use super::Board;
 
 const SCORE_CASTLE_RIGHT: i32 = 40;
+const CASTLE_SCORE_BY_INDEX: [i32; 16] = [
+    0,                      //0000
+    SCORE_CASTLE_RIGHT,     //0001
+    SCORE_CASTLE_RIGHT,     //0010
+    SCORE_CASTLE_RIGHT * 2, //0011
+    -SCORE_CASTLE_RIGHT,    //0100
+    0,                      //0101
+    0,                      //0110
+    SCORE_CASTLE_RIGHT,     //0111
+    -SCORE_CASTLE_RIGHT,    //1000
+    0,                      //1001
+    0,                      //1010
+    SCORE_CASTLE_RIGHT,     //1011
+    SCORE_CASTLE_RIGHT * 2, //1100
+    -SCORE_CASTLE_RIGHT,    //1101
+    -SCORE_CASTLE_RIGHT,    //1110
+    0,                      //1111
+];
 
 const SCORE_PAWN: i32 = 10;
 const SCORE_KNIGHT: i32 = 30;
@@ -20,35 +43,30 @@ const SCORE_PIECES: [i32; 6] = [
     1, //multiplier for king (1 king * 1 = 1) Score won't be effected by this
 ];
 
+const MOBILITY_SCORE: i32 = 2;
+
 pub fn evaluate_board(board: &Board) -> i32 {
     let mut score = 0;
 
+    let board_state = board.cur_state();
+    let color = board.side_to_move();
+
     score += evaluate_pieces(board);
-    score += evaluate_castle(board);
+    score += evaluate_castle(&board_state.castling_rights);
+
+    //mobility score
+    let move_count = MoveGeneration::generate_legal_moves(board).len() as i32;
+    score += move_count * MOBILITY_SCORE * color.perspective() as i32;
 
     score / 10
 }
 
-fn evaluate_castle(board: &Board) -> i32 {
-    let mut score = 0;
-    let castle_rights = &board.cur_state().castling_rights;
-    castle_rights
-        .has(Color::White, CastleType::KingSide)
-        .then(|| score += SCORE_CASTLE_RIGHT);
-    castle_rights
-        .has(Color::White, CastleType::QueenSide)
-        .then(|| score += SCORE_CASTLE_RIGHT);
-
-    castle_rights
-        .has(Color::Black, CastleType::KingSide)
-        .then(|| score -= SCORE_CASTLE_RIGHT);
-    castle_rights
-        .has(Color::Black, CastleType::QueenSide)
-        .then(|| score -= SCORE_CASTLE_RIGHT);
-
-    score
+#[inline(always)]
+fn evaluate_castle(castle_rights: &CastleRights) -> i32 {
+    CASTLE_SCORE_BY_INDEX[castle_rights.as_u8() as usize]
 }
 
+#[inline(always)]
 fn evaluate_pieces(board: &Board) -> i32 {
     let mut score = 0;
 
