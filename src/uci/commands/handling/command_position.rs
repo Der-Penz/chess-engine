@@ -4,11 +4,17 @@ use log::{error, info};
 use crate::{
     bot::Bot,
     game::{move_notation::Move, Board},
-    uci::commands::{Command, CommandParseError},
+    uci::commands::{CommandParseError, UCICommand},
 };
 
-pub fn handle_position(bot: &mut Bot, pos: &Option<String>, moves: &Vec<Move>) -> Option<String> {
-    let mut board = match pos {
+#[derive(Debug, PartialEq)]
+pub struct PositionParams {
+    pub fen: Option<String>,
+    pub moves: Vec<Move>,
+}
+
+pub fn handle_position(bot: &mut Bot, params: PositionParams) -> Option<String> {
+    let mut board = match params.fen {
         Some(fen) => match Board::from_fen(&fen) {
             Ok(b) => b,
             Err(err) => {
@@ -19,7 +25,7 @@ pub fn handle_position(bot: &mut Bot, pos: &Option<String>, moves: &Vec<Move>) -
         None => Board::default(),
     };
 
-    moves.iter().for_each(|m| {
+    params.moves.iter().for_each(|m| {
         board
             .make_move(m, false, true)
             .expect("UCI received invalid move that cannot be played by the engine");
@@ -30,9 +36,8 @@ pub fn handle_position(bot: &mut Bot, pos: &Option<String>, moves: &Vec<Move>) -
     None
 }
 
-pub fn parse_position(str: &str) -> Result<Command, CommandParseError> {
-    let mut parts = str.split_whitespace();
-    parts.next();
+pub fn parse_position(params: &str) -> Result<UCICommand, CommandParseError> {
+    let mut parts = params.split_whitespace();
     let fen = match parts.next() {
         Some("startpos") => None,
         Some("fen") => {
@@ -43,26 +48,38 @@ pub fn parse_position(str: &str) -> Result<Command, CommandParseError> {
             Some(Itertools::join(&mut iter, " "))
         }
         _ => {
-            return Err(CommandParseError::MissingParameter("position".to_string()));
+            return Err(CommandParseError::ParseError(
+                "Missing \"FEN\" or \"startpos\" literal".into(),
+            ));
         }
     };
 
-    let mut board = Board::default();
-    if parts.next() == Some("moves") {
-        let moves: Vec<Move> = parts
-            .map(|s: &str| {
-                let mov = Move::from_uci_notation(s, &board)
-                    .expect("Should be a parsable move from uci gui");
-
-                board
-                    .make_move(&mov, false, true)
-                    .expect("Move should be valid");
-                return mov;
-            })
-            .collect();
-
-        Ok(Command::Position(fen, moves))
+    let mut board = if let Some(fen) = &fen {
+        Board::from_fen(fen)
+            .map_err(|_| CommandParseError::ParseError("Invalid FEN position".to_string()))?
     } else {
-        Ok(Command::Position(fen, Vec::new()))
-    }
+        Board::default()
+    };
+    let moves = if parts.next() == Some("moves") {
+        let mut moves = vec![];
+        for mov_str in parts {
+            let mov = Move::from_uci_notation(mov_str, &board).map_err(|_| {
+                CommandParseError::ParseError(format!("Move {} is not valid uci notation", mov_str))
+            })?;
+
+            board.make_move(&mov, false, true).map_err(|_| {
+                CommandParseError::ParseError(format!(
+                    "Move {:?} is invalid for the position {}",
+                    mov,
+                    board.to_fen()
+                ))
+            })?;
+            moves.push(mov);
+        }
+        moves
+    } else {
+        Vec::new()
+    };
+
+    Ok(UCICommand::Position(PositionParams { fen, moves }))
 }

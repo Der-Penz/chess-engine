@@ -57,8 +57,6 @@ impl Search for MinMaxSearch {
             }
         }
 
-        thread::sleep(Duration::from_secs(5));
-
         best_move.copied()
     }
 }

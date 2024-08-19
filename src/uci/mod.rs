@@ -1,6 +1,6 @@
 use std::io;
 
-use commands::{handle_uci_command, Command, CommandParseError};
+use commands::{handle_uci_command, CommandParseError, UCICommand};
 use log::{info, warn};
 
 use crate::{
@@ -22,17 +22,17 @@ pub fn start_uci_protocol() {
     loop {
         let command = read_uci_input();
         if let Err(e) = command {
-            warn!("Invalid command: {:}", e);
+            warn!("{}", e);
             continue;
         }
         let command = command.unwrap();
         info!("Received Command: {:?}", command);
 
-        if command == Command::Quit {
+        if command == UCICommand::Quit {
             info!("Quitting UCI Protocol");
             break;
         }
-        if command == Command::UCI && state == UCIState::Idle {
+        if command == UCICommand::UCI && state == UCIState::Idle {
             info!("Starting UCI Protocol");
             state = UCIState::Playing;
         }
@@ -49,13 +49,13 @@ pub fn start_uci_protocol() {
 }
 
 /// Reads standard input and parses it into a UCI command
-pub fn read_uci_input() -> Result<Command, CommandParseError> {
+pub fn read_uci_input() -> Result<UCICommand, CommandParseError> {
     let mut input = String::new();
     io::stdin()
         .read_line(&mut input)
         .expect("Failed to read line");
     info!("Received Message: {:?}", input);
-    input.parse::<Command>()
+    input.parse::<UCICommand>()
 }
 
 /// Sends a message to the output stream
