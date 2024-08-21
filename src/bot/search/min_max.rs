@@ -1,8 +1,8 @@
 use log::{info, warn};
 
 use crate::{
-    bot::{evaluation::evaluate_board, AbortFlag, AbortFlagState, Message},
-    game::{board::move_gen::MoveGeneration, Board, Color, Move},
+    bot::{evaluation::evaluate_board, AbortFlag, AbortFlagState},
+    game::{board::move_gen::MoveGeneration, Board, Move},
 };
 
 use super::Search;
@@ -18,8 +18,13 @@ impl Search for MinMaxSearch {
         self.flag = flag.clone();
         self.depth = depth;
         self.best_move = None;
-        let player = board.side_to_move().perspective();
-        let score = self.nega_max(depth, &mut board, player as i64);
+        let player = board.side_to_move().perspective() as i64;
+        let (alpha, beta) = match player.signum() {
+            1 => (i64::MIN, i64::MAX),
+            -1 => (i64::MAX, i64::MIN),
+            _ => unreachable!(),
+        };
+        let score = self.nega_max(depth, &mut board, player, alpha, beta);
 
         if let Some(mv) = self.best_move.as_ref() {
             info!("Move: {:?} ({})", mv, score);
@@ -39,7 +44,14 @@ impl MinMaxSearch {
         }
     }
 
-    fn nega_max(&mut self, depth: u8, board: &mut Board, player: i64) -> i64 {
+    fn nega_max(
+        &mut self,
+        depth: u8,
+        board: &mut Board,
+        player: i64,
+        alpha: i64,
+        beta: i64,
+    ) -> i64 {
         {
             let flag = self.flag.lock().unwrap();
             if *flag == AbortFlagState::Stopped {
@@ -48,12 +60,14 @@ impl MinMaxSearch {
             }
         }
 
+        let move_list = MoveGeneration::generate_legal_moves(board);
+
         if depth == 0 {
-            return evaluate_board(board).abs() * player;
+            return evaluate_board(board, Some(move_list)).abs() * player;
         }
 
         let mut max_score = i64::MIN;
-        let move_list = MoveGeneration::generate_legal_moves(board);
+
         if move_list.is_empty() {
             // checkmate or stalemate
             return match board.in_check() {
@@ -63,8 +77,23 @@ impl MinMaxSearch {
         }
         for mv in move_list.iter() {
             board.make_move(mv, true, false).unwrap();
-            let score = self.nega_max(depth - 1, board, -player).wrapping_mul(-1);
+
+            let score = self
+                .nega_max(
+                    depth - 1,
+                    board,
+                    -player,
+                    beta.saturating_neg(),
+                    alpha.saturating_neg(),
+                )
+                .saturating_neg();
             board.undo_move(mv, true).unwrap();
+
+            let alpha = alpha.max(score);
+            if alpha >= beta {
+                info!("Cutoff at depth {}", self.depth - depth);
+                break;
+            }
 
             if score > max_score {
                 max_score = score;

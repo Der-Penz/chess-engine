@@ -11,7 +11,9 @@ use board_error::{FENError, UndoMoveError};
 use board_state::BoardState;
 use fen_utility::FENUtility;
 use log::error;
-use move_gen::{attacks_bishop, attacks_knight, attacks_pawn, attacks_rook, MoveGeneration};
+use move_gen::{
+    attacks_bishop, attacks_knight, attacks_pawn, attacks_rook, MoveGeneration, MoveList,
+};
 use zobrist::ZOBRIST;
 
 use super::{

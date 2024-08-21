@@ -1,7 +1,7 @@
 mod piece_square_table;
 use crate::game::{
     bit_manipulation::iter_set_bits,
-    board::move_gen::MoveGeneration,
+    board::move_gen::{MoveGeneration, MoveList},
     castle_rights::{CastleRights, CastleType},
     Color, PieceType,
 };
@@ -46,7 +46,7 @@ const SCORE_PIECES: [i64; 6] = [
 const MOBILITY_SCORE: i64 = 2;
 
 /// Evaluates the board state and returns a score. Positive score indicates white is winning, negative score indicates black is winning.
-pub fn evaluate_board(board: &Board) -> i64 {
+pub fn evaluate_board(board: &Board, precomputed_moves: Option<MoveList>) -> i64 {
     let mut score = 0;
 
     let board_state = board.cur_state();
@@ -56,7 +56,10 @@ pub fn evaluate_board(board: &Board) -> i64 {
     score += evaluate_castle(&board_state.castling_rights);
 
     //mobility score
-    let move_count = MoveGeneration::generate_legal_moves(board).len() as i64;
+    let move_count = match precomputed_moves {
+        Some(moves) => moves.len() as i64,
+        None => MoveGeneration::generate_legal_moves(board).len() as i64,
+    };
     score += move_count * MOBILITY_SCORE * color.perspective() as i64;
 
     score / 10

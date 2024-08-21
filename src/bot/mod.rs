@@ -75,6 +75,7 @@ impl Bot {
         let board = self.board.clone();
 
         let _handle = thread::spawn(move || {
+            let start_time = std::time::Instant::now();
             {
                 let mut flag = abort_flag.lock().unwrap();
                 *flag = AbortFlagState::Running;
@@ -90,6 +91,13 @@ impl Bot {
             } else {
                 info!("No best move found");
             }
+
+            let elapsed = start_time.elapsed();
+            info!(
+                "Search depth {} completed in {}s",
+                depth,
+                elapsed.as_secs_f64()
+            );
         });
     }
 

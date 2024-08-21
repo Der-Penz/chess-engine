@@ -18,11 +18,10 @@ pub fn start_uci_protocol() {
     let mut state = UCIState::Idle;
     loop {
         let command = read_uci_input();
-        if let Err(e) = command {
-            warn!("{}", e);
+        let Ok(command) = command else {
+            warn!("{}", command.err().unwrap());
             continue;
-        }
-        let command = command.unwrap();
+        };
         info!("Received Command: {:?}", command);
 
         if command == UCICommand::Quit {
@@ -51,7 +50,7 @@ pub fn read_uci_input() -> Result<UCICommand, CommandParseError> {
     io::stdin()
         .read_line(&mut input)
         .expect("Failed to read line");
-    info!("Received Message: {:?}", input);
+    info!("Received Message: {}", input);
     input.parse::<UCICommand>()
 }
 
