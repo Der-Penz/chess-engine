@@ -3,10 +3,7 @@ use std::io;
 use commands::{handle_uci_command, CommandParseError, UCICommand};
 use log::{info, warn};
 
-use crate::{
-    bot::{search::min_max::MinMaxSearch, Bot},
-    game::Board,
-};
+use crate::bot::{search::min_max::MinMaxSearch, Bot};
 
 mod commands;
 
@@ -17,7 +14,7 @@ pub enum UCIState {
 }
 
 pub fn start_uci_protocol() {
-    let mut bot = Bot::new(Box::new(MinMaxSearch {}));
+    let mut bot = Bot::new(Box::new(MinMaxSearch::new()));
     let mut state = UCIState::Idle;
     loop {
         let command = read_uci_input();

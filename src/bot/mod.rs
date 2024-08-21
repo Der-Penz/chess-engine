@@ -30,6 +30,12 @@ pub enum AbortFlagState {
 
 type AbortFlag = Arc<Mutex<AbortFlagState>>;
 
+impl std::default::Default for AbortFlagState {
+    fn default() -> Self {
+        AbortFlagState::Stopped
+    }
+}
+
 pub struct Bot {
     board: Board,
     search: Box<dyn search::Search>,
@@ -65,7 +71,7 @@ impl Bot {
         }
         self.abort_flag = Arc::new(Mutex::new(AbortFlagState::Running));
 
-        let abort_flag = Arc::clone(&self.abort_flag);
+        let mut abort_flag = Arc::clone(&self.abort_flag);
         let board = self.board.clone();
 
         let _handle = thread::spawn(move || {
@@ -73,8 +79,8 @@ impl Bot {
                 let mut flag = abort_flag.lock().unwrap();
                 *flag = AbortFlagState::Running;
             }
-            let search = search::min_max::MinMaxSearch {};
-            let best_move = search.search(board, depth, &abort_flag);
+            let mut search = search::min_max::MinMaxSearch::new();
+            let best_move = search.search(board, depth, &mut abort_flag);
             let mut flag = abort_flag.lock().unwrap();
             if *flag == AbortFlagState::Running {
                 *flag = AbortFlagState::Stopped;

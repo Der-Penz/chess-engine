@@ -1,6 +1,4 @@
-use std::{thread, time::Duration};
-
-use log::info;
+use log::{info, warn};
 
 use crate::{
     bot::{evaluation::evaluate_board, AbortFlag, AbortFlagState, Message},
@@ -9,54 +7,73 @@ use crate::{
 
 use super::Search;
 
-fn min_max(board: &mut Board, depth: u8, color: Color) -> Result<i32, ()> {
-    if depth == 0 {
-        return Ok(evaluate_board(board));
-    }
-
-    let mut best_score = match color {
-        Color::White => i32::MIN,
-        Color::Black => i32::MAX,
-    };
-
-    for mv in MoveGeneration::generate_legal_moves(board).iter() {
-        board.make_move(&mv, true, false).map_err(|_| ())?;
-        let score = min_max(board, depth - 1, color.opposite())?;
-        board.undo_move(mv, true).map_err(|_| ())?;
-        best_score = match color {
-            Color::White => best_score.max(score),
-            Color::Black => best_score.min(score),
-        };
-    }
-
-    Ok(best_score)
+pub struct MinMaxSearch {
+    depth: u8,
+    flag: AbortFlag,
+    best_move: Option<Move>,
 }
 
-pub struct MinMaxSearch {}
-
 impl Search for MinMaxSearch {
-    fn search(&self, mut board: Board, depth: u8, flag: &AbortFlag) -> Option<Move> {
-        let mut best_move = None;
-        let mut best_score = i32::MIN;
-        let move_list = MoveGeneration::generate_legal_moves(&board);
-        for mv in move_list.iter() {
-            let flag = *flag.lock().unwrap();
-            if flag == AbortFlagState::Stopped {
-                info!("Aborting Search");
-                break;
-            }
+    fn search(&mut self, mut board: Board, depth: u8, flag: &mut AbortFlag) -> Option<Move> {
+        self.flag = flag.clone();
+        self.depth = depth;
+        self.best_move = None;
+        let player = board.side_to_move().perspective();
+        let score = self.nega_max(depth, &mut board, player as i64);
 
-            board.make_move(mv, true, false).unwrap();
-            let color = board.side_to_move().opposite();
-            let score = min_max(&mut board, depth - 1, color).unwrap();
-            board.undo_move(mv, true).unwrap();
+        if let Some(mv) = self.best_move.as_ref() {
+            info!("Move: {:?} ({})", mv, score);
+        } else {
+            warn!("No best move found");
+        }
+        self.best_move
+    }
+}
 
-            if score > best_score {
-                best_score = score;
-                best_move = Some(mv);
+impl MinMaxSearch {
+    pub fn new() -> Self {
+        Self {
+            depth: 0,
+            best_move: None,
+            flag: AbortFlag::default(),
+        }
+    }
+
+    fn nega_max(&mut self, depth: u8, board: &mut Board, player: i64) -> i64 {
+        {
+            let flag = self.flag.lock().unwrap();
+            if *flag == AbortFlagState::Stopped {
+                info!("Aborting search at depth {}", self.depth - depth);
+                return i64::MIN;
             }
         }
 
-        best_move.copied()
+        if depth == 0 {
+            return evaluate_board(board).abs() * player;
+        }
+
+        let mut max_score = i64::MIN;
+        let move_list = MoveGeneration::generate_legal_moves(board);
+        if move_list.is_empty() {
+            // checkmate or stalemate
+            return match board.in_check() {
+                true => i64::MIN + 1,
+                false => -10, // stalemate is bad for the side to move
+            };
+        }
+        for mv in move_list.iter() {
+            board.make_move(mv, true, false).unwrap();
+            let score = self.nega_max(depth - 1, board, -player).wrapping_mul(-1);
+            board.undo_move(mv, true).unwrap();
+
+            if score > max_score {
+                max_score = score;
+                if depth == self.depth {
+                    self.best_move = Some(*mv);
+                }
+            }
+        }
+
+        max_score
     }
 }
