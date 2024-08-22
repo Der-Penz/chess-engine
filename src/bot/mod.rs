@@ -81,12 +81,12 @@ impl Bot {
                 *flag = AbortFlagState::Running;
             }
             let mut search = search::min_max::MinMaxSearch::new();
-            let best_move = search.search(board, depth, &mut abort_flag);
+            let best = search.search(board, depth, &mut abort_flag);
             let mut flag = abort_flag.lock().unwrap();
             if *flag == AbortFlagState::Running {
                 *flag = AbortFlagState::Stopped;
             }
-            if let Some(mv) = best_move {
+            if let Some((mv, _)) = best {
                 println!("bestmove {}", mv.as_uci_notation());
             } else {
                 info!("No best move found");

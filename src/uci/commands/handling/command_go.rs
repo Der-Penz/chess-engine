@@ -1,7 +1,5 @@
 use crate::{
     bot::Bot,
-    game::{board::move_gen::MoveGeneration, Board},
-    perft,
     uci::commands::{CommandParseError, UCICommand},
 };
 use log::info;
