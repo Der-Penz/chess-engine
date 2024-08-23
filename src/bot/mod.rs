@@ -6,6 +6,7 @@ use std::{
     thread,
 };
 
+use evaluation::evaluate_board;
 use log::info;
 use search::Search;
 
@@ -60,6 +61,10 @@ impl Bot {
 
     pub fn get_board(&self) -> &Board {
         &self.board
+    }
+
+    pub fn eval_board(&self) -> i64 {
+        evaluate_board(&self.board, None)
     }
 
     pub fn run(&mut self, depth: u8) {

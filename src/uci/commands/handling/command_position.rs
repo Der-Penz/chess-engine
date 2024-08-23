@@ -55,8 +55,7 @@ pub fn parse_position(params: &str) -> Result<UCICommand, CommandParseError> {
     };
 
     let mut board = if let Some(fen) = &fen {
-        Board::from_fen(fen)
-            .map_err(|_| CommandParseError::ParseError("Invalid FEN position".to_string()))?
+        Board::from_fen(fen).map_err(|err| CommandParseError::ParseError(err.to_string()))?
     } else {
         Board::default()
     };

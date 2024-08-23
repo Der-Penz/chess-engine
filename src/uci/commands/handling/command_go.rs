@@ -23,10 +23,11 @@ pub enum GoMode {
     Perft(u8),
 }
 
+const MAX_DEPTH: u8 = 64;
 pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
     match params.mode {
         GoMode::Depth(depth) => bot.run(depth),
-        GoMode::Infinite => bot.run(u8::MAX),
+        GoMode::Infinite => bot.run(MAX_DEPTH),
         GoMode::Nodes(_) => todo!("implement nodes mode"),
         GoMode::Perft(depth) => bot.run_perft(depth),
     }
