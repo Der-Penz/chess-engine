@@ -18,15 +18,37 @@ use super::{bit_board::BitBoard, Board};
 
 pub mod attack_pattern;
 
-pub struct MoveGeneration();
+pub struct MoveGeneration {
+    computed_moves: Option<MoveList>,
+    move_masks: Option<MoveGenerationMasks>,
+}
 
 impl MoveGeneration {
-    pub fn generate_legal_moves(board: &Board) -> MoveList {
+    pub fn new() -> Self {
+        Self {
+            computed_moves: None,
+            move_masks: None,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.computed_moves = None;
+        self.move_masks = None;
+    }
+
+    pub fn get_move_masks(&self) -> Option<&MoveGenerationMasks> {
+        self.move_masks.as_ref()
+    }
+
+    pub fn get_computed_moves(&self) -> Option<&MoveList> {
+        self.computed_moves.as_ref()
+    }
+
+    pub fn generate_legal_moves(&mut self, board: &Board) -> &MoveList {
         let mut legal_moves = MoveList::default();
 
         let data = MoveGenerationData::from_board(&board);
         let mut masks = MoveGenerationMasks::default();
-
         masks.calculate_king_danger(&data, &board);
 
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
@@ -34,11 +56,14 @@ impl MoveGeneration {
 
         legal_moves.create_and_add_moves(data.king_sq, king_moves, MoveFlag::Normal);
         if masks.multi_check {
-            return legal_moves;
+            self.move_masks = Some(masks);
+            self.computed_moves = Some(legal_moves);
+            return self.computed_moves.as_ref().unwrap();
         }
 
         masks.calculate_pins(&data, board);
         masks.calculate_push_and_capture(&data, board);
+        self.move_masks = Some(masks);
 
         //calculate moves for pinned pieces
         if !masks.in_check {
@@ -234,7 +259,8 @@ impl MoveGeneration {
             }
         }
 
-        legal_moves
+        self.computed_moves = Some(legal_moves);
+        self.computed_moves.as_ref().unwrap()
     }
 }
 #[inline(always)]

@@ -44,7 +44,8 @@ pub fn perft(depth: u8, board: &mut Board, multithreaded: bool) -> Vec<(Move, Mo
     if depth == 0 {
         return vec![];
     }
-    let move_list = MoveGeneration::generate_legal_moves(board);
+    let mut move_gen = MoveGeneration::new();
+    let move_list = move_gen.generate_legal_moves(board);
     let results = Arc::new(Mutex::new(Vec::with_capacity(move_list.len())));
     let pool = ThreadPool::new(thread::available_parallelism().unwrap().into());
     for mov in move_list.clone().iter() {
@@ -95,7 +96,8 @@ fn perft_depth(depth: u8, board: &mut Board) -> MoveCounter {
         return MoveCounter::new_one();
     }
 
-    let move_list = MoveGeneration::generate_legal_moves(board);
+    let mut move_gen = MoveGeneration::new();
+    let move_list = move_gen.generate_legal_moves(board);
     let mut counter = MoveCounter::default();
     for mov in move_list.iter() {
         board

@@ -1,3 +1,4 @@
+pub mod game_result;
 pub mod bit_board;
 pub mod board_error;
 pub mod board_state;
@@ -232,7 +233,8 @@ impl Board {
         }
 
         if validate {
-            let moves = MoveGeneration::generate_legal_moves(self);
+            let mut move_gen = MoveGeneration::new();
+            let moves = move_gen.generate_legal_moves(self);
             if !moves.has(mov) {
                 error!("Tried playing an invalid move");
                 error!("Legal moves: {}", moves);

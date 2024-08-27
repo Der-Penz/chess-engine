@@ -9,7 +9,8 @@ pub struct PGNParser();
 impl PGNParser {
     /// Convert the move to SAN (Standard Algebraic Notation).
     pub fn move_as_san(mov: &Move, board: &mut Board) -> Result<String, ToSANError> {
-        let legal_moves = MoveGeneration::generate_legal_moves(board);
+        let mut move_gen = MoveGeneration::new();
+        let legal_moves = move_gen.generate_legal_moves(board);
 
         if !legal_moves.has(mov) {
             return Err(ToSANError::InvalidMove);
@@ -83,7 +84,8 @@ impl PGNParser {
             .map_err(|_| ToSANError::MoveMakeError)?;
 
         if board.in_check() {
-            let legal_response_moves = MoveGeneration::generate_legal_moves(board);
+            let mut move_gen = MoveGeneration::new();
+            let legal_response_moves = move_gen.generate_legal_moves(board);
             if legal_response_moves.is_empty() {
                 san.push('#');
             } else {
@@ -105,7 +107,8 @@ impl PGNParser {
         }
         //remove unnecessary characters
         let cleaned_san = &san.replace("+", "").replace("#", "").replace("x", "")[..];
-        let legal_moves = MoveGeneration::generate_legal_moves(board);
+        let mut move_gen = MoveGeneration::new();
+        let legal_moves = move_gen.generate_legal_moves(board);
 
         // Check if the move is a castle move
         if cleaned_san == "OO" {

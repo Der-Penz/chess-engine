@@ -64,7 +64,8 @@ impl MinMaxSearch {
             }
         }
 
-        let move_list = MoveGeneration::generate_legal_moves(board);
+        let mut move_gen = MoveGeneration::new();
+        let move_list = move_gen.generate_legal_moves(board);
         //TODO move ordering
         if depth == 0 {
             return evaluate_board(board, Some(move_list)).abs() * color;

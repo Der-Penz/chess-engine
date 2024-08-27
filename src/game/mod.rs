@@ -9,6 +9,8 @@ pub mod piece_type;
 pub mod square;
 
 // Re-export the most important types
+pub use board::game_result::GameResult;
+pub use board::move_gen::MoveGeneration;
 pub use board::Board;
 pub use color::Color;
 pub use move_notation::Move;

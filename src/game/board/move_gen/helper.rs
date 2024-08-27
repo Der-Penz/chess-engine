@@ -46,6 +46,7 @@ impl MoveGenerationData {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MoveGenerationMasks {
     pub king_danger: u64,
     pub checkers: u64,
