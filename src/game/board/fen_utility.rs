@@ -172,7 +172,7 @@ impl FENUtility {
         }
 
         fen_string.push_str(&format!("{}", board.current_state.ply_clock));
-        fen_string.push_str(&format!(" {}", board.ply_count / 2));
+        fen_string.push_str(&format!(" {}", board.ply_count() / 2));
 
         fen_string
     }

@@ -1,9 +1,9 @@
-pub mod game_result;
 pub mod bit_board;
 pub mod board_error;
 pub mod board_state;
 pub mod display;
 pub mod fen_utility;
+pub mod game_result;
 pub mod move_gen;
 pub mod zobrist;
 
@@ -81,6 +81,10 @@ impl Board {
 
     pub fn cur_state(&self) -> &BoardState {
         &self.current_state
+    }
+
+    pub fn ply_count(&self) -> usize {
+        self.ply_count
     }
 
     pub fn side_to_move(&self) -> Color {

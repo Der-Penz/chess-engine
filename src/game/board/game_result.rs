@@ -116,6 +116,31 @@ impl GameResult {
     }
 }
 
+impl From<GameResult> for &str {
+    fn from(value: GameResult) -> Self {
+        match value {
+            GameResult::InProgress => "*",
+            GameResult::Mate(color) => match color {
+                Color::White => "0-1",
+                Color::Black => "1-0",
+            },
+            GameResult::Stalemate => "1/2-1/2",
+            GameResult::Repetition => "1/2-1/2",
+            GameResult::FiftyMoveRule => "1/2-1/2",
+            GameResult::InsufficientMaterial => "1/2-1/2",
+            GameResult::Draw => "1/2-1/2",
+            GameResult::Resign(color) => match color {
+                Color::White => "0-1",
+                Color::Black => "1-0",
+            },
+            GameResult::Timeout(color) => match color {
+                Color::White => "0-1",
+                Color::Black => "1-0",
+            },
+        }
+    }
+}
+
 mod test {
 
     #[test]
