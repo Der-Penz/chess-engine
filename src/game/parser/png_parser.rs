@@ -3,8 +3,9 @@ use std::{collections::HashMap, f32::consts::E};
 use thiserror::Error;
 
 use crate::game::{
-    board::move_gen::MoveGeneration, castle_rights::CastleType, Board, Color, GameResult, Move,
-    PieceType, Square,
+    board::{fen_utility::FENUtility, move_gen::MoveGeneration},
+    castle_rights::CastleType,
+    Board, Color, GameResult, Move, PieceType, Square,
 };
 
 pub struct PGNParser();
@@ -15,12 +16,12 @@ impl PGNParser {
         let mut move_gen = MoveGeneration::new();
         let legal_moves = move_gen.generate_legal_moves(board);
 
-        if !legal_moves.has(mov) {
-            return Err(ToSANError::InvalidMove);
-        }
-
         if mov.is_null() {
             return Ok("null".to_string());
+        }
+
+        if !legal_moves.has(mov) {
+            return Err(ToSANError::InvalidMove);
         }
 
         if let Some(castle_type) = mov.flag().castle_side() {
@@ -35,18 +36,24 @@ impl PGNParser {
             .ptype();
         let capture_piece = board.get_sq_piece(dest);
 
-        let mut san = moved_piece.to_string().to_ascii_uppercase();
+        let mut san = if moved_piece == PieceType::Pawn {
+            String::new()
+        } else {
+            moved_piece.to_string().to_ascii_uppercase()
+        };
 
         if moved_piece != PieceType::Pawn && moved_piece != PieceType::King {
             let same_piece_moves = legal_moves
                 .iter()
                 .filter(|m| {
                     m.dest() == dest
+                        && *m != mov
                         && board.get_sq_piece(m.source()).unwrap().ptype() == moved_piece
                 })
                 .collect::<Vec<_>>();
 
-            if same_piece_moves.len() > 1 {
+            //if there are other pieces from the same type that can move to the same square
+            if !same_piece_moves.is_empty() {
                 let same_rank = same_piece_moves
                     .iter()
                     .any(|m| m.source().rank() == source.rank());
@@ -54,13 +61,13 @@ impl PGNParser {
                     .iter()
                     .any(|m| m.source().file() == source.file());
 
-                // piece on the same rank push the file
-                if same_rank {
+                //not same file
+                if !same_file {
                     san.push_str(&source.file_str());
-                    // piece on the same file push the rank
-                }
-                if same_file {
+                } else if !same_rank {
                     san.push_str(&source.rank_str());
+                } else {
+                    san.push_str(&source.to_string());
                 }
             }
         }
@@ -319,12 +326,15 @@ impl PGNParser {
 
         let mut mov_str = String::new();
         for (i, mov) in moves.iter().enumerate() {
-            let san = Self::move_as_san(mov, &mut board)?;
+            let san: String = Self::move_as_san(mov, &mut board)?;
             if i % 2 == 0 {
                 mov_str.push_str(&format!("{}. {} ", i / 2 + 1, san));
             } else {
                 mov_str.push_str(&format!("{} ", san));
             }
+            board
+                .make_move(mov, false, false)
+                .map_err(|_| ToSANError::MoveMakeError)?;
         }
 
         let result = GameResult::get_game_result(&board, None);
@@ -333,14 +343,17 @@ impl PGNParser {
         let mut tags_str = String::new();
         if let Some(tags) = tags {
             for (key, value) in tags {
-                if key == "result" {
+                if key == "Result" || key == "FEN" {
                     continue;
                 }
                 tags_str.push_str(&format!("[{} \"{}\"]\n", key, value));
             }
         }
-        tags_str.push_str(&format!("[result \"{}\"]\n", Into::<&str>::into(result)));
-        tags_str.push_str(&format!("[FEN \"{}\"]\n", start_fen));
+        tags_str.push_str(&format!("[Result \"{}\"]\n", Into::<&str>::into(result)));
+
+        if start_fen != FENUtility::START_FEN {
+            tags_str.push_str(&format!("[FEN \"{}\"]\n", start_fen));
+        }
 
         Ok(format!("{}\n{}", tags_str, mov_str))
     }
@@ -358,14 +371,14 @@ impl PGNParser {
                 value[..value.len() - 1].trim_matches('"').to_string(),
             );
         }
-
         let mut board = tags_map
             .get("FEN")
             .map_or_else(|| Ok(Board::default()), |fen| Board::from_fen(fen))
             .map_err(|_| FromSANError::ParseError)?;
 
         let mut move_history = Vec::new();
-        let moves = moves.trim().split(' ');
+        let moves = moves.trim().split(|c| c == ' ' || c == '\n');
+
         let mut skip_comment = false;
         for mov in moves {
             if skip_comment {
@@ -380,8 +393,18 @@ impl PGNParser {
                 continue;
             }
 
-            //skip comments and results
-            if mov.contains(".") || mov == "*" || mov == "1/2-1/2" || mov == "1-0" || mov == "0-1" {
+            if mov.contains(|c| c == '(' || c == ')') {
+                unimplemented!("PGN Variations are not supported yet");
+            }
+
+            //skip results and move numbers
+            if mov.is_empty()
+                || mov.contains(".")
+                || mov == "*"
+                || mov == "1/2-1/2"
+                || mov == "1-0"
+                || mov == "0-1"
+            {
                 continue;
             }
 
@@ -404,6 +427,15 @@ pub struct PGNData {
     pub tags: HashMap<String, String>,
     pub moves: Vec<Move>,
     pub board: Board,
+}
+
+impl PGNData {
+    pub fn initial_board(&self) -> Board {
+        self.tags
+            .get("FEN")
+            .map_or_else(|| Ok(Board::default()), |fen| Board::from_fen(fen))
+            .expect("must be valid FEN")
+    }
 }
 
 #[derive(Error, Debug)]
