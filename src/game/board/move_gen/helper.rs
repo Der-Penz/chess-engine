@@ -4,10 +4,9 @@ use crate::game::{
 };
 
 use super::{
-    attack_pattern::direction_mask::CONNECTION_MASK,
+    attacks::direction_mask::CONNECTION_MASK,
     attacks_bishop, attacks_king, attacks_knight, attacks_pawn, attacks_rook,
     magic::{get_bishop_moves, get_rook_moves},
-    MoveGeneration,
 };
 
 /// Data used for move generation.

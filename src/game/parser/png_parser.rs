@@ -1,11 +1,11 @@
-use std::{collections::HashMap, f32::consts::E};
+use std::collections::HashMap;
 
 use thiserror::Error;
 
 use crate::game::{
     board::{fen_utility::FENUtility, move_gen::MoveGeneration},
     castle_rights::CastleType,
-    Board, Color, GameResult, Move, PieceType, Square,
+    Board, GameResult, Move, PieceType, Square,
 };
 
 pub struct PGNParser();
@@ -13,8 +13,7 @@ pub struct PGNParser();
 impl PGNParser {
     /// Convert the move to SAN (Standard Algebraic Notation).
     pub fn move_as_san(mov: &Move, board: &mut Board) -> Result<String, ToSANError> {
-        let mut move_gen = MoveGeneration::new();
-        let legal_moves = move_gen.generate_legal_moves(board);
+        let legal_moves = MoveGeneration::generate_legal_moves(board);
 
         if mov.is_null() {
             return Ok("null".to_string());
@@ -94,8 +93,7 @@ impl PGNParser {
             .map_err(|_| ToSANError::MoveMakeError)?;
 
         if board.in_check() {
-            let mut move_gen = MoveGeneration::new();
-            let legal_response_moves = move_gen.generate_legal_moves(board);
+            let legal_response_moves = MoveGeneration::generate_legal_moves(board);
             if legal_response_moves.is_empty() {
                 san.push('#');
             } else {
@@ -123,8 +121,7 @@ impl PGNParser {
             },
             "",
         )[..];
-        let mut move_gen = MoveGeneration::new();
-        let legal_moves = move_gen.generate_legal_moves(board);
+        let legal_moves = MoveGeneration::generate_legal_moves(board);
 
         // Check if the move is a castle move
         if cleaned_san == "OO" {

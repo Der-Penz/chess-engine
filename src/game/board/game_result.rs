@@ -1,27 +1,15 @@
-use super::{move_gen::MoveGeneration, Board};
-use crate::game::{Color, PieceType};
+use super::{move_gen::LegalMoveList, Board};
+use crate::game::{Color, MoveGeneration, PieceType};
 
 impl GameResult {
-    pub fn get_game_result(board: &Board, move_gen: Option<MoveGeneration>) -> GameResult {
-        let mut move_gen = match move_gen {
-            Some(mg) => mg,
-            None => MoveGeneration::new(),
-        };
-
-        let moves = if let Some(moves) = move_gen.get_computed_moves() {
-            moves
-        } else {
-            move_gen.generate_legal_moves(board);
-            move_gen
-                .get_computed_moves()
-                .expect("Must have moves after generating them")
+    pub fn get_game_result(board: &Board, move_gen: Option<LegalMoveList>) -> GameResult {
+        let moves = match move_gen {
+            Some(moves) => moves,
+            None => MoveGeneration::generate_legal_moves(board),
         };
 
         if moves.is_empty() {
-            let masks = move_gen
-                .get_move_masks()
-                .expect("Must have move masks if moves have been generated");
-            if masks.in_check {
+            if moves.get_masks().in_check {
                 return GameResult::Mate(board.side_to_move);
             } else {
                 return GameResult::Stalemate;

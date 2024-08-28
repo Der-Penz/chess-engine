@@ -12,9 +12,7 @@ use board_error::{FENError, UndoMoveError};
 use board_state::BoardState;
 use fen_utility::FENUtility;
 use log::error;
-use move_gen::{
-    attacks_bishop, attacks_knight, attacks_pawn, attacks_rook, MoveGeneration, MoveList,
-};
+use move_gen::{attacks_bishop, attacks_knight, attacks_pawn, attacks_rook, MoveGeneration};
 use zobrist::ZOBRIST;
 
 use super::{
@@ -237,8 +235,7 @@ impl Board {
         }
 
         if validate {
-            let mut move_gen = MoveGeneration::new();
-            let moves = move_gen.generate_legal_moves(self);
+            let moves = MoveGeneration::generate_legal_moves(self);
             if !moves.has(mov) {
                 error!("Tried playing an invalid move");
                 error!("Legal moves: {}", moves);
