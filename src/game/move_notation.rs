@@ -94,7 +94,7 @@ impl Move {
         let move_flag = match moved_piece_type {
             PieceType::Pawn => {
                 if uci.len() > 4 {
-                    match &uci[5..=6] {
+                    match &uci[4..] {
                         "n" | "=n" => MoveFlag::KnightPromotion,
                         "b" | "=b" => MoveFlag::BishopPromotion,
                         "r" | "=r" => MoveFlag::RookPromotion,
