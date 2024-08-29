@@ -14,7 +14,7 @@ use log::{info, warn};
 use search::{AbortFlag, Search};
 
 use crate::{
-    game::{Board, Move},
+    game::{Board, Move, MoveGeneration},
     perft,
 };
 
@@ -67,8 +67,29 @@ impl Bot {
         &self.board
     }
 
-    pub fn eval_board(&self) -> i64 {
-        evaluate_board(&self.board, None)
+    pub fn eval_board(&mut self, divide: bool) -> String {
+        let mut eval_str = String::new();
+        if divide {
+            MoveGeneration::generate_legal_moves(&self.board)
+                .iter()
+                .for_each(|mv| {
+                    let valid = self.board.make_move(mv, true, false);
+                    if valid.is_err() {
+                        return;
+                    }
+                    let eval = evaluate_board(&self.board, None);
+                    eval_str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), eval));
+                    self.board.undo_move(mv, true).expect("Must be undo able");
+                });
+            eval_str.push('\n');
+        }
+
+        eval_str.push_str(&format!(
+            "Current eval: {}",
+            evaluate_board(&self.board, None)
+        ));
+
+        eval_str
     }
 
     pub fn poll_reaction(&mut self) -> Result<ReactionMessage, TryRecvError> {

@@ -21,6 +21,7 @@ pub enum GoMode {
     Infinite,
     Nodes(u64),
     Perft(u8),
+    Eval(bool),
 }
 
 const MAX_DEPTH: u8 = 64;
@@ -38,6 +39,7 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
         }
         GoMode::Nodes(_) => todo!("implement nodes mode"),
         GoMode::Perft(depth) => Some(bot.perft(depth)),
+        GoMode::Eval(divide) => Some(bot.eval_board(divide)),
     };
 
     msg
@@ -63,6 +65,11 @@ pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
                 .parse()
                 .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
             let params = GoParams::new(GoMode::Perft(depth));
+            Ok(UCICommand::Go(params))
+        }
+        "eval" => {
+            let divide = rest == "divide";
+            let params = GoParams::new(GoMode::Eval(divide));
             Ok(UCICommand::Go(params))
         }
         _ => Err(CommandParseError::ParseError(format!(

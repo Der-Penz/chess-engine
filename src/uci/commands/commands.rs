@@ -15,7 +15,6 @@ pub enum UCICommand {
     SetOption(String, String),
     Display,
     UCINewGame,
-    Eval,
     Stop,
 }
 
@@ -38,7 +37,6 @@ const COMMAND_STR_SET_OPTION: &str = "setoption";
 const COMMAND_STR_DISPLAY: &str = "d";
 const COMMAND_STR_UCI_NEW_GAME: &str = "ucinewgame";
 const COMMAND_STR_STOP: &str = "stop";
-const COMMAND_STR_EVAL: &str = "eval";
 
 impl std::str::FromStr for UCICommand {
     type Err = CommandParseError;
@@ -55,7 +53,6 @@ impl std::str::FromStr for UCICommand {
             COMMAND_STR_GO => command_go::parse_go(params),
             COMMAND_STR_SET_OPTION => Ok(UCICommand::SetOption("".into(), "".into()).into()),
             COMMAND_STR_POSITION => command_position::parse_position(params),
-            COMMAND_STR_EVAL => Ok(UCICommand::Eval),
             _ => Err(CommandParseError::InvalidCommand(command.to_string())),
         }
     }

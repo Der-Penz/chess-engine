@@ -18,7 +18,6 @@ pub fn handle_uci_command(command: UCICommand, bot: &mut Bot) -> Option<String> 
         UCICommand::Position(params) => command_position::handle_position(bot, params),
         UCICommand::Display => Some(bot.get_board().to_string()),
         UCICommand::Go(params) => command_go::handle_go(bot, params),
-        UCICommand::Eval => Some(format!("Eval: {}", bot.eval_board())),
         UCICommand::Stop => {
             bot.stop();
             None
