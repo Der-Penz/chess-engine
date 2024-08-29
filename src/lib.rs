@@ -7,8 +7,8 @@ use game::{
     Board, Move,
 };
 #[cfg(feature = "log_to_file")]
-use log::info;
-use log::LevelFilter;
+#[macro_use]
+extern crate log;
 use std::{
     io::Write,
     sync::{Arc, Mutex},
@@ -22,7 +22,15 @@ pub fn init() {
     #[cfg(not(feature = "log_to_file"))]
     {
         env_logger::builder()
-            .format(|buf, record| writeln!(buf, "{}", record.args()))
+            .format(|buf, record| {
+                writeln!(
+                    buf,
+                    "[{}] [{}] - {}",
+                    record.level(),
+                    record.file().unwrap_or(""),
+                    record.args()
+                )
+            })
             .filter(None, LevelFilter::Info)
             .init();
     }
@@ -32,9 +40,16 @@ pub fn init() {
         let log_file_path = std::env::var("LOG_FILE").unwrap_or("logs.log".to_string());
         let log_file = std::fs::File::create(log_file_path).unwrap();
         env_logger::Builder::from_default_env()
-            .format(|buf, record| writeln!(buf, "[{}] - {}", record.level(), record.args()))
+            .format(|buf, record| {
+                writeln!(
+                    buf,
+                    "[{}] [{}] - {}",
+                    record.level(),
+                    record.file().unwrap_or(""),
+                    record.args()
+                )
+            })
             .target(env_logger::Target::Pipe(Box::new(log_file)))
-            .filter(None, LevelFilter::Info)
             .init();
         info!("Log to file enabled");
     }

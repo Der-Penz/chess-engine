@@ -2,8 +2,6 @@ pub mod command_go;
 pub mod command_position;
 pub mod command_uci;
 
-use log::info;
-
 use crate::bot::Bot;
 
 use super::UCICommand;

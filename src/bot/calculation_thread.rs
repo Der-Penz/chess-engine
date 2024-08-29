@@ -19,18 +19,18 @@ pub fn thread_loop<S: Search + Send + 'static>(
         match message {
             Ok(value) => match value {
                 ActionMessage::Think(board, depth) => {
-                    info!("CT: Received search action");
+                    info!("Received search action");
 
                     let start_time = std::time::Instant::now();
                     let result = search.search(board, depth, &flag, &mut sender);
                     let elapsed = start_time.elapsed();
 
                     if let Some((best_move, eval)) = result {
-                        info!("CT: Best move: {:?} with eval: {}", best_move, eval);
+                        info!("Best move: {:?} with eval: {}", best_move, eval);
 
                         sender.send(ReactionMessage::BestMove(best_move)).unwrap();
                     } else {
-                        error!("CT: No best move found");
+                        error!("No best move found");
                     }
 
                     info!(
@@ -40,7 +40,7 @@ pub fn thread_loop<S: Search + Send + 'static>(
                 }
             },
             Err(_) => {
-                info!("CT: Disconnected from main thread");
+                info!("Disconnected from main thread");
                 break;
             }
         };

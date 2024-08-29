@@ -10,10 +10,13 @@ use std::{
 
 use calculation_thread::thread_loop;
 use evaluation::evaluate_board;
-use log::info;
+use log::{info, warn};
 use search::{AbortFlag, Search};
 
-use crate::game::{Board, Move};
+use crate::{
+    game::{Board, Move},
+    perft,
+};
 
 mod evaluation;
 pub mod search;
@@ -30,6 +33,7 @@ pub enum ReactionMessage {
 pub struct Bot {
     board: Board,
     abort_flag: AbortFlag,
+    thinking: bool,
     action_sender: Sender<ActionMessage>,
     reaction_receiver: Receiver<ReactionMessage>,
     _thread_handle: thread::JoinHandle<()>,
@@ -48,6 +52,7 @@ impl Bot {
         Bot {
             board: Board::default(),
             abort_flag: abort_flag,
+            thinking: false,
             action_sender: action_tx,
             reaction_receiver: reaction_rx,
             _thread_handle: calculation_thread,
@@ -66,39 +71,53 @@ impl Bot {
         evaluate_board(&self.board, None)
     }
 
-    pub fn poll_reaction(&self) -> Result<ReactionMessage, TryRecvError> {
-        self.reaction_receiver.try_recv()
+    pub fn poll_reaction(&mut self) -> Result<ReactionMessage, TryRecvError> {
+        let msg = self.reaction_receiver.try_recv();
+
+        if msg
+            .as_ref()
+            .is_ok_and(|m| matches!(m, ReactionMessage::BestMove(_)))
+        {
+            self.thinking = false;
+        }
+        msg
     }
 
     pub fn think(&mut self, depth: u8) {
-        info!("Starting search with depth {}", depth);
+        if self.thinking {
+            warn!("Bot is already thinking, abort search first");
+            return;
+        }
 
         self.abort_flag.store(false, Ordering::Relaxed);
+        self.thinking = true;
 
         self.action_sender
             .send(ActionMessage::Think(self.board.clone(), depth))
             .unwrap();
     }
 
-    pub fn perft(&self, _depth: u8) {
-        todo!("implement perft with new code structure");
-        // info!("Starting blocking perft with depth {}", depth);
-        // let result = perft(depth, &mut self.board.clone(), false);
+    /// Returns a string with the perft results for the given depth.
+    /// This function is blocking
+    pub fn perft(&self, depth: u8) -> String {
+        let result = perft(depth, &mut self.board.clone(), false);
 
-        // let mut total = 0;
-        // for (mv, counter) in result {
-        //     total += counter.count;
-        //     println!("{} : {}", mv.as_uci_notation(), counter.count);
-        // }
+        let mut total = 0;
+        let mut str = String::new();
+        for (mv, counter) in result {
+            total += counter.count;
+            str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), counter.count));
+        }
 
-        // println!("\nTotal nodes: {}", total);
+        str.push_str(&format!("\nTotal nodes: {}", total));
+        str
     }
 
     pub fn stop(&mut self) {
         self.abort_flag.store(true, Ordering::Relaxed);
     }
 
-    // pub fn is_running(&self) -> bool {
-    //     self.abort_flag.load(Ordering::Relaxed)
-    // }
+    pub fn is_running(&self) -> bool {
+        self.thinking
+    }
 }

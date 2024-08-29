@@ -25,15 +25,22 @@ pub enum GoMode {
 
 const MAX_DEPTH: u8 = 64;
 pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
-    match params.mode {
-        GoMode::Depth(depth) => bot.think(depth),
-        GoMode::Infinite => bot.think(MAX_DEPTH),
-        GoMode::Nodes(_) => todo!("implement nodes mode"),
-        GoMode::Perft(depth) => bot.perft(depth),
-    }
+    info!("ET: go with mode {:?}", params.mode);
 
-    info!("Engine started calculation");
-    None
+    let msg = match params.mode {
+        GoMode::Depth(depth) => {
+            bot.think(depth);
+            None
+        }
+        GoMode::Infinite => {
+            bot.think(MAX_DEPTH);
+            None
+        }
+        GoMode::Nodes(_) => todo!("implement nodes mode"),
+        GoMode::Perft(depth) => Some(bot.perft(depth)),
+    };
+
+    msg
 }
 
 pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {

@@ -3,7 +3,6 @@ mod uci_input;
 
 use crate::bot::{search::min_max::MinMaxSearch, Bot, ReactionMessage};
 use commands::{handle_uci_command, UCICommand};
-use log::{error, info};
 use std::sync::mpsc::TryRecvError;
 use uci_input::spawn_input_thread;
 
@@ -55,6 +54,6 @@ pub fn run_uci_protocol() {
 
 /// Sends a message to the output stream
 fn send_message(message: &str) {
-    info!("UCI Send: {:}", message);
+    info!("MSG Send: '{:}'", message);
     println!("{:}", message);
 }

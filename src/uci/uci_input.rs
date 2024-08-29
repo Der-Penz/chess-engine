@@ -1,7 +1,5 @@
 use std::{sync::mpsc::Sender, thread};
 
-use log::{info, warn};
-
 use crate::uci::commands::UCICommand;
 
 use super::commands::CommandParseError;
@@ -12,6 +10,8 @@ pub fn read_uci_input() -> Result<UCICommand, CommandParseError> {
     std::io::stdin()
         .read_line(&mut input)
         .expect("Failed to read line");
+
+    let input = input.trim();
     info!("Received Message: {}", input);
     input.parse::<UCICommand>()
 }
