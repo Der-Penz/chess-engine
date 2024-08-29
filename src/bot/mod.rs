@@ -10,7 +10,6 @@ use std::{
 
 use calculation_thread::thread_loop;
 use evaluation::evaluate_board;
-use log::{info, warn};
 use search::{AbortFlag, Search};
 
 use crate::{

@@ -2,7 +2,6 @@ use crate::{
     bot::Bot,
     uci::commands::{CommandParseError, UCICommand},
 };
-use log::info;
 
 #[derive(Debug, PartialEq)]
 pub struct GoParams {

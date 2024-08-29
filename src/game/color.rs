@@ -61,13 +61,6 @@ impl Color {
             Color::Black => 0,
         }
     }
-
-    pub fn relative_sq(&self, sq: u8) -> u8 {
-        match self {
-            Color::White => sq,
-            Color::Black => 63 - sq,
-        }
-    }
 }
 
 impl std::fmt::Display for Color {

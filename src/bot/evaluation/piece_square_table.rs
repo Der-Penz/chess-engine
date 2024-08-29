@@ -1,3 +1,5 @@
+use crate::game::Piece;
+
 #[rustfmt::skip]
 const KING_SQUARE_TABLE: [i8; 64] = [
     -30,-40,-40,-50,-50,-40,-40,-30,
@@ -70,7 +72,7 @@ const QUEEN_SQUARE_TABLE: [i8; 64] = [
     -20,-10,-10, -5, -5,-10,-10,-20
 ];
 
-pub const PIECE_SQUARE_TABLES: [[i8; 64]; 6] = [
+const PIECE_SQUARE_TABLES: [[i8; 64]; 6] = [
     PAWN_SQUARE_TABLE,
     KNIGHT_SQUARE_TABLE,
     BISHOP_SQUARE_TABLE,
@@ -78,3 +80,18 @@ pub const PIECE_SQUARE_TABLES: [[i8; 64]; 6] = [
     QUEEN_SQUARE_TABLE,
     KING_SQUARE_TABLE,
 ];
+
+#[inline(always)]
+pub fn read_p_sq_table(piece: Piece, sq: u8) -> i64 {
+    let index = match piece.color() {
+        crate::game::Color::White => {
+            let file = sq % 8;
+            let rank = 7 - (sq / 8);
+
+            file + rank * 8
+        }
+        crate::game::Color::Black => sq,
+    } as usize;
+
+    PIECE_SQUARE_TABLES[piece.ptype() as usize][index] as i64
+}

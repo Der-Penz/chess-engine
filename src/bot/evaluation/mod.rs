@@ -1,4 +1,6 @@
 mod piece_square_table;
+use piece_square_table::read_p_sq_table;
+
 use crate::game::{
     bit_manipulation::iter_set_bits,
     board::move_gen::{LegalMoveList, MoveGeneration},
@@ -43,7 +45,7 @@ const SCORE_PIECES: [i64; 6] = [
     1, //multiplier for king (1 king * 1 = 1) Score won't be effected by this
 ];
 
-const MOBILITY_SCORE: i64 = 2;
+const MOBILITY_SCORE: f64 = 0.5;
 
 /// Evaluates the board state and returns a score. Positive score indicates white is winning, negative score indicates black is winning.
 pub fn evaluate_board(board: &Board, precomputed_moves: Option<&LegalMoveList>) -> i64 {
@@ -60,7 +62,7 @@ pub fn evaluate_board(board: &Board, precomputed_moves: Option<&LegalMoveList>) 
         Some(moves) => moves.len() as i64,
         None => MoveGeneration::generate_legal_moves(board).len() as i64,
     };
-    score += move_count * MOBILITY_SCORE * color.perspective() as i64;
+    score += (move_count as f64 * MOBILITY_SCORE * color.perspective() as f64) as i64;
 
     score / 10
 }
@@ -82,13 +84,13 @@ fn evaluate_pieces(board: &Board) -> i64 {
         score += piece_score
             * (white_piece_board.count_ones() as i64 - black_piece_board.count_ones() as i64);
 
+        let piece = piece_type.as_colored_piece(Color::White);
         iter_set_bits(*white_piece_board).for_each(|sq| {
-            let index = Color::White.relative_sq(sq);
-            score += piece_square_table::PIECE_SQUARE_TABLES[piece_type][index as usize] as i64;
+            score += read_p_sq_table(piece, sq);
         });
+        let piece = piece_type.as_colored_piece(Color::Black);
         iter_set_bits(*black_piece_board).for_each(|sq| {
-            let index = Color::Black.relative_sq(sq);
-            score -= piece_square_table::PIECE_SQUARE_TABLES[piece_type][index as usize] as i64;
+            score -= read_p_sq_table(piece, sq);
         });
     }
     score
