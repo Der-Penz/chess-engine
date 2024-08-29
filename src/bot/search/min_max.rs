@@ -1,7 +1,12 @@
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use log::info;
 
 use crate::{
-    bot::{evaluation::evaluate_board, AbortFlag, AbortFlagState},
+    bot::{evaluation::evaluate_board, AbortFlag},
     game::{board::move_gen::MoveGeneration, Board, Move},
 };
 
@@ -16,8 +21,14 @@ pub struct MinMaxSearch {
 }
 
 impl Search for MinMaxSearch {
-    fn search(&mut self, mut board: Board, depth: u8, flag: &mut AbortFlag) -> Option<(Move, i64)> {
-        self.flag = flag.clone();
+    fn search(
+        &mut self,
+        mut board: Board,
+        depth: u8,
+        flag: &AbortFlag,
+        _msg_channel: &mut std::sync::mpsc::Sender<crate::bot::ReactionMessage>,
+    ) -> Option<(Move, i64)> {
+        self.flag = Arc::clone(flag);
         self.depth = depth;
         self.aborted = false;
         self.best = None;
@@ -45,7 +56,7 @@ impl MinMaxSearch {
             depth: 0,
             best: None,
             aborted: false,
-            flag: AbortFlag::default(),
+            flag: Arc::new(AtomicBool::new(false)),
             count: 0,
         }
     }
@@ -56,8 +67,7 @@ impl MinMaxSearch {
         if self.aborted {
             return i64::MIN;
         } else {
-            let flag = self.flag.lock().unwrap();
-            if *flag == AbortFlagState::Stopped {
+            if self.flag.load(Ordering::Relaxed) {
                 info!("Aborting search at depth {}", self.depth - depth);
                 self.aborted = true;
                 return i64::MIN;

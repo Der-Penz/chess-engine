@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-use crate::game::Move;
-
 use super::{
     command_go::{self, GoParams},
     command_position::{self, PositionParams},

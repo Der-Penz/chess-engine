@@ -26,10 +26,10 @@ pub enum GoMode {
 const MAX_DEPTH: u8 = 64;
 pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
     match params.mode {
-        GoMode::Depth(depth) => bot.run(depth),
-        GoMode::Infinite => bot.run(MAX_DEPTH),
+        GoMode::Depth(depth) => bot.think(depth),
+        GoMode::Infinite => bot.think(MAX_DEPTH),
         GoMode::Nodes(_) => todo!("implement nodes mode"),
-        GoMode::Perft(depth) => bot.run_perft(depth),
+        GoMode::Perft(depth) => bot.perft(depth),
     }
 
     info!("Engine started calculation");
