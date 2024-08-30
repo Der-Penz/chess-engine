@@ -8,15 +8,15 @@ use crate::{
     game::{board::move_gen::MoveGeneration, Board, Move},
 };
 
-use super::Search;
+use super::{diagnostics::SearchDiagnostics, Search};
 
 pub struct MinMaxSearch {
     depth: u8,
     flag: AbortFlag,
     best: Option<(Move, i64)>,
     aborted: bool,
-    node_count: u64,
     board: Board,
+    diagnostics: SearchDiagnostics,
 }
 
 impl Search for MinMaxSearch {
@@ -35,7 +35,7 @@ impl Search for MinMaxSearch {
 
         let best_score = self.nega_max(depth, 0, NEG_INF, POS_INF);
 
-        info!("Nodes searched: {}", self.node_count);
+        info!("Search Diagnostics: {}", self.diagnostics);
         info!("Score: {}", best_score);
         return self.best;
     }
@@ -55,7 +55,7 @@ impl MinMaxSearch {
             board: Board::default(),
             aborted: false,
             flag: Arc::new(AtomicBool::new(false)),
-            node_count: 0,
+            diagnostics: SearchDiagnostics::default(),
         }
     }
 
@@ -81,12 +81,14 @@ impl MinMaxSearch {
         if self.search_cancelled() {
             return 0;
         }
+        self.diagnostics.inc_node();
 
-        self.node_count += 1; //increment node count
         let moves = MoveGeneration::generate_legal_moves(&self.board);
 
         if ply_remaining == 0 {
-            return evaluate_board(&self.board, Some(&moves));
+            let eval = self.quiescence_search(alpha, beta);
+            // return evaluate_board(&self.board, Some(&moves));
+            return eval;
         }
 
         //check for checkmate and stalemate
@@ -115,6 +117,7 @@ impl MinMaxSearch {
             }
 
             if eval >= beta {
+                self.diagnostics.inc_cut_offs();
                 return beta;
             }
 
@@ -127,5 +130,41 @@ impl MinMaxSearch {
         }
 
         alpha
+    }
+
+    fn quiescence_search(&mut self, mut alpha: i64, beta: i64) -> i64 {
+        if self.search_cancelled() {
+            return 0;
+        }
+        self.diagnostics.inc_node_qs();
+
+        let mut eval = evaluate_board(&self.board, None);
+
+        if eval >= beta {
+            return beta;
+        }
+        if eval > alpha {
+            alpha = eval;
+        }
+
+        let moves = MoveGeneration::generate_legal_moves_captures(&self.board);
+
+        for mv in moves.iter() {
+            self.board.make_move(mv, true, false).unwrap();
+
+            eval = -self.quiescence_search(-beta, -alpha);
+
+            self.board.undo_move(mv, true).unwrap();
+
+            if eval >= beta {
+                self.diagnostics.inc_cut_offs();
+                return beta;
+            }
+            if eval > alpha {
+                alpha = eval;
+            }
+        }
+
+        return alpha;
     }
 }
