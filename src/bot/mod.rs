@@ -13,7 +13,7 @@ use evaluation::evaluate_board;
 use search::{AbortFlag, Search};
 
 use crate::{
-    game::{Board, Move, MoveGeneration},
+    game::{Board, GameResult, Move, MoveGeneration},
     perft,
 };
 
@@ -73,11 +73,26 @@ impl Bot {
                 .iter()
                 .for_each(|mv| {
                     let valid = self.board.make_move(mv, true, false);
+
                     if valid.is_err() {
                         return;
                     }
-                    let eval = evaluate_board(&self.board, None);
-                    eval_str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), eval));
+
+                    match GameResult::get_game_result(&self.board, None) {
+                        result if result.is_draw() => {
+                            eval_str.push_str(&format!("{} : DRAW\n", mv.as_uci_notation()))
+                        }
+                        result if result.color_lost().is_some() => eval_str.push_str(&format!(
+                            "{} : MATE({})\n",
+                            mv.as_uci_notation(),
+                            result.color_lost().unwrap()
+                        )),
+                        _ => {
+                            let eval = evaluate_board(&self.board, None);
+                            eval_str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), eval));
+                        }
+                    };
+
                     self.board.undo_move(mv, true).expect("Must be undo able");
                 });
             eval_str.push('\n');

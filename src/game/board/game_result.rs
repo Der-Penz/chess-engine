@@ -2,10 +2,10 @@ use super::{move_gen::LegalMoveList, Board};
 use crate::game::{Color, MoveGeneration, PieceType};
 
 impl GameResult {
-    pub fn get_game_result(board: &Board, move_gen: Option<LegalMoveList>) -> GameResult {
+    pub fn get_game_result(board: &Board, move_gen: Option<&LegalMoveList>) -> GameResult {
         let moves = match move_gen {
             Some(moves) => moves,
-            None => MoveGeneration::generate_legal_moves(board),
+            None => &MoveGeneration::generate_legal_moves(board),
         };
 
         if moves.is_empty() {
@@ -101,6 +101,15 @@ impl GameResult {
                 | GameResult::FiftyMoveRule
                 | GameResult::InsufficientMaterial
         )
+    }
+
+    pub fn color_lost(&self) -> Option<Color> {
+        match self {
+            GameResult::Mate(color) => Some(*color),
+            GameResult::Resign(color) => Some(*color),
+            GameResult::Timeout(color) => Some(*color),
+            _ => None,
+        }
     }
 }
 
