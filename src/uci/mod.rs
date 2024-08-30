@@ -2,7 +2,7 @@ mod commands;
 mod uci_input;
 
 use crate::bot::{search::min_max::MinMaxSearch, Bot, ReactionMessage};
-use commands::{handle_uci_command, UCICommand};
+use commands::handle_uci_command;
 use std::sync::mpsc::TryRecvError;
 use uci_input::spawn_input_thread;
 
@@ -17,7 +17,7 @@ pub fn run_uci_protocol() {
         // Receive a command from the input thread
         match rx.try_recv() {
             Ok(command) => {
-                if command == UCICommand::Quit {
+                if command.is_quit() {
                     info!("Quitting UCI Protocol");
                     break;
                 }

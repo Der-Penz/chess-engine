@@ -1,7 +1,5 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use log::{error, info};
-
 use super::{
     search::{AbortFlag, Search},
     ActionMessage, ReactionMessage,

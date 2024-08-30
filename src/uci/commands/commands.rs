@@ -5,7 +5,7 @@ use super::{
     command_position::{self, PositionParams},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum UCICommand {
     Quit,
     UCI,
@@ -16,6 +16,12 @@ pub enum UCICommand {
     Display,
     UCINewGame,
     Stop,
+}
+
+impl UCICommand {
+    pub fn is_quit(&self) -> bool {
+        matches!(self, UCICommand::Quit)
+    }
 }
 
 #[derive(Error, Debug)]

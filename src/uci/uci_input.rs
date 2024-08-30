@@ -26,7 +26,7 @@ pub fn spawn_input_thread(tx: Sender<UCICommand>) {
         };
         info!("Received Command: {:?}", command);
 
-        let should_quit = command == UCICommand::Quit;
+        let should_quit = command.is_quit();
 
         tx.send(command).unwrap();
 
