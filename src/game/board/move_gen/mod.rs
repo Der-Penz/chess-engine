@@ -37,7 +37,7 @@ impl MoveGeneration {
         let mut masks = MoveGenerationMasks::default();
         masks.calculate_king_danger(&data, &board);
 
-        let move_type_mask = if captures_only { data.enemy } else { 0u64 };
+        let move_type_mask = if captures_only { data.enemy } else { u64::MAX };
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
         let king_moves = attacks_king(data.king_sq, data.ally) & !masks.king_danger;
 
