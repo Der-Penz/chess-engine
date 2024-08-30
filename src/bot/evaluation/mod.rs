@@ -10,7 +10,7 @@ use crate::game::{
 
 use super::Board;
 
-const SCORE_CASTLE_RIGHT: i64 = 40;
+const SCORE_CASTLE_RIGHT: i64 = 10;
 const CASTLE_SCORE_BY_INDEX: [i64; 16] = [
     0,                      //0000
     SCORE_CASTLE_RIGHT,     //0001
@@ -45,9 +45,9 @@ const SCORE_PIECES: [i64; 6] = [
     1, //multiplier for king (1 king * 1 = 1) Score won't be effected by this
 ];
 
-const MOBILITY_SCORE: f64 = 0.5;
+const MOBILITY_SCORE: i64 = 1;
 
-/// Evaluates the board state and returns a score. Positive score indicates white is winning, negative score indicates black is winning.
+/// Evaluates the board state and returns a score in the perspective of the side to move.
 pub fn evaluate_board(board: &Board, precomputed_moves: Option<&LegalMoveList>) -> i64 {
     let mut score = 0;
 
@@ -62,9 +62,9 @@ pub fn evaluate_board(board: &Board, precomputed_moves: Option<&LegalMoveList>) 
         Some(moves) => moves.len() as i64,
         None => MoveGeneration::generate_legal_moves(board).len() as i64,
     };
-    score += (move_count as f64 * MOBILITY_SCORE * color.perspective() as f64) as i64;
+    score += (move_count >> MOBILITY_SCORE) * color.perspective() as i64;
 
-    score / 10
+    (score / 10) * color.perspective() as i64
 }
 
 #[inline(always)]

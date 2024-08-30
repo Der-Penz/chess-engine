@@ -3,8 +3,6 @@ use std::sync::{
     Arc,
 };
 
-use log::info;
-
 use crate::{
     bot::{evaluation::evaluate_board, AbortFlag},
     game::{board::move_gen::MoveGeneration, Board, Move},
@@ -17,13 +15,14 @@ pub struct MinMaxSearch {
     flag: AbortFlag,
     best: Option<(Move, i64)>,
     aborted: bool,
-    count: u64,
+    node_count: u64,
+    board: Board,
 }
 
 impl Search for MinMaxSearch {
     fn search(
         &mut self,
-        mut board: Board,
+        board: Board,
         depth: u8,
         flag: &AbortFlag,
         _msg_channel: &mut std::sync::mpsc::Sender<crate::bot::ReactionMessage>,
@@ -32,94 +31,101 @@ impl Search for MinMaxSearch {
         self.depth = depth;
         self.aborted = false;
         self.best = None;
+        self.board = board;
 
-        let color = board.side_to_move().perspective() as i64;
-        let (alpha, beta) = match color {
-            1 => (i64::MIN, i64::MAX),
-            -1 => (i64::MAX, i64::MIN),
-            _ => unreachable!(),
-        };
-        let max_eval = self.nega_max(&mut board, depth, alpha, beta, color);
+        let best_score = self.nega_max(depth, 0, NEG_INF, POS_INF);
 
-        if self.best.is_some() {
-            assert_eq!(max_eval, self.best.unwrap().1);
-        }
-
-        info!("Evaluated {} nodes", self.count);
-        self.best
+        info!("Nodes searched: {}", self.node_count);
+        info!("Score: {}", best_score);
+        return self.best;
     }
 }
+
+const NEG_INF: i64 = i64::MIN;
+const POS_INF: i64 = i64::MAX;
+
+const DRAW: i64 = 0;
+const MATE: i64 = 10000;
 
 impl MinMaxSearch {
     pub fn new() -> Self {
         Self {
             depth: 0,
             best: None,
+            board: Board::default(),
             aborted: false,
             flag: Arc::new(AtomicBool::new(false)),
-            count: 0,
+            node_count: 0,
         }
     }
 
-    fn nega_max(&mut self, board: &mut Board, depth: u8, alpha: i64, beta: i64, color: i64) -> i64 {
-        self.count += 1;
-
+    #[inline(always)]
+    /// Check if the search has been cancelled
+    /// and set the aborted flag if it has to make it faster instead of checking the
+    /// atomic bool every time
+    fn search_cancelled(&mut self) -> bool {
         if self.aborted {
-            return i64::MIN;
+            return true;
         } else {
             if self.flag.load(Ordering::Relaxed) {
-                info!("Aborting search at depth {}", self.depth - depth);
+                info!("Search aborted");
                 self.aborted = true;
-                return i64::MIN;
+                return true;
+            }
+        }
+        false
+    }
+
+    fn nega_max(&mut self, ply_remaining: u8, ply_from_root: u8, mut alpha: i64, beta: i64) -> i64 {
+        //check if the search has been aborted
+        if self.search_cancelled() {
+            return 0;
+        }
+
+        self.node_count += 1; //increment node count
+        let moves = MoveGeneration::generate_legal_moves(&self.board);
+
+        if ply_remaining == 0 {
+            return evaluate_board(&self.board, Some(&moves));
+        }
+
+        //check for checkmate and stalemate
+        if moves.is_empty() {
+            if moves.get_masks().in_check {
+                info!("Checkmate found at depth {}", ply_from_root);
+                return -(MATE - ply_from_root as i64);
+            } else {
+                return DRAW;
             }
         }
 
-        let move_list = MoveGeneration::generate_legal_moves(board);
-        //TODO move ordering
-        if depth == 0 {
-            return evaluate_board(board, Some(&move_list)).abs() * color;
-        }
+        for mov in moves.iter() {
+            self.board.make_move(mov, true, false).unwrap();
 
-        // checkmate or stalemate
-        if move_list.is_empty() {
-            return match board.in_check() {
-                true => i64::MIN + 1,
-                false => -10, // stalemate is bad for the side to move
-            };
-        }
-
-        let mut max_eval = i64::MIN;
-        let mut alpha = alpha;
-        for mv in move_list.iter() {
-            board.make_move(mv, true, false).unwrap();
-
+            let new_alpha = beta.saturating_neg();
+            let new_beta = alpha.saturating_neg();
             let eval = self
-                .nega_max(
-                    board,
-                    depth - 1,
-                    beta.saturating_neg(),
-                    alpha.saturating_neg(),
-                    -color,
-                )
+                .nega_max(ply_remaining - 1, ply_from_root + 1, new_alpha, new_beta)
                 .saturating_neg();
 
-            board.undo_move(mv, true).unwrap();
+            self.board.undo_move(mov, true).unwrap();
 
-            if eval > max_eval {
-                max_eval = eval;
-
-                if depth == self.depth {
-                    info!("New best move: {:?} with eval {}", mv, eval);
-                    self.best = Some((*mv, eval));
-                }
+            if self.search_cancelled() {
+                return 0;
             }
 
-            alpha = alpha.max(max_eval);
-            if alpha >= beta {
-                break;
+            if eval >= beta {
+                return beta;
+            }
+
+            if eval > alpha {
+                alpha = eval;
+                if ply_from_root == 0 {
+                    self.best = Some((*mov, eval));
+                }
             }
         }
 
-        max_eval
+        alpha
     }
 }

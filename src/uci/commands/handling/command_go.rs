@@ -33,6 +33,7 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
             None
         }
         GoMode::Infinite => {
+            todo!("implement infinite mode");
             bot.think(MAX_DEPTH);
             None
         }
@@ -55,7 +56,7 @@ pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
             let params = GoParams::new(GoMode::Depth(depth));
             Ok(UCICommand::Go(params))
         }
-        "infinite" => {
+        "infinite" | "" => {
             let params = GoParams::new(GoMode::Infinite);
             Ok(UCICommand::Go(params))
         }
