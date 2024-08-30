@@ -23,16 +23,30 @@ pub struct MoveGeneration();
 
 impl MoveGeneration {
     pub fn generate_legal_moves(board: &Board) -> LegalMoveList {
+        Self::generate_moves(board, false)
+    }
+
+    pub fn generate_legal_moves_captures(board: &Board) -> LegalMoveList {
+        Self::generate_moves(board, true)
+    }
+
+    fn generate_moves(board: &Board, captures_only: bool) -> LegalMoveList {
         let mut legal_moves = LegalMoveList::default();
 
         let data = MoveGenerationData::from_board(&board);
         let mut masks = MoveGenerationMasks::default();
         masks.calculate_king_danger(&data, &board);
 
+        let move_type_mask = if captures_only { data.enemy } else { 0u64 };
         //only king moves are allowed if in multi check (no other moves are allowed or castling)
         let king_moves = attacks_king(data.king_sq, data.ally) & !masks.king_danger;
 
-        legal_moves.create_and_add_moves(data.king_sq, king_moves, MoveFlag::Normal);
+        legal_moves.create_and_add_moves(
+            data.king_sq,
+            king_moves,
+            MoveFlag::Normal,
+            move_type_mask,
+        );
         if masks.multi_check {
             legal_moves.set_masks(masks);
             return legal_moves;
@@ -54,12 +68,14 @@ impl MoveGeneration {
                             sq,
                             double_push & pin_move_mask,
                             MoveFlag::DoublePawnPush,
+                            move_type_mask,
                         );
                         let pawn_move = moves_pawn(sq, data.enemy, data.ally, data.color);
                         legal_moves.create_and_add_pawn_moves(
                             sq,
                             pawn_move & pin_move_mask,
                             data.color,
+                            move_type_mask,
                         );
                     }
                     //if queen is straight pinned, it can only move straight
@@ -69,6 +85,7 @@ impl MoveGeneration {
                             sq,
                             moves & pin_move_mask,
                             MoveFlag::Normal,
+                            move_type_mask,
                         );
                     }
                     PieceType::Knight | PieceType::Bishop => (), //can't move if pinned by a rook like piece
@@ -94,12 +111,14 @@ impl MoveGeneration {
                             sq,
                             en_passant & pin_move_mask,
                             MoveFlag::EnPassant,
+                            move_type_mask,
                         );
                         let attacks = attacks_pawn(sq, data.enemy, data.ally, data.color);
                         legal_moves.create_and_add_pawn_moves(
                             sq,
                             attacks & pin_move_mask,
                             data.color,
+                            move_type_mask,
                         );
                     }
                     //if queen is diagonal pinned, it can only move diagonally
@@ -109,6 +128,7 @@ impl MoveGeneration {
                             sq,
                             moves & pin_move_mask,
                             MoveFlag::Normal,
+                            move_type_mask,
                         );
                     }
                     PieceType::Knight | PieceType::Rook => (), //can't move if pinned by a bishop like piece
@@ -131,6 +151,7 @@ impl MoveGeneration {
                         sq,
                         pawn_move & masks.push_capture_mask,
                         data.color,
+                        move_type_mask,
                     );
 
                     let attacks = attacks_pawn(sq, data.enemy, data.ally, data.color);
@@ -138,6 +159,7 @@ impl MoveGeneration {
                         sq,
                         attacks & masks.push_capture_mask,
                         data.color,
+                        move_type_mask,
                     );
 
                     let double_push = moves_pawn_double_push(sq, data.occupied, data.color);
@@ -145,6 +167,7 @@ impl MoveGeneration {
                         sq,
                         double_push & masks.push_capture_mask,
                         MoveFlag::DoublePawnPush,
+                        move_type_mask,
                     );
                     let en_passant = attacks_pawn_en_passant(
                         sq,
@@ -159,6 +182,7 @@ impl MoveGeneration {
                         sq,
                         en_passant & masks.push_mask,
                         MoveFlag::EnPassant,
+                        move_type_mask,
                     );
                     if en_passant != 0 {
                         let en_passant_pawn = board.cur_state().en_passant.unwrap().square_value()
@@ -166,7 +190,12 @@ impl MoveGeneration {
                             - data.color.perspective() * 8;
 
                         if masks.checkers & (1u64 << en_passant_pawn) != 0 {
-                            legal_moves.create_and_add_moves(sq, en_passant, MoveFlag::EnPassant);
+                            legal_moves.create_and_add_moves(
+                                sq,
+                                en_passant,
+                                MoveFlag::EnPassant,
+                                move_type_mask,
+                            );
                         }
                     }
                 }
@@ -176,6 +205,7 @@ impl MoveGeneration {
                         sq,
                         moves & masks.push_capture_mask,
                         MoveFlag::Normal,
+                        move_type_mask,
                     );
                 }
                 PieceType::Bishop => {
@@ -184,6 +214,7 @@ impl MoveGeneration {
                         sq,
                         moves & masks.push_capture_mask,
                         MoveFlag::Normal,
+                        move_type_mask,
                     );
                 }
                 PieceType::Rook => {
@@ -192,6 +223,7 @@ impl MoveGeneration {
                         sq,
                         moves & masks.push_capture_mask,
                         MoveFlag::Normal,
+                        move_type_mask,
                     );
                 }
                 PieceType::Queen => {
@@ -200,6 +232,7 @@ impl MoveGeneration {
                         sq,
                         moves & masks.push_capture_mask,
                         MoveFlag::Normal,
+                        move_type_mask,
                     );
                 }
                 PieceType::King => {
@@ -218,6 +251,7 @@ impl MoveGeneration {
                                     data.color,
                                 ),
                                 MoveFlag::KingSideCastle,
+                                move_type_mask,
                             );
                         }
                         if board
@@ -234,6 +268,7 @@ impl MoveGeneration {
                                     data.color,
                                 ),
                                 MoveFlag::QueenSideCastle,
+                                move_type_mask,
                             );
                         }
                     }

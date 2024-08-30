@@ -29,7 +29,7 @@ impl LegalMoveList {
     ///Adds a single move to the move list
     ///If the move list is full, the move is not added
     #[inline]
-    pub(crate) fn add_move(&mut self, m: Move) {
+    fn add_move(&mut self, m: Move) {
         if self.count == MAX_NUMBER_OF_MOVES_PER_POSITION {
             return;
         }
@@ -39,8 +39,14 @@ impl LegalMoveList {
     }
 
     /// Adds multiple moves to the move list from a given source square with a given flag
-    pub(crate) fn create_and_add_moves(&mut self, source: Square, moves: u64, flag: MoveFlag) {
-        let mut moves = moves;
+    pub(crate) fn create_and_add_moves(
+        &mut self,
+        source: Square,
+        moves: u64,
+        flag: MoveFlag,
+        move_type_mask: u64,
+    ) {
+        let mut moves = moves & move_type_mask;
         loop {
             if moves == 0 {
                 break;
@@ -53,7 +59,15 @@ impl LegalMoveList {
 
     /// Adds pawn moves to the move list for a given source and destination square
     /// handles promotions as well
-    pub(crate) fn create_and_add_pawn_moves(&mut self, source: Square, dest: u64, color: Color) {
+    pub(crate) fn create_and_add_pawn_moves(
+        &mut self,
+        source: Square,
+        dest: u64,
+        color: Color,
+        move_type_mask: u64,
+    ) {
+        let dest = dest & move_type_mask;
+
         BitBoard::from(dest).get_occupied().for_each(|dest| {
             if dest.rank() != color.promotion_rank() {
                 self.add_move(Move::new(source, dest, MoveFlag::Normal));
