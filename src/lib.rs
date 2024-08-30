@@ -2,13 +2,11 @@ pub mod bot;
 pub mod game;
 pub mod uci;
 
-use game::{
-    board::move_gen::{magic::lazy_static_attack_table_init, MoveGeneration},
-    Board, Move,
-};
-#[cfg(feature = "log_to_file")]
+use game::{board::move_gen::MoveGeneration, Board, Move};
+
 #[macro_use]
 extern crate log;
+use dotenv::dotenv;
 use std::{
     io::Write,
     sync::{Arc, Mutex},
@@ -17,7 +15,8 @@ use std::{
 use threadpool::ThreadPool;
 
 pub fn init() {
-    lazy_static_attack_table_init();
+    dotenv().ok();
+    game::board::move_gen::magic::lazy_static_attack_table_init();
 
     #[cfg(not(feature = "log_to_file"))]
     {
@@ -31,7 +30,6 @@ pub fn init() {
                     record.args()
                 )
             })
-            .filter(None, LevelFilter::Info)
             .init();
     }
 

@@ -37,6 +37,7 @@ env_logger = "0.10"
 thiserror = "1.0"
 lazy_static = "1.4"
 threadpool = "1.8"
+dotenv = "0.15.0"
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
