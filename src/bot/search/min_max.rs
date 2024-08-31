@@ -88,13 +88,21 @@ impl MinMaxSearch {
         ply_remaining: u8,
         ply_from_root: u8,
         mut alpha: Eval,
-        beta: Eval,
+        mut beta: Eval,
     ) -> Eval {
         //check if the search has been aborted
         if self.search_cancelled() {
             return 0;
         }
         self.diagnostics.inc_node();
+
+        //skip the position if it there is a mating sequence earlier in the search which would be shorter than a current one
+        alpha = alpha.max(-MATE + ply_from_root as Eval);
+        beta = beta.min(MATE - ply_from_root as Eval);
+        if alpha >= beta {
+            self.diagnostics.inc_cut_offs();
+            return alpha;
+        }
 
         let moves = MoveGeneration::generate_legal_moves(&self.board);
 
