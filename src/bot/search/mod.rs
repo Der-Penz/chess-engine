@@ -10,11 +10,11 @@ pub mod min_max;
 pub type AbortFlag = Arc<AtomicBool>;
 
 pub trait Search {
-    fn search(
+    fn set_communication_channels(
         &mut self,
-        board: Board,
-        depth: u8,
-        flag: &AbortFlag,
-        msg_channel: &mut Sender<ReactionMessage>,
-    ) -> Option<(Move, i64)>;
+        abort_flag: Arc<AtomicBool>,
+        msg_channel: Sender<ReactionMessage>,
+    );
+
+    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, i64)>;
 }

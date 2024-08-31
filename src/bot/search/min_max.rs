@@ -1,10 +1,11 @@
 use std::sync::{
     atomic::{AtomicBool, Ordering},
+    mpsc::Sender,
     Arc,
 };
 
 use crate::{
-    bot::{evaluation::evaluate_board, AbortFlag},
+    bot::{evaluation::evaluate_board, AbortFlag, ReactionMessage},
     game::{board::move_gen::MoveGeneration, Board, Move},
 };
 
@@ -12,26 +13,33 @@ use super::{diagnostics::SearchDiagnostics, Search};
 
 pub struct MinMaxSearch {
     depth: u8,
-    flag: AbortFlag,
+    flag: Option<AbortFlag>,
     best: Option<(Move, i64)>,
     aborted: bool,
     board: Board,
+    msg_channel: Option<Sender<ReactionMessage>>,
     diagnostics: SearchDiagnostics,
 }
 
 impl Search for MinMaxSearch {
-    fn search(
+    fn set_communication_channels(
         &mut self,
-        board: Board,
-        depth: u8,
-        flag: &AbortFlag,
-        _msg_channel: &mut std::sync::mpsc::Sender<crate::bot::ReactionMessage>,
-    ) -> Option<(Move, i64)> {
-        self.flag = Arc::clone(flag);
+        abort_flag: Arc<AtomicBool>,
+        msg_channel: std::sync::mpsc::Sender<crate::bot::ReactionMessage>,
+    ) {
+        self.flag = Some(abort_flag);
+        self.msg_channel = Some(msg_channel);
+    }
+
+    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, i64)> {
         self.depth = depth;
         self.aborted = false;
         self.best = None;
         self.board = board;
+
+        if self.flag.is_none() {
+            warn!("Abort flag not set, search will not be cancellable");
+        }
 
         let best_score = self.nega_max(depth, 0, NEG_INF, POS_INF);
 
@@ -54,8 +62,9 @@ impl MinMaxSearch {
             best: None,
             board: Board::default(),
             aborted: false,
-            flag: Arc::new(AtomicBool::new(false)),
+            flag: None,
             diagnostics: SearchDiagnostics::default(),
+            msg_channel: None,
         }
     }
 
@@ -67,10 +76,12 @@ impl MinMaxSearch {
         if self.aborted {
             return true;
         } else {
-            if self.flag.load(Ordering::Relaxed) {
-                info!("Search aborted");
-                self.aborted = true;
-                return true;
+            if let Some(flag) = &self.flag {
+                if flag.load(Ordering::Relaxed) {
+                    info!("Search aborted");
+                    self.aborted = true;
+                    return true;
+                }
             }
         }
         false

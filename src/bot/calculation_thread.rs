@@ -1,5 +1,7 @@
 use std::sync::mpsc::{Receiver, Sender};
 
+use crate::game::Move;
+
 use super::{
     search::{AbortFlag, Search},
     ActionMessage, ReactionMessage,
@@ -7,10 +9,13 @@ use super::{
 
 pub fn thread_loop<S: Search + Send + 'static>(
     receiver: Receiver<ActionMessage>,
-    mut sender: Sender<ReactionMessage>,
+    sender: Sender<ReactionMessage>,
     flag: AbortFlag,
     mut search: S,
 ) {
+    let tx = sender.clone();
+    search.set_communication_channels(flag, tx);
+
     loop {
         let message = receiver.recv();
 
@@ -20,7 +25,7 @@ pub fn thread_loop<S: Search + Send + 'static>(
                     info!("Received search action");
 
                     let start_time = std::time::Instant::now();
-                    let result = search.search(board, depth, &flag, &mut sender);
+                    let result = search.search(board, depth);
                     let elapsed = start_time.elapsed();
 
                     if let Some((best_move, eval)) = result {
@@ -28,13 +33,13 @@ pub fn thread_loop<S: Search + Send + 'static>(
 
                         sender.send(ReactionMessage::BestMove(best_move)).unwrap();
                     } else {
-                        error!("No best move found");
+                        error!("No best move found, default to null move");
+                        sender
+                            .send(ReactionMessage::BestMove(Move::null()))
+                            .unwrap();
                     }
 
-                    info!(
-                        "Search depth {depth} completed in {}s",
-                        elapsed.as_secs_f64()
-                    );
+                    info!("Search run {} seconds", elapsed.as_secs_f64());
                 }
             },
             Err(_) => {
