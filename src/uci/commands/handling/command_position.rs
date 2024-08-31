@@ -27,7 +27,34 @@ pub fn parse_position(params: &str) -> Result<UCICommand, CommandParseError> {
         "Missing \"FEN\" or \"startpos\" literal".into(),
     ))?;
     let board = match literal {
-        "startpos" => Board::default(),
+        "startpos" => {
+            let split = rest.split_once("moves");
+
+            match split {
+                Some((_, move_list)) => {
+                    let mut board = Board::default();
+                    for mv_str in move_list.trim().split_whitespace() {
+                        let mov = Move::from_uci_notation(mv_str, &board).map_err(|_| {
+                            CommandParseError::ParseError(format!(
+                                "Move {} is not valid uci notation",
+                                mv_str
+                            ))
+                        })?;
+
+                        board.make_move(&mov, false, true).map_err(|_| {
+                            CommandParseError::ParseError(format!(
+                                "Move {:?} is invalid for the position {}",
+                                mov,
+                                board.to_fen()
+                            ))
+                        })?;
+                    }
+
+                    board
+                }
+                None => Board::default(),
+            }
+        }
         "fen" => {
             let split = rest.split_once("moves");
 
