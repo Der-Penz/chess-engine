@@ -1,12 +1,14 @@
+use crate::{
+    bot::{
+        evaluation::{eval::*, evaluate_board},
+        AbortFlag, ReactionMessage,
+    },
+    game::{board::move_gen::MoveGeneration, Board, Move},
+};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::Sender,
     Arc,
-};
-
-use crate::{
-    bot::{evaluation::evaluate_board, AbortFlag, ReactionMessage},
-    game::{board::move_gen::MoveGeneration, Board, Move},
 };
 
 use super::{diagnostics::SearchDiagnostics, Search};
@@ -14,7 +16,7 @@ use super::{diagnostics::SearchDiagnostics, Search};
 pub struct MinMaxSearch {
     depth: u8,
     flag: Option<AbortFlag>,
-    best: Option<(Move, i64)>,
+    best: Option<(Move, Eval)>,
     aborted: bool,
     board: Board,
     msg_channel: Option<Sender<ReactionMessage>>,
@@ -31,7 +33,7 @@ impl Search for MinMaxSearch {
         self.msg_channel = Some(msg_channel);
     }
 
-    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, i64)> {
+    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, Eval)> {
         self.depth = depth;
         self.aborted = false;
         self.best = None;
@@ -48,12 +50,6 @@ impl Search for MinMaxSearch {
         return self.best;
     }
 }
-
-const NEG_INF: i64 = i64::MIN;
-const POS_INF: i64 = i64::MAX;
-
-const DRAW: i64 = 0;
-const MATE: i64 = 10000;
 
 impl MinMaxSearch {
     pub fn new() -> Self {
@@ -87,7 +83,13 @@ impl MinMaxSearch {
         false
     }
 
-    fn nega_max(&mut self, ply_remaining: u8, ply_from_root: u8, mut alpha: i64, beta: i64) -> i64 {
+    fn nega_max(
+        &mut self,
+        ply_remaining: u8,
+        ply_from_root: u8,
+        mut alpha: Eval,
+        beta: Eval,
+    ) -> Eval {
         //check if the search has been aborted
         if self.search_cancelled() {
             return 0;
@@ -106,7 +108,7 @@ impl MinMaxSearch {
         if moves.is_empty() {
             if moves.get_masks().in_check {
                 info!("Checkmate found at depth {}", ply_from_root);
-                return -(MATE - ply_from_root as i64);
+                return -(MATE - ply_from_root as Eval);
             } else {
                 return DRAW;
             }
@@ -143,7 +145,7 @@ impl MinMaxSearch {
         alpha
     }
 
-    fn quiescence_search(&mut self, mut alpha: i64, beta: i64) -> i64 {
+    fn quiescence_search(&mut self, mut alpha: Eval, beta: Eval) -> Eval {
         if self.search_cancelled() {
             return 0;
         }

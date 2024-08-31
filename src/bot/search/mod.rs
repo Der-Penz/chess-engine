@@ -3,7 +3,7 @@ use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc};
 
 use crate::game::{Board, Move};
 
-use super::ReactionMessage;
+use super::{evaluation::eval::Eval, ReactionMessage};
 
 pub mod min_max;
 
@@ -16,5 +16,5 @@ pub trait Search {
         msg_channel: Sender<ReactionMessage>,
     );
 
-    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, i64)>;
+    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, Eval)>;
 }

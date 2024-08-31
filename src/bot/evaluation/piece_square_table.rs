@@ -1,5 +1,7 @@
 use crate::game::Piece;
 
+use super::eval::Eval;
+
 #[rustfmt::skip]
 const KING_SQUARE_TABLE: [i8; 64] = [
     -30,-40,-40,-50,-50,-40,-40,-30,
@@ -82,7 +84,7 @@ const PIECE_SQUARE_TABLES: [[i8; 64]; 6] = [
 ];
 
 #[inline(always)]
-pub fn read_p_sq_table(piece: Piece, sq: u8) -> i64 {
+pub fn read_p_sq_table(piece: Piece, sq: u8) -> Eval {
     let index = match piece.color() {
         crate::game::Color::White => {
             let file = sq % 8;
@@ -93,5 +95,5 @@ pub fn read_p_sq_table(piece: Piece, sq: u8) -> i64 {
         crate::game::Color::Black => sq,
     } as usize;
 
-    PIECE_SQUARE_TABLES[piece.ptype() as usize][index] as i64
+    PIECE_SQUARE_TABLES[piece.ptype() as usize][index] as Eval
 }
