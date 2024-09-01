@@ -1,5 +1,6 @@
 pub mod command_go;
 pub mod command_position;
+pub mod command_set_option;
 pub mod command_uci;
 
 use crate::bot::Bot;
@@ -14,7 +15,7 @@ pub fn handle_uci_command(command: UCICommand, bot: &mut Bot) -> Option<String> 
         UCICommand::Quit => None,
         UCICommand::UCI => Some(command_uci::handle_setup().to_string()),
         UCICommand::IsReady => Some("readyok".to_string()),
-        UCICommand::SetOption(_, _) => None,
+        UCICommand::SetOption(params) => command_set_option::handle_set_option(bot, params),
         UCICommand::Position(params) => command_position::handle_position(bot, params),
         UCICommand::Display => Some(bot.get_board().to_string()),
         UCICommand::Go(params) => command_go::handle_go(bot, params),

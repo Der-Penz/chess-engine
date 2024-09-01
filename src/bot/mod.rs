@@ -22,6 +22,7 @@ pub mod search;
 
 pub enum ActionMessage {
     Think(Board, u8),
+    ClearTT,
 }
 
 pub enum ReactionMessage {
@@ -64,6 +65,10 @@ impl Bot {
 
     pub fn get_board(&self) -> &Board {
         &self.board
+    }
+
+    pub fn send_message(&self, msg: ActionMessage) {
+        self.action_sender.send(msg).unwrap();
     }
 
     pub fn eval_board(&mut self, divide: bool) -> String {

@@ -3,6 +3,7 @@ use thiserror::Error;
 use super::{
     command_go::{self, GoParams},
     command_position::{self, PositionParams},
+    command_set_option::{self, SetOptionParams},
 };
 
 #[derive(Debug)]
@@ -12,7 +13,7 @@ pub enum UCICommand {
     IsReady,
     Go(GoParams),
     Position(PositionParams),
-    SetOption(String, String),
+    SetOption(SetOptionParams),
     Display,
     UCINewGame,
     Stop,
@@ -57,7 +58,7 @@ impl std::str::FromStr for UCICommand {
             COMMAND_STR_UCI_NEW_GAME => Ok(UCICommand::UCINewGame),
             COMMAND_STR_STOP => Ok(UCICommand::Stop),
             COMMAND_STR_GO => command_go::parse_go(params),
-            COMMAND_STR_SET_OPTION => Ok(UCICommand::SetOption("".into(), "".into()).into()),
+            COMMAND_STR_SET_OPTION => command_set_option::parse_set_option(params),
             COMMAND_STR_POSITION => command_position::parse_position(params),
             _ => Err(CommandParseError::InvalidCommand(command.to_string())),
         }

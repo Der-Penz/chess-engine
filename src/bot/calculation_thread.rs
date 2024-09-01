@@ -3,7 +3,10 @@ use std::sync::mpsc::{Receiver, Sender};
 use crate::game::Move;
 
 use super::{
-    search::{AbortFlag, Search},
+    search::{
+        transposition_table::{ReplacementStrategy, TranspositionTable},
+        AbortFlag, Search,
+    },
     ActionMessage, ReactionMessage,
 };
 
@@ -13,6 +16,7 @@ pub fn thread_loop<S: Search + Send + 'static>(
     flag: AbortFlag,
     mut search: S,
 ) {
+    let mut tt = TranspositionTable::new(1024_f64, ReplacementStrategy::DepthPriority);
     let tx = sender.clone();
     search.set_communication_channels(flag, tx);
 
@@ -22,8 +26,6 @@ pub fn thread_loop<S: Search + Send + 'static>(
         match message {
             Ok(value) => match value {
                 ActionMessage::Think(board, depth) => {
-                    info!("Received search action");
-
                     let start_time = std::time::Instant::now();
                     let result = search.search(board, depth);
                     let elapsed = start_time.elapsed();
@@ -40,6 +42,9 @@ pub fn thread_loop<S: Search + Send + 'static>(
                     }
 
                     info!("Search run {} seconds", elapsed.as_secs_f64());
+                }
+                ActionMessage::ClearTT => {
+                    tt.clear();
                 }
             },
             Err(_) => {

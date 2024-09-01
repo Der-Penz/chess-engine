@@ -154,6 +154,10 @@ impl TranspositionTable {
         self.clear();
     }
 
+    pub fn set_replacement_strategy(&mut self, strategy: ReplacementStrategy) {
+        self.replacement_strategy = strategy;
+    }
+
     fn get_size_from_mb(mb: f64) -> usize {
         let bytes = mb * 1024_f64 * 1024_f64;
         let entries = bytes / std::mem::size_of::<TranspositionTableEntry>() as f64;

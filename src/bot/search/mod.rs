@@ -1,5 +1,5 @@
 mod diagnostics;
-mod transposition_table;
+pub mod transposition_table;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc};
 
 use crate::game::{Board, Move};
