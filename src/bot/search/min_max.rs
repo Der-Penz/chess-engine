@@ -11,7 +11,13 @@ use std::sync::{
     Arc,
 };
 
-use super::{diagnostics::SearchDiagnostics, Search};
+use super::{
+    diagnostics::SearchDiagnostics,
+    transposition_table::{
+        NodeType, ReplacementStrategy, TranspositionTable, TranspositionTableEntry,
+    },
+    Search,
+};
 
 pub struct MinMaxSearch {
     depth: u8,
@@ -21,6 +27,7 @@ pub struct MinMaxSearch {
     board: Board,
     msg_channel: Option<Sender<ReactionMessage>>,
     diagnostics: SearchDiagnostics,
+    tt: TranspositionTable,
 }
 
 impl Search for MinMaxSearch {
@@ -38,6 +45,11 @@ impl Search for MinMaxSearch {
         self.aborted = false;
         self.best = None;
         self.board = board;
+
+        info!(
+            "Transposition Table Usage: {:.2}%",
+            self.tt.get_usage() * 100_f64
+        );
 
         if self.flag.is_none() {
             warn!("Abort flag not set, search will not be cancellable");
@@ -61,6 +73,7 @@ impl MinMaxSearch {
             flag: None,
             diagnostics: SearchDiagnostics::default(),
             msg_channel: None,
+            tt: TranspositionTable::new(20_f64, ReplacementStrategy::ReplaceOnFull(false)),
         }
     }
 
@@ -95,6 +108,7 @@ impl MinMaxSearch {
             return 0;
         }
         self.diagnostics.inc_node();
+        let key = self.board.cur_state().zobrist;
 
         //skip the position if it there is a mating sequence earlier in the search which would be shorter than a current one
         alpha = alpha.max(-MATE + ply_from_root as Eval);
@@ -102,6 +116,29 @@ impl MinMaxSearch {
         if alpha >= beta {
             self.diagnostics.inc_cut_offs();
             return alpha;
+        }
+
+        let original_alpha = alpha;
+        let tt_entry = self.tt.get_entry(key);
+        if let Some(entry) = tt_entry {
+            if entry.depth >= ply_remaining && entry.zobrist == key {
+                self.diagnostics.inc_tt_hits();
+                match entry.node_type {
+                    NodeType::Exact => {
+                        return entry.eval;
+                    }
+                    NodeType::LowerBound => {
+                        alpha = alpha.max(entry.eval);
+                    }
+                    NodeType::UpperBound => {
+                        beta = beta.min(entry.eval);
+                    }
+                }
+                if alpha >= beta {
+                    self.diagnostics.inc_cut_offs();
+                    return entry.eval;
+                }
+            }
         }
 
         let moves = MoveGeneration::generate_legal_moves(&self.board);
@@ -139,6 +176,16 @@ impl MinMaxSearch {
 
             if eval >= beta {
                 self.diagnostics.inc_cut_offs();
+
+                self.tt.insert(
+                    key,
+                    TranspositionTableEntry {
+                        depth: ply_remaining,
+                        eval: beta,
+                        node_type: NodeType::LowerBound,
+                        zobrist: key,
+                    },
+                );
                 return beta;
             }
 
@@ -149,6 +196,24 @@ impl MinMaxSearch {
                 }
             }
         }
+
+        let node_type = if alpha <= original_alpha {
+            NodeType::UpperBound
+        } else if alpha >= beta {
+            NodeType::LowerBound
+        } else {
+            NodeType::Exact
+        };
+
+        self.tt.insert(
+            key,
+            TranspositionTableEntry {
+                zobrist: key,
+                depth: ply_remaining,
+                eval: alpha,
+                node_type,
+            },
+        );
 
         alpha
     }
