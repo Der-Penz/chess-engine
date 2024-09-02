@@ -1,6 +1,9 @@
 use crate::{
     bot::{
-        evaluation::{eval::*, evaluate_board},
+        evaluation::{
+            eval::{self, *},
+            evaluate_board,
+        },
         AbortFlag, ReactionMessage,
     },
     game::{board::move_gen::MoveGeneration, Board, Move},
@@ -126,12 +129,17 @@ impl MinMaxSearch {
 
                 match entry.node_type {
                     NodeType::Exact => {
+                        let mut eval = entry.eval;
+                        //correct a mate score to be relative to the current position
+                        if is_mate_score(eval) {
+                            eval = correct_mate_score(eval, ply_from_root);
+                        }
                         if ply_from_root == 0 {
                             if let Some(mv) = entry.best_move {
-                                self.best = Some((mv, entry.eval));
+                                self.best = Some((mv, eval));
                             }
                         }
-                        return entry.eval;
+                        return eval;
                     }
                     NodeType::LowerBound => {
                         alpha = alpha.max(entry.eval);

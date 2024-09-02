@@ -53,27 +53,8 @@ impl TranspositionTable {
     }
 
     pub fn get_entry(&self, key: u64) -> Option<&TranspositionTableEntry> {
-        let index = self.index(key);
-        if index >= self.entries.len() {
-            println!("Index out of bounds: {}", index);
-        }
         self.entries[self.index(key)].as_ref()
     }
-
-    // pub fn get_eval(
-    //     &self,
-    //     zobrist: u64,
-    //     depth: u8,
-    //     ply_from_root: u8,
-    //     alpha: Eval,
-    //     beta: Eval,
-    // ) -> Option<Eval> {
-    //     let entry = self.get_entry(zobrist);
-    //     match entry {
-    //         Some(entry) => None,
-    //         None => None,
-    //     }
-    // }
 
     /// Inserts a new entry into the transposition table.
     /// Returns None if the entry was not inserted.
