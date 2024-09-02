@@ -1,10 +1,11 @@
-use crate::bot::evaluation::eval::Eval;
+use crate::{bot::evaluation::eval::Eval, game::Move};
 
 pub struct TranspositionTableEntry {
     pub zobrist: u64,
     pub depth: u8,
     pub eval: Eval,
     pub node_type: NodeType,
+    pub best_move: Option<Move>,
 }
 
 pub enum NodeType {

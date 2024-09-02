@@ -123,8 +123,14 @@ impl MinMaxSearch {
         if let Some(entry) = tt_entry {
             if entry.depth >= ply_remaining && entry.zobrist == key {
                 self.diagnostics.inc_tt_hits();
+
                 match entry.node_type {
                     NodeType::Exact => {
+                        if ply_from_root == 0 {
+                            if let Some(mv) = entry.best_move {
+                                self.best = Some((mv, entry.eval));
+                            }
+                        }
                         return entry.eval;
                     }
                     NodeType::LowerBound => {
@@ -144,9 +150,7 @@ impl MinMaxSearch {
         let moves = MoveGeneration::generate_legal_moves(&self.board);
 
         if ply_remaining == 0 {
-            let eval = self.quiescence_search(alpha, beta);
-            // return evaluate_board(&self.board, Some(&moves));
-            return eval;
+            return self.quiescence_search(alpha, beta);
         }
 
         //check for checkmate and stalemate
@@ -158,6 +162,8 @@ impl MinMaxSearch {
                 return DRAW;
             }
         }
+
+        let mut best_move_this_position = None;
 
         for mov in moves.iter() {
             self.board.make_move(mov, true, false).unwrap();
@@ -184,6 +190,7 @@ impl MinMaxSearch {
                         eval: beta,
                         node_type: NodeType::LowerBound,
                         zobrist: key,
+                        best_move: Some(*mov),
                     },
                 );
                 return beta;
@@ -191,6 +198,8 @@ impl MinMaxSearch {
 
             if eval > alpha {
                 alpha = eval;
+
+                best_move_this_position = Some(*mov);
                 if ply_from_root == 0 {
                     self.best = Some((*mov, eval));
                 }
@@ -212,6 +221,7 @@ impl MinMaxSearch {
                 depth: ply_remaining,
                 eval: alpha,
                 node_type,
+                best_move: best_move_this_position,
             },
         );
 
