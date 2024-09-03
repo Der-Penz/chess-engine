@@ -39,7 +39,7 @@ impl LegalMoveList {
     }
 
     /// Adds multiple moves to the move list from a given source square with a given flag
-    pub(crate) fn create_and_add_moves(
+    pub(super) fn create_and_add_moves(
         &mut self,
         source: Square,
         moves: u64,
@@ -59,7 +59,7 @@ impl LegalMoveList {
 
     /// Adds pawn moves to the move list for a given source and destination square
     /// handles promotions as well
-    pub(crate) fn create_and_add_pawn_moves(
+    pub(super) fn create_and_add_pawn_moves(
         &mut self,
         source: Square,
         dest: u64,
@@ -100,6 +100,10 @@ impl LegalMoveList {
         self.moves[..self.count].to_vec()
     }
 
+    pub fn get_all(&self) -> &[Move] {
+        &self.moves[..self.count]
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Move> {
         self.moves[..self.count].iter()
     }
@@ -116,7 +120,7 @@ impl LegalMoveList {
         &self.masks
     }
 
-    pub(crate) fn set_masks(&mut self, masks: MoveGenerationMasks) {
+    pub(super) fn set_masks(&mut self, masks: MoveGenerationMasks) {
         self.masks = masks;
     }
 }

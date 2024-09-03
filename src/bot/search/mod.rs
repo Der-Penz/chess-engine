@@ -1,3 +1,4 @@
+pub mod pv_line;
 mod diagnostics;
 pub mod transposition_table;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc};

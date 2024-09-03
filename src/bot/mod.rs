@@ -30,6 +30,8 @@ pub enum ReactionMessage {
     Info(String),
 }
 
+pub(self) const INFINITY_DEPTH: usize = 50;
+
 pub struct Bot {
     board: Board,
     abort_flag: AbortFlag,

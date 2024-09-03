@@ -1,9 +1,6 @@
 use crate::{
     bot::{
-        evaluation::{
-            eval::{self, *},
-            evaluate_board,
-        },
+        evaluation::{eval::*, evaluate_board},
         AbortFlag, ReactionMessage,
     },
     game::{board::move_gen::MoveGeneration, Board, Move},
@@ -16,6 +13,7 @@ use std::sync::{
 
 use super::{
     diagnostics::SearchDiagnostics,
+    pv_line::PVLine,
     transposition_table::{
         NodeType, ReplacementStrategy, TranspositionTable, TranspositionTableEntry,
     },
@@ -58,11 +56,18 @@ impl Search for MinMaxSearch {
             warn!("Abort flag not set, search will not be cancellable");
         }
 
-        let best_score = self.nega_max(depth, 0, NEG_INF, POS_INF);
+        self.iterative_deepening();
+
+        // let best_score = self.nega_max(depth, 0, NEG_INF, POS_INF);
 
         info!("Search Diagnostics: {}", self.diagnostics);
-        info!("Score: {}", best_score);
-        return self.best;
+
+        self.best.or_else(|| {
+            warn!("No best move found, using any random move");
+            let moves = MoveGeneration::generate_legal_moves(&self.board);
+
+            moves.get(0).map(|m| (*m, 0))
+        })
     }
 }
 
@@ -99,12 +104,39 @@ impl MinMaxSearch {
         false
     }
 
+    fn send_info(&self, msg: String) {
+        if let Some(channel) = &self.msg_channel {
+            channel.send(ReactionMessage::Info(msg)).ok();
+        }
+    }
+
+    fn iterative_deepening(&mut self) {
+        for depth in 1..=self.depth {
+            let mut pv_line = PVLine::default();
+
+            self.nega_max(depth, 0, NEG_INF, POS_INF, &mut pv_line);
+            let best_this_iteration = self.best;
+
+            if let Some((_, score)) = best_this_iteration.as_ref() {
+                self.send_info(format!(
+                    "depth {} score cp {} nodes {:?} pv {}",
+                    depth, score, self.diagnostics.node_count, pv_line
+                ));
+            }
+
+            if self.search_cancelled() {
+                break;
+            }
+        }
+    }
+
     fn nega_max(
         &mut self,
         ply_remaining: u8,
         ply_from_root: u8,
         mut alpha: Eval,
         mut beta: Eval,
+        pv_line: &mut PVLine,
     ) -> Eval {
         //check if the search has been aborted
         if self.search_cancelled() {
@@ -136,7 +168,9 @@ impl MinMaxSearch {
                         }
                         if ply_from_root == 0 {
                             if let Some(mv) = entry.best_move {
-                                self.best = Some((mv, eval));
+                                if !self.best.is_some_and(|(_, e)| e > eval) {
+                                    self.best = Some((mv, eval));
+                                }
                             }
                         }
                         return eval;
@@ -155,16 +189,18 @@ impl MinMaxSearch {
             }
         }
 
-        let moves = MoveGeneration::generate_legal_moves(&self.board);
+        let mut line = PVLine::default();
 
         if ply_remaining == 0 {
+            line.reset();
             return self.quiescence_search(alpha, beta);
         }
+
+        let moves = MoveGeneration::generate_legal_moves(&self.board);
 
         //check for checkmate and stalemate
         if moves.is_empty() {
             if moves.get_masks().in_check {
-                info!("Checkmate found at depth {}", ply_from_root);
                 return -(MATE - ply_from_root as Eval);
             } else {
                 return DRAW;
@@ -179,7 +215,13 @@ impl MinMaxSearch {
             let new_alpha = beta.saturating_neg();
             let new_beta = alpha.saturating_neg();
             let eval = self
-                .nega_max(ply_remaining - 1, ply_from_root + 1, new_alpha, new_beta)
+                .nega_max(
+                    ply_remaining - 1,
+                    ply_from_root + 1,
+                    new_alpha,
+                    new_beta,
+                    &mut line,
+                )
                 .saturating_neg();
 
             self.board.undo_move(mov, true).unwrap();
@@ -208,6 +250,9 @@ impl MinMaxSearch {
                 alpha = eval;
 
                 best_move_this_position = Some(*mov);
+
+                pv_line.extend_line(*mov, &line);
+
                 if ply_from_root == 0 {
                     self.best = Some((*mov, eval));
                 }
@@ -236,14 +281,22 @@ impl MinMaxSearch {
         alpha
     }
 
+    /// Quiescence search is a special search that only searches captures
+    /// it helps to avoid the horizon effect where the search would stop at a quiet position
+    /// and not see a capture that would change the evaluation drastically
+    /// consider the last move being from the queen. Evaluating the position after the queen move
+    /// would give a high evaluation, but if the search would look one move further, it could
+    /// see that the queen can be captured by a pawn, which would change the evaluation drastically
+    /// by only searching captures, we can avoid this problem and get a more accurate evaluation
+    /// since only captures are considered, the search is much faster and terminates faster
     fn quiescence_search(&mut self, mut alpha: Eval, beta: Eval) -> Eval {
         if self.search_cancelled() {
             return 0;
         }
         self.diagnostics.inc_node_qs();
 
+        //evaluate the position and check if we can prune it early
         let mut eval = evaluate_board(&self.board, None);
-
         if eval >= beta {
             return beta;
         }
@@ -252,7 +305,6 @@ impl MinMaxSearch {
         }
 
         let moves = MoveGeneration::generate_legal_moves_captures(&self.board);
-
         for mv in moves.iter() {
             self.board.make_move(mv, true, false).unwrap();
 
