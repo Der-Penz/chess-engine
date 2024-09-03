@@ -3,14 +3,14 @@ use crate::{bot::INFINITY_DEPTH, game::Move};
 /// A principal variation line.
 /// Handles the best line of moves found by the search algorithm.
 pub struct PVLine {
-    moves: [Move; INFINITY_DEPTH],
+    moves: [Move; INFINITY_DEPTH as usize],
     count_move: usize,
 }
 
 impl std::default::Default for PVLine {
     fn default() -> Self {
         Self {
-            moves: [Move::default(); INFINITY_DEPTH],
+            moves: [Move::default(); INFINITY_DEPTH as usize],
             count_move: 0,
         }
     }

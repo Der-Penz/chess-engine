@@ -54,4 +54,11 @@ impl SearchDiagnostics {
     pub fn inc_tt_hits(&mut self) {
         self.tt_hits += 1;
     }
+
+    pub fn reset(&mut self) {
+        self.node_count = 0;
+        self.node_count_qs = 0;
+        self.cut_offs = 0;
+        self.tt_hits = 0;
+    }
 }

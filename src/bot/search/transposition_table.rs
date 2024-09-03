@@ -14,6 +14,18 @@ pub enum NodeType {
     UpperBound,
 }
 
+impl NodeType {
+    pub fn type_from_eval(alpha: Eval, original_alpha: Eval, beta: Eval) -> Self {
+        if alpha <= original_alpha {
+            NodeType::UpperBound
+        } else if alpha >= beta {
+            NodeType::LowerBound
+        } else {
+            NodeType::Exact
+        }
+    }
+}
+
 pub enum ReplacementStrategy {
     ReplaceAlways,
     KeepAlways,

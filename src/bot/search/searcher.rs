@@ -3,86 +3,83 @@ use crate::{
         evaluation::{eval::*, evaluate_board},
         AbortFlag, ReactionMessage,
     },
-    game::{board::move_gen::MoveGeneration, Board, Move},
+    game::{
+        board::{self, move_gen::MoveGeneration},
+        Board, GameResult, Move,
+    },
+    uci::commands::command_set_option::OptionType,
 };
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    mpsc::Sender,
-    Arc,
-};
+use std::sync::{atomic::Ordering, mpsc::Sender};
 
 use super::{
     diagnostics::SearchDiagnostics,
     pv_line::PVLine,
-    transposition_table::{
-        NodeType, ReplacementStrategy, TranspositionTable, TranspositionTableEntry,
-    },
-    Search,
+    transposition_table::{NodeType, TranspositionTable, TranspositionTableEntry},
 };
 
-pub struct MinMaxSearch {
-    depth: u8,
-    flag: Option<AbortFlag>,
+pub struct Searcher {
     best: Option<(Move, Eval)>,
     aborted: bool,
     board: Board,
-    msg_channel: Option<Sender<ReactionMessage>>,
+    flag: AbortFlag,
+    msg_channel: Sender<ReactionMessage>,
     diagnostics: SearchDiagnostics,
     tt: TranspositionTable,
 }
 
-impl Search for MinMaxSearch {
-    fn set_communication_channels(
-        &mut self,
-        abort_flag: Arc<AtomicBool>,
-        msg_channel: std::sync::mpsc::Sender<crate::bot::ReactionMessage>,
-    ) {
-        self.flag = Some(abort_flag);
-        self.msg_channel = Some(msg_channel);
+impl Searcher {
+    pub fn new(
+        tt: TranspositionTable,
+        msg_channel: Sender<ReactionMessage>,
+        flag: AbortFlag,
+    ) -> Self {
+        Self {
+            best: None,
+            board: Board::default(),
+            aborted: false,
+            diagnostics: SearchDiagnostics::default(),
+            msg_channel,
+            flag,
+            tt,
+        }
     }
 
-    fn search(&mut self, board: Board, depth: u8) -> Option<(Move, Eval)> {
-        self.depth = depth;
+    pub fn handle_set_option(&mut self, option: OptionType) {
+        match option {
+            OptionType::ClearHash => {
+                self.tt.clear();
+            }
+            OptionType::HashSize(size) => {
+                self.tt.set_size(size);
+            }
+        }
+    }
+
+    pub fn think(&mut self, board: Board, depth: u8) {
         self.aborted = false;
         self.best = None;
         self.board = board;
+        self.diagnostics.reset();
 
         info!(
             "Transposition Table Usage: {:.2}%",
             self.tt.get_usage() * 100_f64
         );
 
-        if self.flag.is_none() {
-            warn!("Abort flag not set, search will not be cancellable");
-        }
-
-        self.iterative_deepening();
-
-        // let best_score = self.nega_max(depth, 0, NEG_INF, POS_INF);
+        self.iterative_deepening(depth);
 
         info!("Search Diagnostics: {}", self.diagnostics);
 
-        self.best.or_else(|| {
+        let send = self.best.unwrap_or_else(|| {
             warn!("No best move found, using any random move");
             let moves = MoveGeneration::generate_legal_moves(&self.board);
 
-            moves.get(0).map(|m| (*m, 0))
-        })
-    }
-}
+            moves.get(0).map(|m| (*m, 0)).unwrap_or_default()
+        });
 
-impl MinMaxSearch {
-    pub fn new() -> Self {
-        Self {
-            depth: 0,
-            best: None,
-            board: Board::default(),
-            aborted: false,
-            flag: None,
-            diagnostics: SearchDiagnostics::default(),
-            msg_channel: None,
-            tt: TranspositionTable::new(20_f64, ReplacementStrategy::ReplaceOnFull(false)),
-        }
+        self.msg_channel
+            .send(ReactionMessage::BestMove(send.0))
+            .unwrap();
     }
 
     #[inline(always)]
@@ -92,37 +89,35 @@ impl MinMaxSearch {
     fn search_cancelled(&mut self) -> bool {
         if self.aborted {
             return true;
-        } else {
-            if let Some(flag) = &self.flag {
-                if flag.load(Ordering::Relaxed) {
-                    info!("Search aborted");
-                    self.aborted = true;
-                    return true;
-                }
-            }
         }
+        if self.flag.load(Ordering::Relaxed) {
+            info!("Search aborted");
+            self.aborted = true;
+            return true;
+        }
+
         false
     }
 
     fn send_info(&self, msg: String) {
-        if let Some(channel) = &self.msg_channel {
-            channel.send(ReactionMessage::Info(msg)).ok();
-        }
+        self.msg_channel.send(ReactionMessage::Info(msg)).ok();
     }
 
-    fn iterative_deepening(&mut self) {
-        for depth in 1..=self.depth {
+    fn iterative_deepening(&mut self, depth: u8) {
+        for depth in 1..=depth {
             let mut pv_line = PVLine::default();
 
             self.nega_max(depth, 0, NEG_INF, POS_INF, &mut pv_line);
-            let best_this_iteration = self.best;
+            let best_this_iteration = self.best.as_ref();
 
-            if let Some((_, score)) = best_this_iteration.as_ref() {
+            if let Some((_, score)) = best_this_iteration {
                 self.send_info(format!(
                     "depth {} score cp {} nodes {:?} pv {}",
                     depth, score, self.diagnostics.node_count, pv_line
                 ));
             }
+
+            self.diagnostics.reset();
 
             if self.search_cancelled() {
                 break;
@@ -212,17 +207,13 @@ impl MinMaxSearch {
         for mov in moves.iter() {
             self.board.make_move(mov, true, false).unwrap();
 
-            let new_alpha = beta.saturating_neg();
-            let new_beta = alpha.saturating_neg();
-            let eval = self
-                .nega_max(
-                    ply_remaining - 1,
-                    ply_from_root + 1,
-                    new_alpha,
-                    new_beta,
-                    &mut line,
-                )
-                .saturating_neg();
+            let eval = -self.nega_max(
+                ply_remaining - 1,
+                ply_from_root + 1,
+                -beta,
+                -alpha,
+                &mut line,
+            );
 
             self.board.undo_move(mov, true).unwrap();
 
@@ -232,7 +223,6 @@ impl MinMaxSearch {
 
             if eval >= beta {
                 self.diagnostics.inc_cut_offs();
-
                 self.tt.insert(
                     key,
                     TranspositionTableEntry {
@@ -259,21 +249,13 @@ impl MinMaxSearch {
             }
         }
 
-        let node_type = if alpha <= original_alpha {
-            NodeType::UpperBound
-        } else if alpha >= beta {
-            NodeType::LowerBound
-        } else {
-            NodeType::Exact
-        };
-
         self.tt.insert(
             key,
             TranspositionTableEntry {
                 zobrist: key,
                 depth: ply_remaining,
                 eval: alpha,
-                node_type,
+                node_type: NodeType::type_from_eval(alpha, original_alpha, beta),
                 best_move: best_move_this_position,
             },
         );

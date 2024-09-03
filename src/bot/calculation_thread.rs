@@ -1,51 +1,34 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use crate::game::Move;
-
 use super::{
     search::{
+        searcher::Searcher,
         transposition_table::{ReplacementStrategy, TranspositionTable},
-        AbortFlag, Search,
+        AbortFlag,
     },
     ActionMessage, ReactionMessage,
 };
 
-pub fn thread_loop<S: Search + Send + 'static>(
+pub fn thread_loop(
     receiver: Receiver<ActionMessage>,
     sender: Sender<ReactionMessage>,
     flag: AbortFlag,
-    mut search: S,
 ) {
-    let mut tt = TranspositionTable::new(1024_f64, ReplacementStrategy::DepthPriority);
     let tx = sender.clone();
-    search.set_communication_channels(flag, tx);
+    let tt = TranspositionTable::new(1024_f64, ReplacementStrategy::DepthPriority);
+    let mut searcher = Searcher::new(tt, tx, flag);
 
     loop {
-        let message = receiver.recv();
-
-        match message {
+        match receiver.recv() {
             Ok(value) => match value {
                 ActionMessage::Think(board, depth) => {
                     let start_time = std::time::Instant::now();
-                    let result = search.search(board, depth);
+                    searcher.think(board, depth);
                     let elapsed = start_time.elapsed();
 
-                    if let Some((best_move, eval)) = result {
-                        info!("Best move: {:?} with eval: {}", best_move, eval);
-
-                        sender.send(ReactionMessage::BestMove(best_move)).unwrap();
-                    } else {
-                        error!("No best move found, default to null move");
-                        sender
-                            .send(ReactionMessage::BestMove(Move::null()))
-                            .unwrap();
-                    }
-
-                    info!("Search run {} seconds", elapsed.as_secs_f64());
+                    info!("Search run for {} seconds", elapsed.as_secs_f64());
                 }
-                ActionMessage::ClearTT => {
-                    tt.clear();
-                }
+                ActionMessage::SetOption(option_typ) => searcher.handle_set_option(option_typ),
             },
             Err(_) => {
                 info!("Disconnected from main thread");

@@ -10,11 +10,12 @@ use std::{
 
 use calculation_thread::thread_loop;
 use evaluation::evaluate_board;
-use search::{AbortFlag, Search};
+use search::AbortFlag;
 
 use crate::{
     game::{Board, GameResult, Move, MoveGeneration},
     perft,
+    uci::commands::command_set_option::OptionType,
 };
 
 mod evaluation;
@@ -22,7 +23,7 @@ pub mod search;
 
 pub enum ActionMessage {
     Think(Board, u8),
-    ClearTT,
+    SetOption(OptionType),
 }
 
 pub enum ReactionMessage {
@@ -30,7 +31,7 @@ pub enum ReactionMessage {
     Info(String),
 }
 
-pub(self) const INFINITY_DEPTH: usize = 50;
+pub(self) const INFINITY_DEPTH: u8 = 50;
 
 pub struct Bot {
     board: Board,
@@ -42,14 +43,13 @@ pub struct Bot {
 }
 
 impl Bot {
-    pub fn new<S: Search + Send + 'static>(search: S) -> Bot {
+    pub fn new() -> Bot {
         let (action_tx, action_rx) = std::sync::mpsc::channel();
         let (reaction_tx, reaction_rx) = std::sync::mpsc::channel();
         let abort_flag = Arc::new(AtomicBool::new(false));
 
         let flag = Arc::clone(&abort_flag);
-        let calculation_thread =
-            thread::spawn(move || thread_loop(action_rx, reaction_tx, flag, search));
+        let calculation_thread = thread::spawn(move || thread_loop(action_rx, reaction_tx, flag));
 
         Bot {
             board: Board::default(),

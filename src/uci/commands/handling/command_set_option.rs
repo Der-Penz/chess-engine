@@ -10,12 +10,12 @@ pub struct SetOptionParams {
 
 #[derive(Debug, PartialEq)]
 pub enum OptionType {
-    HashSize(u64),
+    HashSize(f64),
     ClearHash,
 }
 
 pub fn handle_set_option(bot: &mut Bot, params: SetOptionParams) -> Option<String> {
-    bot.send_message(ActionMessage::ClearTT);
+    bot.send_message(ActionMessage::SetOption(params.option));
     None
 }
 

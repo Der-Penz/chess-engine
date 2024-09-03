@@ -1,13 +1,13 @@
-mod commands;
+pub mod commands;
 mod uci_input;
 
-use crate::bot::{search::min_max::MinMaxSearch, Bot, ReactionMessage};
+use crate::bot::{Bot, ReactionMessage};
 use commands::handle_uci_command;
 use std::sync::mpsc::TryRecvError;
 use uci_input::spawn_input_thread;
 
 pub fn run_uci_protocol() {
-    let mut bot = Bot::new(MinMaxSearch::new());
+    let mut bot = Bot::new();
 
     let (tx, rx) = std::sync::mpsc::channel();
 
