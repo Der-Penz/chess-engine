@@ -1,3 +1,4 @@
+mod move_ordering;
 mod diagnostics;
 pub mod pv_line;
 pub mod searcher;

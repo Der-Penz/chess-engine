@@ -88,8 +88,8 @@ impl LegalMoveList {
         self.count == 0
     }
 
-    pub fn get(&self, index: usize) -> Option<&Move> {
-        self.moves.get(index)
+    pub fn get(&self, index: usize) -> Option<Move> {
+        self.moves.get(index).copied()
     }
 
     pub fn has(&self, m: &Move) -> bool {

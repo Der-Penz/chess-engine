@@ -32,6 +32,14 @@ impl PVLine {
     pub fn moves(&self) -> &[Move] {
         &self.moves[..self.count_move]
     }
+
+    pub fn len(&self) -> usize {
+        self.count_move
+    }
+
+    pub fn get_move(&self, index: usize) -> Option<&Move> {
+        self.moves.get(index)
+    }
 }
 
 impl std::fmt::Display for PVLine {

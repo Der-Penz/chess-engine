@@ -33,7 +33,6 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
             None
         }
         GoMode::Infinite => {
-            todo!("implement infinite mode");
             bot.think(MAX_DEPTH);
             None
         }

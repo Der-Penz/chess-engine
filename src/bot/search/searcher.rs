@@ -3,16 +3,14 @@ use crate::{
         evaluation::{eval::*, evaluate_board},
         AbortFlag, ReactionMessage,
     },
-    game::{
-        board::{self, move_gen::MoveGeneration},
-        Board, GameResult, Move,
-    },
+    game::{board::move_gen::MoveGeneration, Board, Move},
     uci::commands::command_set_option::OptionType,
 };
 use std::sync::{atomic::Ordering, mpsc::Sender};
 
 use super::{
     diagnostics::SearchDiagnostics,
+    move_ordering::MoveOrdering,
     pv_line::PVLine,
     transposition_table::{NodeType, TranspositionTable, TranspositionTableEntry},
 };
@@ -25,6 +23,7 @@ pub struct Searcher {
     msg_channel: Sender<ReactionMessage>,
     diagnostics: SearchDiagnostics,
     tt: TranspositionTable,
+    pv_lines: Vec<PVLine>,
 }
 
 impl Searcher {
@@ -41,6 +40,7 @@ impl Searcher {
             msg_channel,
             flag,
             tt,
+            pv_lines: Vec::new(),
         }
     }
 
@@ -67,18 +67,17 @@ impl Searcher {
         );
 
         self.iterative_deepening(depth);
-
         info!("Search Diagnostics: {}", self.diagnostics);
 
-        let send = self.best.unwrap_or_else(|| {
+        let result = self.best.unwrap_or_else(|| {
             warn!("No best move found, using any random move");
             let moves = MoveGeneration::generate_legal_moves(&self.board);
 
-            moves.get(0).map(|m| (*m, 0)).unwrap_or_default()
+            moves.get(0).map(|m| (m, 0)).unwrap_or_default()
         });
 
         self.msg_channel
-            .send(ReactionMessage::BestMove(send.0))
+            .send(ReactionMessage::BestMove(result.0))
             .unwrap();
     }
 
@@ -104,20 +103,37 @@ impl Searcher {
     }
 
     fn iterative_deepening(&mut self, depth: u8) {
+        self.pv_lines = Vec::with_capacity(depth as usize);
+
         for depth in 1..=depth {
             let mut pv_line = PVLine::default();
 
+            let now = std::time::Instant::now();
             self.nega_max(depth, 0, NEG_INF, POS_INF, &mut pv_line);
-            let best_this_iteration = self.best.as_ref();
+            info!("Iterative Deepening depth {} done", depth);
+
+            let best_this_iteration = self.best;
 
             if let Some((_, score)) = best_this_iteration {
                 self.send_info(format!(
-                    "depth {} score cp {} nodes {:?} pv {}",
-                    depth, score, self.diagnostics.node_count, pv_line
+                    "depth {} score cp {} nodes {:?} time {} hashfull {:.2} pv {}",
+                    depth,
+                    score,
+                    self.diagnostics.node_count,
+                    now.elapsed().as_millis(),
+                    self.tt.get_usage() * 100_f64,
+                    pv_line
                 ));
+
+                //close the search if a mate score is found
+                //TODO maybe add a config option to continue the search if a mate score is found
+                if is_mate_score(score) {
+                    info!("Mate score found, stopping search");
+                    break;
+                }
             }
 
-            self.diagnostics.reset();
+            self.pv_lines.push(pv_line);
 
             if self.search_cancelled() {
                 break;
@@ -192,7 +208,6 @@ impl Searcher {
         }
 
         let moves = MoveGeneration::generate_legal_moves(&self.board);
-
         //check for checkmate and stalemate
         if moves.is_empty() {
             if moves.get_masks().in_check {
@@ -202,10 +217,13 @@ impl Searcher {
             }
         }
 
+        let mut ordered_moves =
+            MoveOrdering::score_moves(&moves, &self.pv_lines, ply_from_root, &self.board, &self.tt);
+
         let mut best_move_this_position = None;
 
-        for mov in moves.iter() {
-            self.board.make_move(mov, true, false).unwrap();
+        while let Some(mov) = ordered_moves.pick_next_move() {
+            self.board.make_move(&mov, true, false).unwrap();
 
             let eval = -self.nega_max(
                 ply_remaining - 1,
@@ -215,7 +233,7 @@ impl Searcher {
                 &mut line,
             );
 
-            self.board.undo_move(mov, true).unwrap();
+            self.board.undo_move(&mov, true).unwrap();
 
             if self.search_cancelled() {
                 return 0;
@@ -230,7 +248,7 @@ impl Searcher {
                         eval: beta,
                         node_type: NodeType::LowerBound,
                         zobrist: key,
-                        best_move: Some(*mov),
+                        best_move: Some(mov),
                     },
                 );
                 return beta;
@@ -239,12 +257,12 @@ impl Searcher {
             if eval > alpha {
                 alpha = eval;
 
-                best_move_this_position = Some(*mov);
+                best_move_this_position = Some(mov);
 
-                pv_line.extend_line(*mov, &line);
+                pv_line.extend_line(mov, &line);
 
                 if ply_from_root == 0 {
-                    self.best = Some((*mov, eval));
+                    self.best = Some((mov, eval));
                 }
             }
         }

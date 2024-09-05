@@ -23,7 +23,3 @@ pub fn correct_mate_score(eval: Eval, ply_from_root: u8) -> Eval {
         _ => unreachable!(),
     }
 }
-
-pub fn ply_from_mate(score: Eval) -> u8 {
-    (MATE - score.abs()) as u8
-}

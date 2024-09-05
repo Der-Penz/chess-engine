@@ -84,6 +84,19 @@ impl From<usize> for PieceType {
     }
 }
 
+impl From<PieceType> for usize {
+    fn from(value: PieceType) -> Self {
+        match value {
+            PieceType::Pawn => 0,
+            PieceType::Knight => 1,
+            PieceType::Bishop => 2,
+            PieceType::Rook => 3,
+            PieceType::Queen => 4,
+            PieceType::King => 5,
+        }
+    }
+}
+
 impl std::fmt::Display for PieceType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", char::from(*self))

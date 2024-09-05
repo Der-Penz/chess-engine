@@ -75,7 +75,7 @@ impl std::default::Default for MoveGenerationMasks {
 }
 
 impl MoveGenerationMasks {
-    pub fn calculate_king_danger(&mut self, data: &MoveGenerationData, board: &Board) {
+    pub(super) fn calculate_king_danger(&mut self, data: &MoveGenerationData, board: &Board) {
         //King attacks
         self.king_danger |= attacks_king(data.king_sq_opp, 0);
 
@@ -143,7 +143,7 @@ impl MoveGenerationMasks {
         self.multi_check = self.checkers & (self.checkers.wrapping_sub(1)) != 0;
     }
 
-    pub fn calculate_pins(&mut self, data: &MoveGenerationData, board: &Board) {
+    pub(super) fn calculate_pins(&mut self, data: &MoveGenerationData, board: &Board) {
         for sq in board.bb_sliders[data.color_opp].get_occupied() {
             let ray = CONNECTION_MASK[sq][data.king_sq];
 
@@ -176,7 +176,7 @@ impl MoveGenerationMasks {
     }
 
     //must be called after calculate_king_danger to have the checkers mask available
-    pub fn calculate_push_and_capture(&mut self, data: &MoveGenerationData, board: &Board) {
+    pub(super) fn calculate_push_and_capture(&mut self, data: &MoveGenerationData, board: &Board) {
         //if only one check is present, we can capture the checking piece or block the check
         if self.in_check && !self.multi_check {
             self.capture_mask = self.checkers;
