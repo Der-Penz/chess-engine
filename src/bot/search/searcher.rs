@@ -165,38 +165,37 @@ impl Searcher {
         }
 
         let original_alpha = alpha;
-        let tt_entry = self.tt.get_entry(key);
-        if let Some(entry) = tt_entry {
-            if entry.depth >= ply_remaining && entry.zobrist == key {
-                self.diagnostics.inc_tt_hits();
+        let mut tt_move = None;
+        if let Some(entry) = self.tt.get_entry(key, ply_remaining) {
+            self.diagnostics.inc_tt_hits();
+            tt_move = entry.best_move;
 
-                match entry.node_type {
-                    NodeType::Exact => {
-                        let mut eval = entry.eval;
-                        //correct a mate score to be relative to the current position
-                        if is_mate_score(eval) {
-                            eval = correct_mate_score(eval, ply_from_root);
-                        }
-                        if ply_from_root == 0 {
-                            if let Some(mv) = entry.best_move {
-                                if !self.best.is_some_and(|(_, e)| e > eval) {
-                                    self.best = Some((mv, eval));
-                                }
+            match entry.node_type {
+                NodeType::Exact => {
+                    let mut eval = entry.eval;
+                    //correct a mate score to be relative to the current position
+                    if is_mate_score(eval) {
+                        eval = correct_mate_score(eval, ply_from_root);
+                    }
+                    if ply_from_root == 0 {
+                        if let Some(mv) = entry.best_move {
+                            if !self.best.is_some_and(|(_, e)| e > eval) {
+                                self.best = Some((mv, eval));
                             }
                         }
-                        return eval;
                     }
-                    NodeType::LowerBound => {
-                        alpha = alpha.max(entry.eval);
-                    }
-                    NodeType::UpperBound => {
-                        beta = beta.min(entry.eval);
-                    }
+                    return eval;
                 }
-                if alpha >= beta {
-                    self.diagnostics.inc_cut_offs();
-                    return entry.eval;
+                NodeType::LowerBound => {
+                    alpha = alpha.max(entry.eval);
                 }
+                NodeType::UpperBound => {
+                    beta = beta.min(entry.eval);
+                }
+            }
+            if alpha >= beta {
+                self.diagnostics.inc_cut_offs();
+                return entry.eval;
             }
         }
 
@@ -218,7 +217,7 @@ impl Searcher {
         }
 
         let mut ordered_moves =
-            MoveOrdering::score_moves(&moves, &self.pv_lines, ply_from_root, &self.board, &self.tt);
+            MoveOrdering::score_moves(&moves, &self.pv_lines, ply_from_root, &self.board, tt_move);
 
         let mut best_move_this_position = None;
 

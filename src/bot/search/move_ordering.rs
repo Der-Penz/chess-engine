@@ -43,7 +43,7 @@ impl<'a> MoveOrdering<'a> {
         pv_lines: &Vec<PVLine>,
         ply_from_root: u8,
         board: &Board,
-        tt: &TranspositionTable,
+        tt_move: Option<Move>,
     ) -> MoveOrdering<'a> {
         let mut move_ordering = MoveOrdering {
             legal_moves: moves,
@@ -58,10 +58,8 @@ impl<'a> MoveOrdering<'a> {
             }
 
             //Hash move
-            if let Some(tt_entry) = tt.get_entry(board.cur_state().zobrist) {
-                if tt_entry.best_move == Some(*mv) {
-                    move_ordering.inc_score(i, 999);
-                }
+            if tt_move == Some(*mv) {
+                move_ordering.inc_score(i, 999);
             }
 
             let moved_piece = board

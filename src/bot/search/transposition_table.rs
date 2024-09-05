@@ -38,6 +38,7 @@ pub struct TranspositionTable {
     count: usize,
     max_count: usize,
     replacement_strategy: ReplacementStrategy,
+    enabled: bool,
 }
 
 impl TranspositionTable {
@@ -51,7 +52,20 @@ impl TranspositionTable {
             count: 0,
             max_count,
             replacement_strategy,
+            enabled: true,
         }
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn enable(&mut self) {
+        self.enabled = true;
+    }
+
+    pub fn disable(&mut self) {
+        self.enabled = false;
     }
 
     #[inline(always)]
@@ -64,8 +78,27 @@ impl TranspositionTable {
         self.count as f64 / self.max_count as f64
     }
 
-    pub fn get_entry(&self, key: u64) -> Option<&TranspositionTableEntry> {
+    ///returns the entry without any checks for depth or hash match
+    pub fn get_entry_raw(&self, key: u64) -> Option<&TranspositionTableEntry> {
+        if !self.enabled {
+            return None;
+        }
+
         self.entries[self.index(key)].as_ref()
+    }
+
+    /// Returns the entry if the key matches and the depth is greater or equal to the requested depth
+    pub fn get_entry(&self, key: u64, depth: u8) -> Option<&TranspositionTableEntry> {
+        if !self.enabled {
+            return None;
+        }
+
+        let entry = self.entries[self.index(key)].as_ref()?;
+        if entry.zobrist == key && entry.depth >= depth {
+            Some(entry)
+        } else {
+            None
+        }
     }
 
     /// Inserts a new entry into the transposition table.
