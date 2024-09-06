@@ -24,6 +24,7 @@ pub struct Searcher {
     diagnostics: SearchDiagnostics,
     tt: TranspositionTable,
     pv_lines: Vec<PVLine>,
+    max_qs_depth: u8,
 }
 
 impl Searcher {
@@ -41,6 +42,7 @@ impl Searcher {
             flag,
             tt,
             pv_lines: Vec::new(),
+            max_qs_depth: 10,
         }
     }
 
@@ -205,7 +207,7 @@ impl Searcher {
 
         if ply_remaining == 0 {
             line.reset();
-            return self.quiescence_search(alpha, beta);
+            return self.quiescence_search(alpha, beta, self.max_qs_depth);
         }
 
         let moves = MoveGeneration::generate_legal_moves(&self.board);
@@ -290,7 +292,7 @@ impl Searcher {
     /// see that the queen can be captured by a pawn, which would change the evaluation drastically
     /// by only searching captures, we can avoid this problem and get a more accurate evaluation
     /// since only captures are considered, the search is much faster and terminates faster
-    fn quiescence_search(&mut self, mut alpha: Eval, beta: Eval) -> Eval {
+    fn quiescence_search(&mut self, mut alpha: Eval, beta: Eval, depth: u8) -> Eval {
         if self.search_cancelled() {
             return 0;
         }
@@ -305,11 +307,15 @@ impl Searcher {
             alpha = eval;
         }
 
+        if depth == 0 {
+            return eval;
+        }
+
         let moves = MoveGeneration::generate_legal_moves_captures(&self.board);
         for mv in moves.iter() {
             self.board.make_move(mv, true, false).unwrap();
 
-            eval = -self.quiescence_search(-beta, -alpha);
+            eval = -self.quiescence_search(-beta, -alpha, depth - 1);
 
             self.board.undo_move(mv, true).unwrap();
 
