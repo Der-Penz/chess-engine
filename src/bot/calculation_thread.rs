@@ -1,7 +1,11 @@
 use std::sync::mpsc::{Receiver, Sender};
 
 use super::{
-    search::{searcher::Searcher, transposition_table::TranspositionTable, AbortFlag},
+    search::{
+        searcher::Searcher,
+        transposition_table::{TranspositionTable, DEFAULT_HASH_SIZE},
+        AbortFlag,
+    },
     ActionMessage, ReactionMessage,
 };
 
@@ -11,7 +15,7 @@ pub fn thread_loop(
     flag: AbortFlag,
 ) {
     let tx = sender.clone();
-    let tt = TranspositionTable::new(1024_f64);
+    let tt = TranspositionTable::new(DEFAULT_HASH_SIZE);
     let mut searcher = Searcher::new(tt, tx, flag);
 
     loop {

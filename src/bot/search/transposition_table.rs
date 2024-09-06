@@ -17,6 +17,10 @@ pub enum NodeType {
     UpperBound,
 }
 
+pub const DEFAULT_HASH_SIZE: f64 = 1024_f64;
+pub const MAX_HASH_SIZE: f64 = 1024000_f64;
+pub const MIN_HASH_SIZE: f64 = 1_f64;
+
 impl NodeType {
     /// Returns the node type based on the alpha beta window and the original alpha value.
     pub fn type_from_eval(alpha: Eval, original_alpha: Eval, beta: Eval) -> Self {
@@ -147,13 +151,21 @@ impl TranspositionTable {
 
     /// Set the size of the transposition table in MB and clears it.
     pub fn set_size(&mut self, mb: f64) {
-        self.max_count = Self::get_size_from_mb(mb);
+        self.max_count = TranspositionTable::get_size_from_mb(mb);
         self.entries.resize_with(self.max_count, || None);
 
         self.clear();
     }
 
     fn get_size_from_mb(mb: f64) -> usize {
+        let mb = if mb < MIN_HASH_SIZE {
+            MIN_HASH_SIZE
+        } else if mb > MAX_HASH_SIZE {
+            MAX_HASH_SIZE
+        } else {
+            mb
+        };
+
         let bytes = mb * 1024_f64 * 1024_f64;
         let entries = bytes / std::mem::size_of::<TranspositionTableEntry>() as f64;
         entries.floor() as usize

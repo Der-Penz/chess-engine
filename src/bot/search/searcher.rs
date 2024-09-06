@@ -56,6 +56,12 @@ impl Searcher {
                 self.tt.set_size(size);
                 info!("Transposition Table size set to {size}mb");
             }
+            OptionType::Threads(_) => {
+                todo!("Threads option not implemented yet");
+            }
+            OptionType::DebugFile(_) => {
+                todo!("Debug file option not implemented yet");
+            }
         }
     }
 

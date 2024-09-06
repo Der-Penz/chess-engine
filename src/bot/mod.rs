@@ -1,4 +1,4 @@
-mod calculation_thread;
+pub(crate) mod calculation_thread;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
