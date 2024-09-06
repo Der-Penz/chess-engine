@@ -40,7 +40,7 @@ impl<'a> MoveOrdering<'a> {
     /// Scores the moves in the move list based on the heuristics mentioned above and creates a move ordering struct
     pub fn score_moves(
         moves: &'a LegalMoveList,
-        pv_lines: &Vec<PVLine>,
+        pv_line: &PVLine,
         ply_from_root: u8,
         board: &Board,
         tt_move: Option<Move>,
@@ -53,7 +53,7 @@ impl<'a> MoveOrdering<'a> {
 
         for (i, mv) in moves.iter().enumerate() {
             //check for the move in the pv line
-            if MoveOrdering::in_pv_line(mv, pv_lines, ply_from_root) {
+            if pv_line.get_move(ply_from_root as usize) == Some(mv) {
                 move_ordering.inc_score(i, 1000);
             }
 
@@ -101,15 +101,6 @@ impl<'a> MoveOrdering<'a> {
         }
 
         move_ordering
-    }
-
-    fn in_pv_line(mv: &Move, pv_lines: &Vec<PVLine>, ply_from_root: u8) -> bool {
-        for pv_line in pv_lines {
-            if pv_line.get_move(ply_from_root as usize) == Some(mv) {
-                return true;
-            }
-        }
-        false
     }
 
     /// Returns the next move to be played with the next highest score

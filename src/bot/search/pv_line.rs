@@ -17,12 +17,9 @@ impl std::default::Default for PVLine {
 }
 
 impl PVLine {
-    pub fn extend_line(&mut self, mv: Move, other: &PVLine) {
-        self.moves[0] = mv;
-        for i in 0..other.count_move {
-            self.moves[i + 1] = other.moves[i];
-        }
-        self.count_move = other.count_move + 1;
+    pub fn add(&mut self, mv: Move) {
+        self.moves[self.count_move] = mv;
+        self.count_move += 1;
     }
 
     pub fn reset(&mut self) {

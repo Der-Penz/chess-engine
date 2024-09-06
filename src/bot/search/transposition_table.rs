@@ -9,12 +9,16 @@ pub struct TranspositionTableEntry {
 }
 
 pub enum NodeType {
+    /// Exact score of the position was found for the given depth (PV node)
     Exact,
+    /// Alpha is the lower bound of the position (Cut Node)
     LowerBound,
+    /// Beta is the upper bound of the position (All Node)
     UpperBound,
 }
 
 impl NodeType {
+    /// Returns the node type based on the alpha beta window and the original alpha value.
     pub fn type_from_eval(alpha: Eval, original_alpha: Eval, beta: Eval) -> Self {
         if alpha <= original_alpha {
             NodeType::UpperBound
@@ -26,23 +30,20 @@ impl NodeType {
     }
 }
 
-pub enum ReplacementStrategy {
-    ReplaceAlways,
-    KeepAlways,
-    ReplaceOnFull(bool),
-    DepthPriority,
-}
-
+/// #### Transposition Table
+/// Cache for storing the results of previous searches  
+/// Indexed by the Zobrist hash of the position  
+/// Table stores eval and move information for a given position
 pub struct TranspositionTable {
     entries: Vec<Option<TranspositionTableEntry>>,
     count: usize,
     max_count: usize,
-    replacement_strategy: ReplacementStrategy,
     enabled: bool,
 }
 
 impl TranspositionTable {
-    pub fn new(mb: f64, replacement_strategy: ReplacementStrategy) -> Self {
+    /// Creates a new transposition table with the given size in MB
+    pub fn new(mb: f64) -> Self {
         let max_count = TranspositionTable::get_size_from_mb(mb);
         let mut entries = Vec::with_capacity(max_count);
         entries.resize_with(max_count, || None);
@@ -51,7 +52,6 @@ impl TranspositionTable {
             entries,
             count: 0,
             max_count,
-            replacement_strategy,
             enabled: true,
         }
     }
@@ -74,6 +74,7 @@ impl TranspositionTable {
         key as usize % self.max_count
     }
 
+    /// Usage of occupied entries in the transposition table in percentage
     pub fn get_usage(&self) -> f64 {
         self.count as f64 / self.max_count as f64
     }
@@ -104,63 +105,34 @@ impl TranspositionTable {
     /// Inserts a new entry into the transposition table.
     /// Returns None if the entry was not inserted.
     /// Depending on the management strategy, the entry might not be inserted if the table is full.
-    pub fn insert(&mut self, key: u64, entry: TranspositionTableEntry) -> Option<()> {
+    pub fn insert(&mut self, key: u64, entry: TranspositionTableEntry, is_pv: bool) {
+        if !self.enabled {
+            return;
+        }
+
         let index = self.index(key);
-        match self.replacement_strategy {
-            ReplacementStrategy::KeepAlways => {
-                if self.count >= self.max_count {
-                    return None;
-                }
+        let existing_entry = self.entries[index].as_ref();
 
-                if self.entries[index].is_some() {
-                    return Some(());
-                }
+        //pv nodes are always inserted
+        if is_pv {
+            if existing_entry.is_none() {
                 self.entries[index] = Some(entry);
                 self.count += 1;
-                return Some(());
+                return;
             }
-            ReplacementStrategy::ReplaceAlways => {
-                if self.entries[index].is_none() {
-                    self.count += 1;
-                }
-                self.entries[index] = Some(entry);
-                return Some(());
-            }
-            ReplacementStrategy::ReplaceOnFull(should_replace) => {
-                if should_replace {
-                    self.entries[index] = Some(entry);
-                    return Some(());
-                }
 
-                if self.count >= self.max_count {
-                    info!("Transposition table is full, switch to replacement strategy");
-                    self.replacement_strategy = ReplacementStrategy::ReplaceOnFull(true);
-                    self.entries[index] = Some(entry);
-                    return Some(());
-                }
-
-                if self.entries[index].is_some() {
-                    return None;
-                }
-
+            self.entries[index] = Some(entry);
+        } else {
+            if existing_entry.is_none() {
                 self.entries[index] = Some(entry);
                 self.count += 1;
-                return Some(());
+                return;
             }
-            ReplacementStrategy::DepthPriority => {
-                if self.entries[index].is_none() {
-                    self.entries[index] = Some(entry);
-                    self.count += 1;
-                    return Some(());
-                }
 
-                let existing_entry = self.entries[index].as_mut().unwrap();
-                if entry.depth >= existing_entry.depth {
-                    *existing_entry = entry;
-                    return Some(());
-                } else {
-                    return None;
-                }
+            let existing_entry = existing_entry.unwrap();
+            if entry.depth >= existing_entry.depth {
+                self.entries[index] = Some(entry);
+                return;
             }
         }
     }
@@ -179,10 +151,6 @@ impl TranspositionTable {
         self.entries.resize_with(self.max_count, || None);
 
         self.clear();
-    }
-
-    pub fn set_replacement_strategy(&mut self, strategy: ReplacementStrategy) {
-        self.replacement_strategy = strategy;
     }
 
     fn get_size_from_mb(mb: f64) -> usize {

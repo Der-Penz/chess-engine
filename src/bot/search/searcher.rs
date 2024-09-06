@@ -23,7 +23,7 @@ pub struct Searcher {
     msg_channel: Sender<ReactionMessage>,
     diagnostics: SearchDiagnostics,
     tt: TranspositionTable,
-    pv_lines: Vec<PVLine>,
+    pv_line: PVLine,
     max_qs_depth: u8,
 }
 
@@ -41,8 +41,8 @@ impl Searcher {
             msg_channel,
             flag,
             tt,
-            pv_lines: Vec::new(),
-            max_qs_depth: 10,
+            pv_line: PVLine::default(),
+            max_qs_depth: 8,
         }
     }
 
@@ -107,18 +107,19 @@ impl Searcher {
     }
 
     fn iterative_deepening(&mut self, depth: u8) {
-        self.pv_lines = Vec::with_capacity(depth as usize);
+        self.pv_line.reset();
 
         for depth in 1..=depth {
-            let mut pv_line = PVLine::default();
-
             let now = std::time::Instant::now();
-            self.nega_max(depth, 0, NEG_INF, POS_INF, &mut pv_line);
+            let eval = self.nega_max(depth, 0, NEG_INF, POS_INF);
             info!("Iterative Deepening depth {} done", depth);
 
             let best_this_iteration = self.best;
 
+            self.try_build_pv_line(depth);
+
             if let Some((_, score)) = best_this_iteration {
+                assert_eq!(score, eval);
                 self.send_info(format!(
                     "depth {} score cp {} nodes {:?} time {} hashfull {:.2} pv {}",
                     depth,
@@ -126,7 +127,7 @@ impl Searcher {
                     self.diagnostics.node_count,
                     now.elapsed().as_millis(),
                     self.tt.get_usage() * 100_f64,
-                    pv_line
+                    self.pv_line
                 ));
 
                 //close the search if a mate score is found
@@ -137,11 +138,42 @@ impl Searcher {
                 }
             }
 
-            self.pv_lines.push(pv_line);
-
             if self.search_cancelled() {
                 break;
             }
+        }
+    }
+
+    fn try_build_pv_line(&mut self, depth: u8) {
+        self.pv_line.reset();
+        for i in 0..depth as usize {
+            let entry = match self
+                .tt
+                .get_entry(self.board.cur_state().zobrist, depth - i as u8)
+            {
+                Some(entry) => entry,
+                None => break,
+            };
+
+            let mv = match entry.best_move {
+                Some(mv) => mv,
+                None => break,
+            };
+            let valid = self.board.make_move(&mv, true, true);
+
+            if valid.is_err() {
+                warn!("Stopping PVLine due to invalid move in TT entry: {}", mv);
+                break;
+            }
+
+            self.pv_line.add(mv);
+        }
+
+        for i in 0..self.pv_line.len() {
+            let idx: usize = self.pv_line.len() - i - 1;
+            self.board
+                .undo_move(&self.pv_line.get_move(idx).unwrap(), true)
+                .unwrap();
         }
     }
 
@@ -151,7 +183,6 @@ impl Searcher {
         ply_from_root: u8,
         mut alpha: Eval,
         mut beta: Eval,
-        pv_line: &mut PVLine,
     ) -> Eval {
         //check if the search has been aborted
         if self.search_cancelled() {
@@ -203,10 +234,7 @@ impl Searcher {
             }
         }
 
-        let mut line = PVLine::default();
-
         if ply_remaining == 0 {
-            line.reset();
             return self.quiescence_search(alpha, beta, self.max_qs_depth);
         }
 
@@ -221,20 +249,14 @@ impl Searcher {
         }
 
         let mut ordered_moves =
-            MoveOrdering::score_moves(&moves, &self.pv_lines, ply_from_root, &self.board, tt_move);
+            MoveOrdering::score_moves(&moves, &self.pv_line, ply_from_root, &self.board, tt_move);
 
         let mut best_move_this_position = None;
 
         while let Some(mov) = ordered_moves.pick_next_move() {
             self.board.make_move(&mov, true, false).unwrap();
 
-            let eval = -self.nega_max(
-                ply_remaining - 1,
-                ply_from_root + 1,
-                -beta,
-                -alpha,
-                &mut line,
-            );
+            let eval = -self.nega_max(ply_remaining - 1, ply_from_root + 1, -beta, -alpha);
 
             self.board.undo_move(&mov, true).unwrap();
 
@@ -253,6 +275,7 @@ impl Searcher {
                         zobrist: key,
                         best_move: Some(mov),
                     },
+                    false,
                 );
                 return beta;
             }
@@ -262,23 +285,24 @@ impl Searcher {
 
                 best_move_this_position = Some(mov);
 
-                pv_line.extend_line(mov, &line);
-
                 if ply_from_root == 0 {
                     self.best = Some((mov, eval));
                 }
             }
         }
 
+        let node_type = NodeType::type_from_eval(alpha, original_alpha, beta);
+        let is_pv = matches!(node_type, NodeType::Exact);
         self.tt.insert(
             key,
             TranspositionTableEntry {
                 zobrist: key,
                 depth: ply_remaining,
                 eval: alpha,
-                node_type: NodeType::type_from_eval(alpha, original_alpha, beta),
+                node_type,
                 best_move: best_move_this_position,
             },
+            is_pv,
         );
 
         alpha
@@ -299,7 +323,8 @@ impl Searcher {
         self.diagnostics.inc_node_qs();
 
         //evaluate the position and check if we can prune it early
-        let mut eval = evaluate_board(&self.board, None);
+        let moves = MoveGeneration::generate_legal_moves_captures(&self.board);
+        let mut eval = evaluate_board(&self.board, Some(&moves));
         if eval >= beta {
             return beta;
         }
@@ -311,13 +336,19 @@ impl Searcher {
             return eval;
         }
 
-        let moves = MoveGeneration::generate_legal_moves_captures(&self.board);
-        for mv in moves.iter() {
-            self.board.make_move(mv, true, false).unwrap();
+        let mut move_order = MoveOrdering::score_moves(
+            &moves,
+            &self.pv_line,
+            self.pv_line.len() as u8,
+            &self.board,
+            None,
+        );
+        while let Some(mv) = move_order.pick_next_move() {
+            self.board.make_move(&mv, true, false).unwrap();
 
             eval = -self.quiescence_search(-beta, -alpha, depth - 1);
 
-            self.board.undo_move(mv, true).unwrap();
+            self.board.undo_move(&mv, true).unwrap();
 
             if eval >= beta {
                 self.diagnostics.inc_cut_offs();
