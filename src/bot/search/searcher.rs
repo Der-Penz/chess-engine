@@ -11,6 +11,7 @@ use std::sync::{atomic::Ordering, mpsc::Sender};
 use super::{
     diagnostics::SearchDiagnostics,
     move_ordering::MoveOrdering,
+    opening_book::OpeningBook,
     pv_line::PVLine,
     transposition_table::{NodeType, TranspositionTable, TranspositionTableEntry},
 };
@@ -25,6 +26,7 @@ pub struct Searcher {
     tt: TranspositionTable,
     pv_line: PVLine,
     max_qs_depth: u8,
+    opening_book: Option<OpeningBook>,
 }
 
 impl Searcher {
@@ -32,6 +34,7 @@ impl Searcher {
         tt: TranspositionTable,
         msg_channel: Sender<ReactionMessage>,
         flag: AbortFlag,
+        opening_book_file: String,
     ) -> Self {
         Self {
             best: None,
@@ -43,6 +46,7 @@ impl Searcher {
             tt,
             pv_line: PVLine::default(),
             max_qs_depth: 8,
+            opening_book: OpeningBook::new(opening_book_file).ok(),
         }
     }
 
@@ -62,6 +66,14 @@ impl Searcher {
             OptionType::DebugFile(_) => {
                 todo!("Debug file option not implemented yet");
             }
+            OptionType::OwnBook(value) => {
+                if let Some(book) = &mut self.opening_book {
+                    book.set_enabled(value);
+                    info!("Opening book enabled: {value}");
+                } else {
+                    warn!("No opening book loaded, cannot enable or disable it");
+                }
+            }
         }
     }
 
@@ -75,6 +87,17 @@ impl Searcher {
             "Transposition Table Usage: {:.2}%",
             self.tt.get_usage() * 100_f64
         );
+
+        // Check if we have a move in the opening book
+        if let Some(opening_book) = &self.opening_book {
+            if let Some(mv) = opening_book.get_random_book_move(&self.board) {
+                info!("Play opening book move: {:?}", mv);
+                self.msg_channel
+                    .send(ReactionMessage::BestMove(mv))
+                    .unwrap();
+                return;
+            }
+        }
 
         self.iterative_deepening(depth);
         info!("Search Diagnostics: {}", self.diagnostics);
@@ -117,7 +140,7 @@ impl Searcher {
 
         for depth in 1..=depth {
             let now = std::time::Instant::now();
-            let eval = self.nega_max(depth, 0, NEG_INF, POS_INF);
+            let _ = self.nega_max(depth, 0, NEG_INF, POS_INF);
             info!("Iterative Deepening depth {} done", depth);
 
             let best_this_iteration = self.best;
@@ -125,7 +148,6 @@ impl Searcher {
             self.try_build_pv_line(depth);
 
             if let Some((_, score)) = best_this_iteration {
-                assert_eq!(score, eval);
                 self.send_info(format!(
                     "depth {} score cp {} nodes {:?} time {} hashfull {:.2} pv {}",
                     depth,

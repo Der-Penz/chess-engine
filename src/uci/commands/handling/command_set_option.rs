@@ -17,6 +17,7 @@ pub enum OptionType {
     ClearHash,
     Threads(u8),
     DebugFile(String),
+    OwnBook(bool),
 }
 
 impl OptionType {
@@ -34,6 +35,7 @@ impl OptionType {
                 "Debug Log File type string default {}",
                 std::env::var("LOG_FILE").unwrap_or("logs.log".to_string())
             ),
+            OptionType::OwnBook(_) => "OwnBook type check default true".into(),
         }
     }
 
@@ -43,6 +45,7 @@ impl OptionType {
             OptionType::ClearHash.get_option_description(),
             OptionType::Threads(1).get_option_description(),
             OptionType::DebugFile("".into()).get_option_description(),
+            OptionType::OwnBook(true).get_option_description(),
         ]
     }
 }
@@ -80,6 +83,12 @@ pub fn parse_set_option(params: &str) -> Result<UCICommand, CommandParseError> {
             OptionType::Threads(value)
         }
         "Debug Log File" => OptionType::DebugFile(value.into()),
+        "OwnBook" => {
+            let value = value
+                .parse::<bool>()
+                .map_err(|_| CommandParseError::ParseError("Invalid value for OwnBook".into()))?;
+            OptionType::OwnBook(value)
+        }
         _ => {
             return Err(CommandParseError::ParseError(
                 format!("Unknown option :{}", name).into(),

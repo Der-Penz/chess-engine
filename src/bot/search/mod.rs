@@ -1,5 +1,6 @@
-mod move_ordering;
 mod diagnostics;
+mod move_ordering;
+pub mod opening_book;
 pub mod pv_line;
 pub mod searcher;
 pub mod transposition_table;

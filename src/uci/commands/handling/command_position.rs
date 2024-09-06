@@ -23,9 +23,10 @@ pub fn handle_position(bot: &mut Bot, params: PositionParams) -> Option<String> 
 }
 
 pub fn parse_position(params: &str) -> Result<UCICommand, CommandParseError> {
-    let (literal, rest) = params.split_once(" ").ok_or(CommandParseError::ParseError(
-        "Missing \"FEN\" or \"startpos\" literal".into(),
-    ))?;
+    let (literal, rest) = params
+        .split_once(" ")
+        .or_else(|| Some((params, "")))
+        .unwrap();
     let board = match literal {
         "startpos" => {
             let split = rest.split_once("moves");

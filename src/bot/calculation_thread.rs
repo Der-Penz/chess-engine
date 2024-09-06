@@ -16,7 +16,9 @@ pub fn thread_loop(
 ) {
     let tx = sender.clone();
     let tt = TranspositionTable::new(DEFAULT_HASH_SIZE);
-    let mut searcher = Searcher::new(tt, tx, flag);
+
+    let opening_book_path = std::env::var("OPENING_BOOK").unwrap_or("".to_string());
+    let mut searcher = Searcher::new(tt, tx, flag, opening_book_path);
 
     loop {
         match receiver.recv() {
