@@ -49,18 +49,27 @@ impl std::str::FromStr for UCICommand {
     type Err = CommandParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (command, params) = s.trim().split_once(' ').unwrap_or((s, ""));
-        match command.trim() {
-            COMMAND_STR_QUIT => Ok(UCICommand::Quit),
-            COMMAND_STR_UCI => Ok(UCICommand::UCI),
-            COMMAND_STR_IS_READY => Ok(UCICommand::IsReady),
-            COMMAND_STR_DISPLAY => Ok(UCICommand::Display),
-            COMMAND_STR_UCI_NEW_GAME => Ok(UCICommand::UCINewGame),
-            COMMAND_STR_STOP => Ok(UCICommand::Stop),
-            COMMAND_STR_GO => command_go::parse_go(params),
-            COMMAND_STR_SET_OPTION => command_set_option::parse_set_option(params),
-            COMMAND_STR_POSITION => command_position::parse_position(params),
-            _ => Err(CommandParseError::InvalidCommand(command.to_string())),
+        let mut com = s;
+        loop {
+            let (command, params) = com.trim().split_once(' ').unwrap_or((com, ""));
+
+            if command.is_empty() {
+                return Err(CommandParseError::InvalidCommand(s.to_string()));
+            }
+
+            match command.trim() {
+                COMMAND_STR_QUIT => return Ok(UCICommand::Quit),
+                COMMAND_STR_UCI => return Ok(UCICommand::UCI),
+                COMMAND_STR_IS_READY => return Ok(UCICommand::IsReady),
+                COMMAND_STR_DISPLAY => return Ok(UCICommand::Display),
+                COMMAND_STR_UCI_NEW_GAME => return Ok(UCICommand::UCINewGame),
+                COMMAND_STR_STOP => return Ok(UCICommand::Stop),
+                COMMAND_STR_GO => return command_go::parse_go(params),
+                COMMAND_STR_SET_OPTION => return command_set_option::parse_set_option(params),
+                COMMAND_STR_POSITION => return command_position::parse_position(params),
+                _ => (),
+            }
+            com = params;
         }
     }
 }
