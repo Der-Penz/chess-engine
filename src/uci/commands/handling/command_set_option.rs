@@ -28,12 +28,18 @@ pub fn parse_set_option(params: &str) -> Result<UCICommand, CommandParseError> {
 
     let rest = params.trim_start_matches("name").trim();
 
-    let (name, value) = rest.split_once("value").ok_or_else(|| {
-        CommandParseError::ParseError("Missing value literal in setoption command".into())
-    })?;
+    let (name, value) = rest.split_once("value").unwrap_or_else(|| (rest, ""));
+
+    let value = value.trim();
 
     let option = match name.trim() {
         "Clear Hash" => OptionType::ClearHash,
+        "Hash" => {
+            let value = value
+                .parse::<f64>()
+                .map_err(|_| CommandParseError::ParseError("Invalid value for Hash size".into()))?;
+            OptionType::HashSize(value)
+        }
         _ => {
             return Err(CommandParseError::ParseError(
                 format!("Unknown option :{}", name).into(),

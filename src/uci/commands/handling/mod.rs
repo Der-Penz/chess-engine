@@ -3,7 +3,9 @@ pub mod command_position;
 pub mod command_set_option;
 pub mod command_uci;
 
-use crate::bot::Bot;
+use command_set_option::OptionType;
+
+use crate::bot::{ActionMessage, Bot};
 
 use super::UCICommand;
 
@@ -11,7 +13,10 @@ pub fn handle_uci_command(command: UCICommand, bot: &mut Bot) -> Option<String> 
     info!("Handling command: {:?}", command);
 
     match command {
-        UCICommand::UCINewGame => None,
+        UCICommand::UCINewGame => {
+            bot.send_message(ActionMessage::SetOption(OptionType::ClearHash));
+            None
+        }
         UCICommand::Quit => None,
         UCICommand::UCI => Some(command_uci::handle_setup().to_string()),
         UCICommand::IsReady => Some("readyok".to_string()),

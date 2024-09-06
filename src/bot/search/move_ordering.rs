@@ -1,6 +1,6 @@
 use crate::game::{board::move_gen::LegalMoveList, Board, Move, PieceType};
 
-use super::{pv_line::PVLine, transposition_table::TranspositionTable};
+use super::pv_line::PVLine;
 
 const MAX_NUMBER_OF_MOVES_PER_POSITION: usize = 218;
 type Score = u16;

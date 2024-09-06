@@ -48,9 +48,11 @@ impl Searcher {
         match option {
             OptionType::ClearHash => {
                 self.tt.clear();
+                info!("Transposition Table cleared");
             }
             OptionType::HashSize(size) => {
                 self.tt.set_size(size);
+                info!("Transposition Table size set to {size}mb");
             }
         }
     }
