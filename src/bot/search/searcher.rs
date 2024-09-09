@@ -13,8 +13,11 @@ use super::{
     move_ordering::MoveOrdering,
     opening_book::OpeningBook,
     pv_line::PVLine,
-    transposition_table::{NodeType, TranspositionTable, TranspositionTableEntry},
+    repetition_history::RepetitionHistory,
+    transposition_table::{NodeType, TranspositionTable},
 };
+
+pub const MAX_QS_DEPTH: u8 = 8;
 
 pub struct Searcher {
     best: Option<(Move, Eval)>,
@@ -25,8 +28,8 @@ pub struct Searcher {
     diagnostics: SearchDiagnostics,
     tt: TranspositionTable,
     pv_line: PVLine,
-    max_qs_depth: u8,
     opening_book: Option<OpeningBook>,
+    repetition_history: RepetitionHistory,
 }
 
 impl Searcher {
@@ -45,8 +48,8 @@ impl Searcher {
             flag,
             tt,
             pv_line: PVLine::default(),
-            max_qs_depth: 8,
             opening_book: OpeningBook::new(opening_book_file).ok(),
+            repetition_history: RepetitionHistory::new(),
         }
     }
 
@@ -82,6 +85,8 @@ impl Searcher {
         self.best = None;
         self.board = board;
         self.diagnostics.reset();
+        self.pv_line.reset();
+        self.repetition_history.init(&self.board);
 
         info!(
             "Transposition Table Usage: {:.2}%",
@@ -136,34 +141,33 @@ impl Searcher {
     }
 
     fn iterative_deepening(&mut self, depth: u8) {
-        self.pv_line.reset();
-
         for depth in 1..=depth {
             let now = std::time::Instant::now();
             let _ = self.nega_max(depth, 0, NEG_INF, POS_INF);
+            let elapsed = now.elapsed().as_millis();
             info!("Iterative Deepening depth {} done", depth);
 
             let best_this_iteration = self.best;
 
             self.try_build_pv_line(depth);
 
-            if let Some((_, score)) = best_this_iteration {
+            if let Some((_, eval)) = best_this_iteration {
                 self.send_info(format!(
-                    "depth {} score cp {} nodes {:?} time {} hashfull {:.2} pv {}",
+                    "depth {} score {} nodes {:?} time {} hashfull {:.2} pv {}",
                     depth,
-                    score,
+                    display_eval(eval),
                     self.diagnostics.node_count,
-                    now.elapsed().as_millis(),
+                    elapsed,
                     self.tt.get_usage() * 100_f64,
                     self.pv_line
                 ));
 
                 //close the search if a mate score is found
                 //TODO maybe add a config option to continue the search if a mate score is found
-                if is_mate_score(score) {
-                    info!("Mate score found, stopping search");
-                    break;
-                }
+                // if is_mate_score(score) {
+                //     info!("Mate score found, stopping search");
+                //     break;
+                // }
             }
 
             if self.search_cancelled() {
@@ -219,27 +223,23 @@ impl Searcher {
         self.diagnostics.inc_node();
         let key = self.board.cur_state().zobrist;
 
-        //skip the position if it there is a mating sequence earlier in the search which would be shorter than a current one
-        alpha = alpha.max(-MATE + ply_from_root as Eval);
-        beta = beta.min(MATE - ply_from_root as Eval);
-        if alpha >= beta {
-            self.diagnostics.inc_cut_offs();
-            return alpha;
+        //two fold repetition rule
+        if self.repetition_history.two_fold_repetition(key)
+            || self.board.cur_state().ply_clock >= 100
+        {
+            return DRAW;
         }
 
-        let original_alpha = alpha;
         let mut tt_move = None;
         if let Some(entry) = self.tt.get_entry(key, ply_remaining) {
             self.diagnostics.inc_tt_hits();
             tt_move = entry.best_move;
 
+            let mut eval = entry.eval;
+            TranspositionTable::correct_retrieved_mate_score(&mut eval, ply_from_root);
+
             match entry.node_type {
                 NodeType::Exact => {
-                    let mut eval = entry.eval;
-                    //correct a mate score to be relative to the current position
-                    if is_mate_score(eval) {
-                        eval = correct_mate_score(eval, ply_from_root);
-                    }
                     if ply_from_root == 0 {
                         if let Some(mv) = entry.best_move {
                             if !self.best.is_some_and(|(_, e)| e > eval) {
@@ -250,42 +250,43 @@ impl Searcher {
                     return eval;
                 }
                 NodeType::LowerBound => {
-                    alpha = alpha.max(entry.eval);
+                    alpha = alpha.max(eval);
                 }
                 NodeType::UpperBound => {
-                    beta = beta.min(entry.eval);
+                    beta = beta.min(eval);
                 }
             }
             if alpha >= beta {
                 self.diagnostics.inc_cut_offs();
-                return entry.eval;
+                return eval;
             }
         }
 
         if ply_remaining == 0 {
-            return self.quiescence_search(alpha, beta, self.max_qs_depth);
+            return self.quiescence_search(ply_from_root, MAX_QS_DEPTH, alpha, beta);
         }
 
         let moves = MoveGeneration::generate_legal_moves(&self.board);
-        //check for checkmate and stalemate
-        if moves.is_empty() {
-            if moves.get_masks().in_check {
-                return -(MATE - ply_from_root as Eval);
-            } else {
-                return DRAW;
-            }
+        if moves.is_checkmate() {
+            return -(MATE - ply_from_root as Eval);
+        }
+        if moves.is_stalemate() {
+            return DRAW;
         }
 
         let mut ordered_moves =
             MoveOrdering::score_moves(&moves, &self.pv_line, ply_from_root, &self.board, tt_move);
 
         let mut best_move_this_position = None;
+        let mut node_type = NodeType::UpperBound;
 
         while let Some(mov) = ordered_moves.pick_next_move() {
+            self.repetition_history.push_hash(key, false);
             self.board.make_move(&mov, true, false).unwrap();
 
             let eval = -self.nega_max(ply_remaining - 1, ply_from_root + 1, -beta, -alpha);
 
+            self.repetition_history.pop_hash();
             self.board.undo_move(&mov, true).unwrap();
 
             if self.search_cancelled() {
@@ -296,14 +297,11 @@ impl Searcher {
                 self.diagnostics.inc_cut_offs();
                 self.tt.insert(
                     key,
-                    TranspositionTableEntry {
-                        depth: ply_remaining,
-                        eval: beta,
-                        node_type: NodeType::LowerBound,
-                        zobrist: key,
-                        best_move: Some(mov),
-                    },
-                    false,
+                    ply_remaining,
+                    ply_from_root,
+                    beta,
+                    NodeType::LowerBound,
+                    Some(mov),
                 );
                 return beta;
             }
@@ -312,6 +310,7 @@ impl Searcher {
                 alpha = eval;
 
                 best_move_this_position = Some(mov);
+                node_type = NodeType::Exact;
 
                 if ply_from_root == 0 {
                     self.best = Some((mov, eval));
@@ -319,18 +318,13 @@ impl Searcher {
             }
         }
 
-        let node_type = NodeType::type_from_eval(alpha, original_alpha, beta);
-        let is_pv = matches!(node_type, NodeType::Exact);
         self.tt.insert(
             key,
-            TranspositionTableEntry {
-                zobrist: key,
-                depth: ply_remaining,
-                eval: alpha,
-                node_type,
-                best_move: best_move_this_position,
-            },
-            is_pv,
+            ply_remaining,
+            ply_from_root,
+            alpha,
+            node_type,
+            best_move_this_position,
         );
 
         alpha
@@ -344,14 +338,36 @@ impl Searcher {
     /// see that the queen can be captured by a pawn, which would change the evaluation drastically
     /// by only searching captures, we can avoid this problem and get a more accurate evaluation
     /// since only captures are considered, the search is much faster and terminates faster
-    fn quiescence_search(&mut self, mut alpha: Eval, beta: Eval, depth: u8) -> Eval {
+    fn quiescence_search(
+        &mut self,
+        ply_from_root: u8,
+        ply_remaining: u8,
+        mut alpha: Eval,
+        beta: Eval,
+    ) -> Eval {
+        //TODO maybe add forced moves to the quiescence search to see checkmates faster e.g:r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1 king is forced to move
+        //which could already be seen at depth 3 or lower
         if self.search_cancelled() {
             return 0;
         }
         self.diagnostics.inc_node_qs();
 
-        //evaluate the position and check if we can prune it early
-        let moves = MoveGeneration::generate_legal_moves_captures(&self.board);
+        let key = self.board.cur_state().zobrist;
+        //two fold repetition rule
+        if self.repetition_history.two_fold_repetition(key)
+            || self.board.cur_state().ply_clock >= 100
+        {
+            return DRAW;
+        }
+
+        let moves = MoveGeneration::generate_legal_moves(&self.board);
+        if moves.is_checkmate() {
+            return -(MATE - ply_from_root as Eval);
+        }
+        if moves.is_stalemate() {
+            return DRAW;
+        }
+
         let mut eval = evaluate_board(&self.board, Some(&moves));
         if eval >= beta {
             return beta;
@@ -360,10 +376,11 @@ impl Searcher {
             alpha = eval;
         }
 
-        if depth == 0 {
+        if ply_remaining == 0 {
             return eval;
         }
 
+        let moves = moves.to_captures_only();
         let mut move_order = MoveOrdering::score_moves(
             &moves,
             &self.pv_line,
@@ -372,10 +389,12 @@ impl Searcher {
             None,
         );
         while let Some(mv) = move_order.pick_next_move() {
+            self.repetition_history.push_hash(key, false);
             self.board.make_move(&mv, true, false).unwrap();
 
-            eval = -self.quiescence_search(-beta, -alpha, depth - 1);
+            eval = -self.quiescence_search(ply_from_root + 1, ply_remaining - 1, -beta, -alpha);
 
+            self.repetition_history.pop_hash();
             self.board.undo_move(&mv, true).unwrap();
 
             if eval >= beta {

@@ -1,4 +1,7 @@
-use crate::{bot::evaluation::eval::Eval, game::Move};
+use crate::{
+    bot::evaluation::eval::{is_mate_score, Eval, MATE},
+    game::Move,
+};
 
 pub struct TranspositionTableEntry {
     pub zobrist: u64,
@@ -8,6 +11,7 @@ pub struct TranspositionTableEntry {
     pub best_move: Option<Move>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum NodeType {
     /// Exact score of the position was found for the given depth (PV node)
     Exact,
@@ -20,19 +24,6 @@ pub enum NodeType {
 pub const DEFAULT_HASH_SIZE: f64 = 1024_f64;
 pub const MAX_HASH_SIZE: f64 = 1024000_f64;
 pub const MIN_HASH_SIZE: f64 = 1_f64;
-
-impl NodeType {
-    /// Returns the node type based on the alpha beta window and the original alpha value.
-    pub fn type_from_eval(alpha: Eval, original_alpha: Eval, beta: Eval) -> Self {
-        if alpha <= original_alpha {
-            NodeType::UpperBound
-        } else if alpha >= beta {
-            NodeType::LowerBound
-        } else {
-            NodeType::Exact
-        }
-    }
-}
 
 /// #### Transposition Table
 /// Cache for storing the results of previous searches  
@@ -64,12 +55,8 @@ impl TranspositionTable {
         self.enabled
     }
 
-    pub fn enable(&mut self) {
-        self.enabled = true;
-    }
-
-    pub fn disable(&mut self) {
-        self.enabled = false;
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     #[inline(always)]
@@ -106,37 +93,57 @@ impl TranspositionTable {
         }
     }
 
-    /// Inserts a new entry into the transposition table.
-    /// Returns None if the entry was not inserted.
-    /// Depending on the management strategy, the entry might not be inserted if the table is full.
-    pub fn insert(&mut self, key: u64, entry: TranspositionTableEntry, is_pv: bool) {
+    /// Inserts a new entry into the transposition table.  
+    /// PV nodes are always inserted even if a PV node was already stored at that index.  
+    /// other nodes are inserted if the depth is greater than the existing entry.
+    pub fn insert(
+        &mut self,
+        key: u64,
+        depth: u8,
+        ply_from_root: u8,
+        mut eval: Eval,
+        node_type: NodeType,
+        best_move: Option<Move>,
+    ) {
         if !self.enabled {
             return;
         }
+
+        //correct mate score
+        //see more about correcting mate scores:
+        //https://github.com/maksimKorzh/chess_programming/blob/9f2dbc2c1bb1f5e405aa9c88cac18840829a29eb/src/bbc/tt_search_mating_scores/TT_mate_scoring.txt
+        if is_mate_score(eval) {
+            let n = MATE - eval.abs();
+            let k = ply_from_root as Eval;
+            let distance = n - k;
+            eval = (MATE - distance) * eval.signum();
+        }
+
+        let entry = TranspositionTableEntry {
+            zobrist: key,
+            depth,
+            node_type,
+            best_move,
+            eval,
+        };
 
         let index = self.index(key);
         let existing_entry = self.entries[index].as_ref();
 
         //pv nodes are always inserted
-        if is_pv {
+        if entry.node_type == NodeType::Exact {
             if existing_entry.is_none() {
-                self.entries[index] = Some(entry);
                 self.count += 1;
-                return;
             }
-
             self.entries[index] = Some(entry);
         } else {
-            if existing_entry.is_none() {
+            if let Some(existing_entry) = existing_entry {
+                if entry.depth >= existing_entry.depth {
+                    self.entries[index] = Some(entry);
+                }
+            } else {
                 self.entries[index] = Some(entry);
                 self.count += 1;
-                return;
-            }
-
-            let existing_entry = existing_entry.unwrap();
-            if entry.depth >= existing_entry.depth {
-                self.entries[index] = Some(entry);
-                return;
             }
         }
     }
@@ -155,6 +162,19 @@ impl TranspositionTable {
         self.entries.resize_with(self.max_count, || None);
 
         self.clear();
+    }
+
+    #[inline(always)]
+    /// Corrects a mate score retrieved from the transposition table to the correct mate score distance from the root.  
+    /// Mate scores are stores as MATE - N + K (N = distance to mate, K = ply from root) to be relative to the node.  
+    /// E.g if a mate in 5 at node Q is found at depth 3, the score of Q is stored as MATE - 5 + 3 = MATE - 2  
+    /// to retrieve the correct mate from another node P at depth 2, which has the score of node Q stored, we need subtract K to get MATE - N  
+    /// see more about correcting mate scores:
+    /// https://github.com/maksimKorzh/chess_programming/blob/9f2dbc2c1bb1f5e405aa9c88cac18840829a29eb/src/bbc/tt_search_mating_scores/TT_mate_scoring.txt
+    pub fn correct_retrieved_mate_score(eval: &mut Eval, ply_from_root: u8) {
+        if is_mate_score(*eval) {
+            *eval = (eval.abs() - ply_from_root as Eval) * eval.signum();
+        }
     }
 
     fn get_size_from_mb(mb: f64) -> usize {

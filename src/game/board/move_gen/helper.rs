@@ -56,6 +56,7 @@ pub struct MoveGenerationMasks {
     pub push_mask: u64,
     pub capture_mask: u64,
     pub push_capture_mask: u64,
+    pub enemy: u64,
 }
 
 impl std::default::Default for MoveGenerationMasks {
@@ -70,12 +71,16 @@ impl std::default::Default for MoveGenerationMasks {
             push_mask: 0,
             capture_mask: 0,
             push_capture_mask: 0,
+            enemy: 0,
         }
     }
 }
 
 impl MoveGenerationMasks {
     pub(super) fn calculate_king_danger(&mut self, data: &MoveGenerationData, board: &Board) {
+        //set enemy pieces
+        self.enemy = data.enemy;
+
         //King attacks
         self.king_danger |= attacks_king(data.king_sq_opp, 0);
 

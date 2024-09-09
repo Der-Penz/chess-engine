@@ -80,6 +80,10 @@ impl Board {
         &self.current_state
     }
 
+    pub fn repetition_history(&self) -> &Vec<u64> {
+        &self.repetition_history
+    }
+
     pub fn ply_count(&self) -> usize {
         self.ply_count
     }

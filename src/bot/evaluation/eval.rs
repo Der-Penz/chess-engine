@@ -14,12 +14,17 @@ pub fn is_mate_score(score: Eval) -> bool {
     score.abs() >= MATE - u8::MAX as i32
 }
 
-pub fn correct_mate_score(eval: Eval, ply_from_root: u8) -> Eval {
-    assert!(is_mate_score(eval));
-
-    match eval.signum() {
-        1 => MATE - ply_from_root as Eval,
-        -1 => -MATE + ply_from_root as Eval,
-        _ => unreachable!(),
-    }
+pub fn display_eval(eval: Eval) -> String {
+    let t = if is_mate_score(eval) {
+        let mate_in = (MATE - eval.abs()) as f32 / 2.0;
+        if eval > 0 {
+            format!("mate {}", mate_in.ceil() as i32)
+        } else {
+            format!("mate -{}", mate_in.ceil() as i32)
+        }
+    } else {
+        format!("cp {}", eval)
+    };
+    println!("{}", t);
+    t
 }

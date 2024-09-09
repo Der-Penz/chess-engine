@@ -1,7 +1,8 @@
 mod diagnostics;
 mod move_ordering;
-pub mod opening_book;
-pub mod pv_line;
+mod opening_book;
+mod pv_line;
+pub mod repetition_history;
 pub mod searcher;
 pub mod transposition_table;
 use std::sync::{atomic::AtomicBool, Arc};

@@ -8,7 +8,7 @@ use super::helper::MoveGenerationMasks;
 const MAX_NUMBER_OF_MOVES_PER_POSITION: usize = 218;
 type MoveListArray = [Move; MAX_NUMBER_OF_MOVES_PER_POSITION];
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct LegalMoveList {
     moves: MoveListArray,
     masks: MoveGenerationMasks,
@@ -80,6 +80,16 @@ impl LegalMoveList {
         });
     }
 
+    #[inline(always)]
+    pub fn is_checkmate(&self) -> bool {
+        self.count == 0 && self.masks.in_check
+    }
+
+    #[inline(always)]
+    pub fn is_stalemate(&self) -> bool {
+        self.count == 0 && !self.masks.in_check
+    }
+
     pub fn len(&self) -> usize {
         self.count
     }
@@ -106,6 +116,21 @@ impl LegalMoveList {
 
     pub fn iter(&self) -> impl Iterator<Item = &Move> {
         self.moves[..self.count].iter()
+    }
+
+    ///Consumes the move list and returns a move list from the given move list with only captures
+    pub fn to_captures_only(self) -> LegalMoveList {
+        let mut captures_only = LegalMoveList::default();
+
+        captures_only.set_masks(self.masks);
+        self.moves[..self.count]
+            .iter()
+            .filter(|m| m.dest().to_mask() & self.masks.enemy != 0)
+            .for_each(|m| {
+                captures_only.add_move(*m);
+            });
+
+        captures_only
     }
 
     pub fn as_attack_bb(&self) -> BitBoard {

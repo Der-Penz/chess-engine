@@ -6,10 +6,11 @@ const NAME: &str = "Cheese";
 pub fn handle_setup() -> String {
     let mut info = String::new();
 
-    info.push_str(&format!("id name {}\n id author {}\nuciok", NAME, AUTHOR));
+    info.push_str(&format!("id name {}\n id author {}", NAME, AUTHOR));
     OptionType::get_all_descriptions().iter().for_each(|desc| {
         info.push_str(&format!("\n{}", desc));
     });
 
+    info.push_str("\nuciok");
     info
 }
