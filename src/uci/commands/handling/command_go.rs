@@ -1,6 +1,6 @@
 use crate::{
     bot::{
-        search::limit::{Limit, Limits},
+        search::limit::{get_current_millis, Limit, Limits},
         Bot, INFINITY_DEPTH,
     },
     uci::commands::{CommandParseError, UCICommand},
@@ -40,65 +40,64 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
 }
 
 pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
-    let (mode, rest) = params.split_once(' ').unwrap_or((params, ""));
-
-    let mode = mode.to_lowercase();
-    let rest = rest.to_lowercase();
-
-    if mode == "eval" {
-        let divide = rest.trim() == "divide";
-        let params = GoParams::new(GoMode::Eval(divide));
-        return Ok(UCICommand::Go(params));
-    }
-
-    if mode == "perft" {
-        let depth = rest
-            .parse()
-            .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
-        let params = GoParams::new(GoMode::Perft(depth));
-        return Ok(UCICommand::Go(params));
-    }
-
     let mut limits = Limits::new();
-    match &mode[..] {
-        //infinite search can only be stopped by the "stop" command
-        "infinite" | "" => {
-            limits = Limits::new();
-            let params = GoParams::new(GoMode::Search(limits));
+    let mut parts = params.split_whitespace();
+    while let Some(part) = parts.next() {
+        if part == "eval" {
+            let divide = parts.next().is_some_and(|val| val == "divide");
+            let params = GoParams::new(GoMode::Eval(divide));
             return Ok(UCICommand::Go(params));
         }
-        "depth" => {
-            let depth = rest
+
+        if part == "perft" {
+            let depth: u8 = parts
+                .next()
+                .ok_or(CommandParseError::ParseError("Missing depth param".into()))?
                 .parse()
                 .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
+            let params = GoParams::new(GoMode::Perft(depth));
+            return Ok(UCICommand::Go(params));
+        }
 
-            limits.add_limit(Limit::Depth(depth));
-        }
-        "nodes" => {
-            let nodes = rest
-                .parse()
-                .map_err(|_| CommandParseError::ParseError("Invalid node count".into()))?;
-            limits.add_limit(Limit::NodeCount(nodes));
-        }
-        "movetime" => {
-            let movetime = rest
-                .parse()
-                .map_err(|_| CommandParseError::ParseError("Invalid movetime".into()))?;
-            limits.add_limit(Limit::Time(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .expect("Time went backwards")
-                    .as_millis(),
-                movetime,
-            ));
-        }
-        _ => {
-            return Err(CommandParseError::ParseError(format!(
-                "invalid search limit \"{}\"",
-                mode
-            )))
-        }
-    };
+        match part {
+            "infinite" | "" => {
+                limits.add_limit(Limit::Depth(INFINITY_DEPTH));
+            }
+            "depth" => {
+                let depth = parts
+                    .next()
+                    .ok_or(CommandParseError::ParseError("Missing depth param".into()))?
+                    .parse()
+                    .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
+
+                limits.add_limit(Limit::Depth(depth));
+            }
+            "nodes" => {
+                let nodes = parts
+                    .next()
+                    .ok_or(CommandParseError::ParseError("Missing nodes param".into()))?
+                    .parse()
+                    .map_err(|_| CommandParseError::ParseError("Invalid node count".into()))?;
+                limits.add_limit(Limit::NodeCount(nodes));
+            }
+            "movetime" => {
+                let movetime = parts
+                    .next()
+                    .ok_or(CommandParseError::ParseError(
+                        "Missing movetime param".into(),
+                    ))?
+                    .parse()
+                    .map_err(|_| CommandParseError::ParseError("Invalid movetime".into()))?;
+                limits.add_limit(Limit::Time(get_current_millis(), movetime));
+            }
+            _ => {
+                warn!(
+                    "Received invalid search limit \"{}\", skip this limit",
+                    part
+                );
+            }
+        };
+    }
 
     let params = GoParams::new(GoMode::Search(limits));
     Ok(UCICommand::Go(params))

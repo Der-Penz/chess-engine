@@ -10,7 +10,7 @@ use std::sync::{atomic::Ordering, mpsc::Sender};
 
 use super::{
     diagnostics::SearchDiagnostics,
-    limit::{Limit, Limits},
+    limit::Limits,
     move_ordering::MoveOrdering,
     opening_book::OpeningBook,
     pv_line::PVLine,
@@ -176,8 +176,9 @@ impl Searcher {
 
             if self
                 .limits
-                .is_any_terminal(self.diagnostics.node_count, INFINITY_DEPTH - depth)
+                .is_any_terminal(self.diagnostics.node_count, depth)
             {
+                info!("Stopping");
                 break;
             }
 
@@ -258,7 +259,7 @@ impl Searcher {
                             }
                         }
                     }
-                    return eval;
+                    // return eval;
                 }
                 NodeType::LowerBound => {
                     alpha = alpha.max(eval);

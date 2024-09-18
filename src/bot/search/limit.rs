@@ -1,3 +1,12 @@
+pub(crate) fn get_current_millis() -> u128 {
+    let now = std::time::SystemTime::now();
+    let since_the_epoch = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis();
+    since_the_epoch
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Limit {
     Time(u128, u128),
@@ -10,15 +19,11 @@ impl Limit {
     pub fn is_terminal(&self, nodes: u64, depth: u8) -> bool {
         match self {
             Limit::Time(start_millis, duration_millis) => {
-                let now = std::time::SystemTime::now();
-                let since_the_epoch = now
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .expect("Time went backwards")
-                    .as_millis();
-                since_the_epoch - *start_millis > *duration_millis
+                let now = get_current_millis();
+                now - *start_millis > *duration_millis
             }
             Limit::NodeCount(max_nodes) => nodes >= *max_nodes,
-            Limit::Depth(max_depth) => depth > *max_depth,
+            Limit::Depth(max_depth) => depth >= *max_depth,
             Limit::None => false,
         }
     }

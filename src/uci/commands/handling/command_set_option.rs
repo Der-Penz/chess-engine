@@ -94,7 +94,7 @@ pub fn parse_set_option(params: &str) -> Result<UCICommand, CommandParseError> {
         }
         _ => {
             return Err(CommandParseError::ParseError(
-                format!("Unknown option :{}", name).into(),
+                format!("Unknown option : {}", name).into(),
             ))
         }
     };
