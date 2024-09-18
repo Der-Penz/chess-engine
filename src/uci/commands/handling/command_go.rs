@@ -14,7 +14,17 @@ pub struct GoParams {
 
 impl GoParams {
     pub fn new(mode: GoMode, time_control: Option<TimeControl>) -> Self {
-        GoParams { mode, time_control }
+        if time_control
+            .as_ref()
+            .is_some_and(|tc| *tc == TimeControl::default())
+        {
+            GoParams {
+                mode,
+                time_control: None,
+            }
+        } else {
+            GoParams { mode, time_control }
+        }
     }
 }
 

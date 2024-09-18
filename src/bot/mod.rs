@@ -10,10 +10,7 @@ use std::{
 
 use calculation_thread::thread_loop;
 use evaluation::evaluate_board;
-use search::{
-    limit::{Limit, Limits},
-    AbortFlag,
-};
+use search::{limit::Limits, AbortFlag};
 
 use crate::{
     game::{Board, Color, GameResult, Move, MoveGeneration},

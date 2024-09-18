@@ -145,10 +145,10 @@ impl Searcher {
     }
 
     fn iterative_deepening(&mut self) {
+        let start = std::time::Instant::now();
         for depth in 1..=INFINITY_DEPTH {
-            let now = std::time::Instant::now();
             let _ = self.nega_max(depth, 0, NEG_INF, POS_INF);
-            let elapsed = now.elapsed().as_millis();
+            let elapsed = start.elapsed().as_millis();
             info!("Iterative Deepening depth {} done", depth);
 
             let best_this_iteration = self.best;
