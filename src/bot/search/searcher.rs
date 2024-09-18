@@ -18,7 +18,7 @@ use super::{
     transposition_table::{NodeType, TranspositionTable},
 };
 
-pub const MAX_QS_DEPTH: u8 = 8;
+pub(super) const MAX_QS_DEPTH: u8 = 8;
 
 pub struct Searcher {
     best: Option<(Move, Eval)>,
