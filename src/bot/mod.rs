@@ -5,17 +5,20 @@ use std::{
         mpsc::{Receiver, Sender, TryRecvError},
         Arc,
     },
-    thread,
+    thread, u128,
 };
 
 use calculation_thread::thread_loop;
 use evaluation::evaluate_board;
-use search::{limit::Limits, AbortFlag};
+use search::{
+    limit::{Limit, Limits},
+    AbortFlag,
+};
 
 use crate::{
-    game::{Board, GameResult, Move, MoveGeneration},
+    game::{Board, Color, GameResult, Move, MoveGeneration},
     perft,
-    uci::commands::command_set_option::OptionType,
+    uci::commands::{command_go::TimeControl, command_set_option::OptionType},
 };
 
 mod evaluation;
@@ -125,10 +128,16 @@ impl Bot {
         msg
     }
 
-    pub fn think(&mut self, limits: Limits) {
+    pub fn think(&mut self, mut limits: Limits, time_control: Option<TimeControl>) {
         if self.thinking {
             warn!("Bot is already thinking, abort search first");
             return;
+        }
+
+        if let Some(time_control) = time_control {
+            let think_time = self.calculate_think_time(time_control);
+            info!("Think time from given time control: {}ms", think_time);
+            limits.add_time_control_limit(think_time);
         }
 
         self.abort_flag.store(false, Ordering::Relaxed);
@@ -161,5 +170,21 @@ impl Bot {
 
     pub fn is_running(&self) -> bool {
         self.thinking
+    }
+
+    fn calculate_think_time(&self, time_control: TimeControl) -> u128 {
+        let (time, inc) = match self.board.side_to_move() {
+            Color::White => (time_control.w_time, time_control.w_inc),
+            Color::Black => (time_control.b_time, time_control.b_inc),
+        };
+        let (e_time, e_inc) = match self.board.side_to_move().opposite() {
+            Color::White => (time_control.w_time, time_control.w_inc),
+            Color::Black => (time_control.b_time, time_control.b_inc),
+        };
+
+        //take more time if you have more time than the opponent
+        let time_div = if time > e_time { 48 } else { 50 };
+
+        time / time_div + inc / time_div
     }
 }

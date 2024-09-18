@@ -41,11 +41,13 @@ type LimitsArray = [Limit; 3];
 /// No limit can be repeated.
 pub struct Limits(LimitsArray);
 
-impl Limits {
-    pub fn new() -> Self {
+impl std::default::Default for Limits {
+    fn default() -> Self {
         Limits([Limit::None; 3])
     }
+}
 
+impl Limits {
     /// Add a limit to the list of limits.
     /// If the limit type is already present, it will be replaced.
     /// If there is an empty slot, the limit will be added there.
@@ -61,6 +63,27 @@ impl Limits {
             if std::mem::discriminant(&self.0[i]) == std::mem::discriminant(&limit) {
                 self.0[i] = limit;
                 return;
+            }
+        }
+    }
+
+    /// Add a time limit to the list of limits.  
+    /// If the limit type is already present, it will be replaced if the new limit is lower.  
+    /// This is used for time control.
+    pub fn add_time_control_limit(&mut self, time: u128) {
+        for i in 0..3 {
+            match self.0[i] {
+                Limit::Time(start, duration) => {
+                    if time < duration {
+                        self.0[i] = Limit::Time(start, time);
+                    }
+                    return;
+                }
+                Limit::None => {
+                    self.0[i] = Limit::Time(get_current_millis(), time);
+                    return;
+                }
+                _ => {}
             }
         }
     }

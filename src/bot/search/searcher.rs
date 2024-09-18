@@ -52,7 +52,7 @@ impl Searcher {
             pv_line: PVLine::default(),
             opening_book: OpeningBook::new(opening_book_file).ok(),
             repetition_history: RepetitionHistory::new(),
-            limits: Limits::new(),
+            limits: Limits::default(),
         }
     }
 
