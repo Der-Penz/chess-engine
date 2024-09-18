@@ -1,6 +1,9 @@
 use crate::{
     bot::{
-        search::transposition_table::{DEFAULT_HASH_SIZE, MAX_HASH_SIZE},
+        search::{
+            transposition_table::{DEFAULT_HASH_SIZE, MAX_HASH_SIZE},
+            DEFAULT_OPENING_BOOK_ENABLED,
+        },
         ActionMessage, Bot,
     },
     uci::commands::{CommandParseError, UCICommand},
@@ -35,7 +38,7 @@ impl OptionType {
                 "Debug Log File type string default {}",
                 std::env::var("LOG_FILE").unwrap_or("logs.log".to_string())
             ),
-            OptionType::OwnBook(_) => "OwnBook type check default true".into(),
+            OptionType::OwnBook(val) => format!("OwnBook type check default {}", val),
         }
     }
 
@@ -45,7 +48,7 @@ impl OptionType {
             OptionType::ClearHash.get_option_description(),
             OptionType::Threads(1).get_option_description(),
             OptionType::DebugFile("".into()).get_option_description(),
-            OptionType::OwnBook(true).get_option_description(),
+            OptionType::OwnBook(*DEFAULT_OPENING_BOOK_ENABLED).get_option_description(),
         ]
     }
 }

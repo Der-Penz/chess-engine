@@ -1,7 +1,7 @@
 use crate::{
     bot::{
         evaluation::{eval::*, evaluate_board},
-        AbortFlag, ReactionMessage,
+        AbortFlag, ReactionMessage, INFINITY_DEPTH,
     },
     game::{board::move_gen::MoveGeneration, Board, Move},
     uci::commands::command_set_option::OptionType,
@@ -10,6 +10,7 @@ use std::sync::{atomic::Ordering, mpsc::Sender};
 
 use super::{
     diagnostics::SearchDiagnostics,
+    limit::{Limit, Limits},
     move_ordering::MoveOrdering,
     opening_book::OpeningBook,
     pv_line::PVLine,
@@ -30,6 +31,7 @@ pub struct Searcher {
     pv_line: PVLine,
     opening_book: Option<OpeningBook>,
     repetition_history: RepetitionHistory,
+    limits: Limits,
 }
 
 impl Searcher {
@@ -50,6 +52,7 @@ impl Searcher {
             pv_line: PVLine::default(),
             opening_book: OpeningBook::new(opening_book_file).ok(),
             repetition_history: RepetitionHistory::new(),
+            limits: Limits::new(),
         }
     }
 
@@ -80,13 +83,14 @@ impl Searcher {
         }
     }
 
-    pub fn think(&mut self, board: Board, depth: u8) {
+    pub fn think(&mut self, board: Board, limits: Limits) {
         self.aborted = false;
         self.best = None;
         self.board = board;
         self.diagnostics.reset();
         self.pv_line.reset();
         self.repetition_history.init(&self.board);
+        self.limits = limits;
 
         info!(
             "Transposition Table Usage: {:.2}%",
@@ -104,7 +108,7 @@ impl Searcher {
             }
         }
 
-        self.iterative_deepening(depth);
+        self.iterative_deepening();
         info!("Search Diagnostics: {}", self.diagnostics);
 
         let result = self.best.unwrap_or_else(|| {
@@ -140,8 +144,8 @@ impl Searcher {
         self.msg_channel.send(ReactionMessage::Info(msg)).ok();
     }
 
-    fn iterative_deepening(&mut self, depth: u8) {
-        for depth in 1..=depth {
+    fn iterative_deepening(&mut self) {
+        for depth in 1..=INFINITY_DEPTH {
             let now = std::time::Instant::now();
             let _ = self.nega_max(depth, 0, NEG_INF, POS_INF);
             let elapsed = now.elapsed().as_millis();
@@ -168,6 +172,13 @@ impl Searcher {
                 //     info!("Mate score found, stopping search");
                 //     break;
                 // }
+            }
+
+            if self
+                .limits
+                .is_any_terminal(self.diagnostics.node_count, INFINITY_DEPTH - depth)
+            {
+                break;
             }
 
             if self.search_cancelled() {
@@ -262,7 +273,11 @@ impl Searcher {
             }
         }
 
-        if ply_remaining == 0 {
+        if self
+            .limits
+            .is_any_terminal(self.diagnostics.node_count, ply_from_root)
+            || ply_remaining == 0
+        {
             return self.quiescence_search(ply_from_root, MAX_QS_DEPTH, alpha, beta);
         }
 

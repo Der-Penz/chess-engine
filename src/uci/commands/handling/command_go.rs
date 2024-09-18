@@ -1,5 +1,8 @@
 use crate::{
-    bot::Bot,
+    bot::{
+        search::limit::{Limit, Limits},
+        Bot, INFINITY_DEPTH,
+    },
     uci::commands::{CommandParseError, UCICommand},
 };
 
@@ -16,27 +19,19 @@ impl GoParams {
 
 #[derive(Debug, PartialEq)]
 pub enum GoMode {
-    Depth(u8),
-    Infinite,
-    Nodes(u64),
+    Search(Limits),
     Perft(u8),
     Eval(bool),
 }
 
-const MAX_DEPTH: u8 = 64;
 pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
     info!("ET: go with mode {:?}", params.mode);
 
     let msg = match params.mode {
-        GoMode::Depth(depth) => {
-            bot.think(depth);
+        GoMode::Search(limit) => {
+            bot.think(limit);
             None
         }
-        GoMode::Infinite => {
-            bot.think(MAX_DEPTH);
-            None
-        }
-        GoMode::Nodes(_) => todo!("implement nodes mode"),
         GoMode::Perft(depth) => Some(bot.perft(depth)),
         GoMode::Eval(divide) => Some(bot.eval_board(divide)),
     };
@@ -47,33 +42,64 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
 pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
     let (mode, rest) = params.split_once(' ').unwrap_or((params, ""));
 
-    match mode {
+    let mode = mode.to_lowercase();
+    let rest = rest.to_lowercase();
+
+    if mode == "eval" {
+        let divide = rest.trim() == "divide";
+        let params = GoParams::new(GoMode::Eval(divide));
+        return Ok(UCICommand::Go(params));
+    }
+
+    if mode == "perft" {
+        let depth = rest
+            .parse()
+            .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
+        let params = GoParams::new(GoMode::Perft(depth));
+        return Ok(UCICommand::Go(params));
+    }
+
+    let mut limits = Limits::new();
+    match &mode[..] {
+        //infinite search can only be stopped by the "stop" command
+        "infinite" | "" => {
+            limits = Limits::new();
+            let params = GoParams::new(GoMode::Search(limits));
+            return Ok(UCICommand::Go(params));
+        }
         "depth" => {
             let depth = rest
                 .parse()
                 .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
-            let params = GoParams::new(GoMode::Depth(depth));
-            Ok(UCICommand::Go(params))
+
+            limits.add_limit(Limit::Depth(depth));
         }
-        "infinite" | "" => {
-            let params = GoParams::new(GoMode::Infinite);
-            Ok(UCICommand::Go(params))
-        }
-        "perft" => {
-            let depth = rest
+        "nodes" => {
+            let nodes = rest
                 .parse()
-                .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
-            let params = GoParams::new(GoMode::Perft(depth));
-            Ok(UCICommand::Go(params))
+                .map_err(|_| CommandParseError::ParseError("Invalid node count".into()))?;
+            limits.add_limit(Limit::NodeCount(nodes));
         }
-        "eval" => {
-            let divide = rest == "divide";
-            let params = GoParams::new(GoMode::Eval(divide));
-            Ok(UCICommand::Go(params))
+        "movetime" => {
+            let movetime = rest
+                .parse()
+                .map_err(|_| CommandParseError::ParseError("Invalid movetime".into()))?;
+            limits.add_limit(Limit::Time(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("Time went backwards")
+                    .as_millis(),
+                movetime,
+            ));
         }
-        _ => Err(CommandParseError::ParseError(format!(
-            "mode \"{}\" not implemented",
-            mode
-        ))),
-    }
+        _ => {
+            return Err(CommandParseError::ParseError(format!(
+                "invalid search limit \"{}\"",
+                mode
+            )))
+        }
+    };
+
+    let params = GoParams::new(GoMode::Search(limits));
+    Ok(UCICommand::Go(params))
 }

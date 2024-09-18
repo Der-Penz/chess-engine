@@ -10,7 +10,7 @@ use std::{
 
 use calculation_thread::thread_loop;
 use evaluation::evaluate_board;
-use search::AbortFlag;
+use search::{limit::Limits, AbortFlag};
 
 use crate::{
     game::{Board, GameResult, Move, MoveGeneration},
@@ -22,7 +22,7 @@ mod evaluation;
 pub mod search;
 
 pub enum ActionMessage {
-    Think(Board, u8),
+    Think(Board, Limits),
     SetOption(OptionType),
 }
 
@@ -31,7 +31,7 @@ pub enum ReactionMessage {
     Info(String),
 }
 
-pub(self) const INFINITY_DEPTH: u8 = 50;
+pub const INFINITY_DEPTH: u8 = 50;
 
 pub struct Bot {
     board: Board,
@@ -125,7 +125,7 @@ impl Bot {
         msg
     }
 
-    pub fn think(&mut self, depth: u8) {
+    pub fn think(&mut self, limits: Limits) {
         if self.thinking {
             warn!("Bot is already thinking, abort search first");
             return;
@@ -135,7 +135,7 @@ impl Bot {
         self.thinking = true;
 
         self.action_sender
-            .send(ActionMessage::Think(self.board.clone(), depth))
+            .send(ActionMessage::Think(self.board.clone(), limits))
             .unwrap();
     }
 

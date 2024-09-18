@@ -4,9 +4,15 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+use lazy_static::lazy_static;
 use rand::Rng;
 
 use crate::game::{Board, Move};
+
+lazy_static! {
+    pub static ref DEFAULT_OPENING_BOOK_ENABLED: bool =
+        std::env::var("OWN_BOOK").unwrap_or("1".into()) == "1";
+}
 
 pub struct BookMove {
     pub uci_move: String,
@@ -66,7 +72,7 @@ impl OpeningBook {
 
         Ok(Self {
             moves,
-            enabled: true,
+            enabled: *DEFAULT_OPENING_BOOK_ENABLED,
         })
     }
 

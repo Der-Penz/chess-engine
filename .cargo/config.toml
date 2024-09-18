@@ -1,4 +1,5 @@
 [env]
-LOG_FILE= "E:\\Projekte\\Rust\\chess-bot\\logs.log"
-RUST_LOG="info"
-OPENING_BOOK= "E:\\Projekte\\Rust\\chess-bot\\resources\\book.txt"
+LOG_FILE = "E:\\Projekte\\Rust\\chess-bot\\logs.log"
+RUST_LOG ="info"
+OPENING_BOOK = "E:\\Projekte\\Rust\\chess-bot\\resources\\book.txt"
+OWN_BOOK = "0"
