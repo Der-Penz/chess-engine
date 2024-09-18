@@ -113,7 +113,7 @@ impl<'a> MoveOrdering<'a> {
         }
 
         let mut max_score = self.scored[self.cur_idx].0;
-        let mut max_idx = 0;
+        let mut max_idx = self.scored[self.cur_idx].1;
         for i in (self.cur_idx + 1)..self.legal_moves.len() {
             if self.scored[i].0 > max_score {
                 max_score = self.scored[i].0;

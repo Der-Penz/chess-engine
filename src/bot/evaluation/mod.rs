@@ -7,7 +7,7 @@ use crate::game::{
     bit_manipulation::iter_set_bits,
     board::move_gen::{LegalMoveList, MoveGeneration},
     castle_rights::CastleRights,
-    Color, PieceType,
+    Color, PieceType, Square,
 };
 
 use super::Board;
@@ -32,21 +32,6 @@ const CASTLE_SCORE_BY_INDEX: [Eval; 16] = [
     0,                      //1111
 ];
 
-const SCORE_PAWN: Eval = 10;
-const SCORE_KNIGHT: Eval = 30;
-const SCORE_BISHOP: Eval = 30;
-const SCORE_ROOK: Eval = 50;
-const SCORE_QUEEN: Eval = 90;
-
-const SCORE_PIECES: [Eval; 6] = [
-    SCORE_PAWN,
-    SCORE_KNIGHT,
-    SCORE_BISHOP,
-    SCORE_ROOK,
-    SCORE_QUEEN,
-    1, //multiplier for king (1 king * 1 = 1) Score won't be effected by this
-];
-
 const MOBILITY_SCORE: Eval = 1;
 
 /// Evaluates the board state and returns a score in the perspective of the side to move.
@@ -57,16 +42,17 @@ pub fn evaluate_board(board: &Board, precomputed_moves: Option<&LegalMoveList>) 
     let color = board.side_to_move();
 
     score += evaluate_pieces(board);
-    score += evaluate_castle(&board_state.castling_rights);
+    // score += evaluate_castle(&board_state.castling_rights);
 
     //mobility score
-    let move_count = match precomputed_moves {
-        Some(moves) => moves.len() as Eval,
-        None => MoveGeneration::generate_legal_moves(board).len() as Eval,
-    };
-    score += (move_count >> MOBILITY_SCORE) * color.perspective() as Eval;
+    // let move_count = match precomputed_moves {
+    //     Some(moves) => moves.len() as Eval,
+    //     None => MoveGeneration::generate_legal_moves(board).len() as Eval,
+    // };
+    // score += (move_count >> MOBILITY_SCORE) * color.perspective() as Eval;
 
-    (score / 10) * color.perspective() as Eval
+    //score is from the perspective of the white player so we need to negate if it is black to movee
+    (score / 100) * color.perspective() as Eval
 }
 
 #[inline(always)]
@@ -74,25 +60,56 @@ fn evaluate_castle(castle_rights: &CastleRights) -> Eval {
     CASTLE_SCORE_BY_INDEX[castle_rights.as_u8() as usize]
 }
 
+///  Rook + Bishop + Knight + Queen :
+const END_GAME_MATERIAL_START: Eval = 2050;
+
+fn calc_endgame_factor(sum: i32) -> f32 {
+    1_f32 - 1_f32.min(sum as f32 / END_GAME_MATERIAL_START as f32)
+}
+
 #[inline(always)]
 fn evaluate_pieces(board: &Board) -> Eval {
     let mut score = 0;
 
+    let mut material_without_pawn = (0, 0);
+    Square::iter_ah_18().for_each(|sq| {
+        let piece = board.get_sq_piece(sq);
+        if let Some(piece) = piece {
+            let material = match piece.color() {
+                Color::White => &mut material_without_pawn.0,
+                Color::Black => &mut material_without_pawn.1,
+            };
+
+            *material += match piece.ptype() {
+                PieceType::Knight => piece_square_table::KNIGHT_MG,
+                PieceType::Bishop => piece_square_table::BISHOP_MG,
+                PieceType::Rook => piece_square_table::ROOK_MG,
+                PieceType::Queen => piece_square_table::QUEEN_MG,
+                _ => 0,
+            }
+        }
+    });
+
+    let endgame_factor = (
+        calc_endgame_factor(material_without_pawn.0),
+        calc_endgame_factor(material_without_pawn.1),
+    );
+    let mid_game_factor = (1_f32 - endgame_factor.0, 1_f32 - endgame_factor.1);
+
     let bb = board.get_bb_pieces();
     for piece_type in PieceType::iter() {
-        let piece_score = SCORE_PIECES[piece_type];
         let white_piece_board = bb[Color::White][piece_type];
         let black_piece_board = bb[Color::Black][piece_type];
-        score += piece_score
-            * (white_piece_board.count_ones() as Eval - black_piece_board.count_ones() as Eval);
 
         let piece = piece_type.as_colored_piece(Color::White);
         iter_set_bits(*white_piece_board).for_each(|sq| {
-            score += read_p_sq_table(piece, sq);
+            let w = read_p_sq_table(piece, sq);
+            score += w.weight(mid_game_factor.0, endgame_factor.0);
         });
         let piece = piece_type.as_colored_piece(Color::Black);
         iter_set_bits(*black_piece_board).for_each(|sq| {
-            score -= read_p_sq_table(piece, sq);
+            let w = read_p_sq_table(piece, sq);
+            score -= w.weight(mid_game_factor.0, endgame_factor.0);
         });
     }
     score

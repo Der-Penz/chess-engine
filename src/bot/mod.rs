@@ -95,7 +95,7 @@ impl Bot {
                             result.color_lost().unwrap()
                         )),
                         _ => {
-                            let eval = evaluate_board(&self.board, None);
+                            let eval = -evaluate_board(&self.board, None);
                             eval_str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), eval));
                         }
                     };

@@ -35,7 +35,7 @@ impl PVLine {
     }
 
     pub fn get_move(&self, index: usize) -> Option<&Move> {
-        self.moves.get(index)
+        self.moves[..self.count_move].get(index)
     }
 }
 
