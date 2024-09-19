@@ -23,9 +23,9 @@ pub fn thread_loop(
     loop {
         match receiver.recv() {
             Ok(value) => match value {
-                ActionMessage::Think(board, limits) => {
+                ActionMessage::Think(board, limits, search_moves) => {
                     let start_time = std::time::Instant::now();
-                    searcher.think(board, limits);
+                    searcher.think(board, limits, search_moves);
                     let elapsed = start_time.elapsed();
 
                     info!("Search run for {} seconds", elapsed.as_secs_f64());

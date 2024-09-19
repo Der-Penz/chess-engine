@@ -10,10 +10,15 @@ use crate::{
 pub struct GoParams {
     pub mode: GoMode,
     pub time_control: Option<TimeControl>,
+    pub search_moves: Option<Vec<String>>,
 }
 
 impl GoParams {
-    pub fn new(mode: GoMode, time_control: Option<TimeControl>) -> Self {
+    pub fn new(
+        mode: GoMode,
+        time_control: Option<TimeControl>,
+        search_moves: Option<Vec<String>>,
+    ) -> Self {
         if time_control
             .as_ref()
             .is_some_and(|tc| *tc == TimeControl::default())
@@ -21,9 +26,14 @@ impl GoParams {
             GoParams {
                 mode,
                 time_control: None,
+                search_moves,
             }
         } else {
-            GoParams { mode, time_control }
+            GoParams {
+                mode,
+                time_control,
+                search_moves,
+            }
         }
     }
 }
@@ -61,7 +71,7 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
 
     let msg = match params.mode {
         GoMode::Search(limit) => {
-            bot.think(limit, params.time_control);
+            bot.think(limit, params.time_control, params.search_moves);
             None
         }
         GoMode::Perft(depth) => Some(bot.perft(depth)),
@@ -74,12 +84,13 @@ pub fn handle_go(bot: &mut Bot, params: GoParams) -> Option<String> {
 pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
     let mut limits = Limits::default();
     let mut time_control = TimeControl::default();
+    let mut search_moves = None;
 
     let mut parts = params.split_whitespace();
     while let Some(part) = parts.next() {
         if part == "eval" {
             let divide = parts.next().is_some_and(|val| val == "divide");
-            let params = GoParams::new(GoMode::Eval(divide), None);
+            let params = GoParams::new(GoMode::Eval(divide), None, None);
             return Ok(UCICommand::Go(params));
         }
 
@@ -89,13 +100,13 @@ pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
                 .ok_or(CommandParseError::ParseError("Missing depth param".into()))?
                 .parse()
                 .map_err(|_| CommandParseError::ParseError("Invalid depth".into()))?;
-            let params = GoParams::new(GoMode::Perft(depth), None);
+            let params = GoParams::new(GoMode::Perft(depth), None, None);
             return Ok(UCICommand::Go(params));
         }
 
         if part == "infinite" || part.is_empty() {
             limits.add_limit(Limit::Depth(INFINITY_DEPTH));
-            let params = GoParams::new(GoMode::Search(limits), None);
+            let params = GoParams::new(GoMode::Search(limits), None, None);
             return Ok(UCICommand::Go(params));
         }
 
@@ -163,7 +174,7 @@ pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
                 time_control.b_inc = b_inc;
             }
             "searchmoves" => {
-                warn!("searchmoves is not implemented yet");
+                search_moves = Some(parts.clone().map(String::from).collect());
             }
             _ => {
                 warn!(
@@ -174,6 +185,6 @@ pub fn parse_go(params: &str) -> Result<UCICommand, CommandParseError> {
         };
     }
 
-    let params = GoParams::new(GoMode::Search(limits), Some(time_control));
+    let params = GoParams::new(GoMode::Search(limits), Some(time_control), search_moves);
     Ok(UCICommand::Go(params))
 }

@@ -22,7 +22,7 @@ mod evaluation;
 pub mod search;
 
 pub enum ActionMessage {
-    Think(Board, Limits),
+    Think(Board, Limits, Option<Vec<Move>>),
     SetOption(OptionType),
 }
 
@@ -125,7 +125,12 @@ impl Bot {
         msg
     }
 
-    pub fn think(&mut self, mut limits: Limits, time_control: Option<TimeControl>) {
+    pub fn think(
+        &mut self,
+        mut limits: Limits,
+        time_control: Option<TimeControl>,
+        search_moves: Option<Vec<String>>,
+    ) {
         if self.thinking {
             warn!("Bot is already thinking, abort search first");
             return;
@@ -137,11 +142,27 @@ impl Bot {
             limits.add_time_control_limit(think_time);
         }
 
+        let search_moves = search_moves.map(|moves_str| {
+            let mut search_moves = Vec::new();
+            for mov_str in moves_str {
+                if let Ok(mv) = Move::from_uci_notation(&mov_str, &self.board) {
+                    search_moves.push(mv);
+                } else {
+                    break;
+                }
+            }
+            search_moves
+        });
+
         self.abort_flag.store(false, Ordering::Relaxed);
         self.thinking = true;
 
         self.action_sender
-            .send(ActionMessage::Think(self.board.clone(), limits))
+            .send(ActionMessage::Think(
+                self.board.clone(),
+                limits,
+                search_moves,
+            ))
             .unwrap();
     }
 

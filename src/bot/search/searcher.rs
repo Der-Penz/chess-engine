@@ -32,6 +32,7 @@ pub struct Searcher {
     opening_book: Option<OpeningBook>,
     repetition_history: RepetitionHistory,
     limits: Limits,
+    search_moves: Option<Vec<Move>>,
 }
 
 impl Searcher {
@@ -53,6 +54,7 @@ impl Searcher {
             opening_book: OpeningBook::new(opening_book_file).ok(),
             repetition_history: RepetitionHistory::new(),
             limits: Limits::default(),
+            search_moves: None,
         }
     }
 
@@ -83,7 +85,7 @@ impl Searcher {
         }
     }
 
-    pub fn think(&mut self, board: Board, limits: Limits) {
+    pub fn think(&mut self, board: Board, limits: Limits, search_moves: Option<Vec<Move>>) {
         self.aborted = false;
         self.best = None;
         self.board = board;
@@ -91,6 +93,7 @@ impl Searcher {
         self.pv_line.reset();
         self.repetition_history.init(&self.board);
         self.limits = limits;
+        self.search_moves = search_moves;
 
         info!(
             "Transposition Table Usage: {:.2}%",
@@ -297,6 +300,14 @@ impl Searcher {
         let mut node_type = NodeType::UpperBound;
 
         while let Some(mov) = ordered_moves.pick_next_move() {
+            if ply_from_root == 0 {
+                if let Some(search_moves) = &self.search_moves {
+                    if !search_moves.contains(&mov) {
+                        continue;
+                    }
+                }
+            }
+
             self.repetition_history.push_hash(key, false);
             self.board.make_move(&mov, true, false).unwrap();
 
