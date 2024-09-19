@@ -9,7 +9,7 @@ use std::{
 };
 
 use calculation_thread::thread_loop;
-use evaluation::evaluate_board;
+use evaluation::{eval::display_eval, evaluate_board};
 use search::{limit::Limits, AbortFlag};
 
 use crate::{
@@ -96,7 +96,11 @@ impl Bot {
                         )),
                         _ => {
                             let eval = -evaluate_board(&self.board);
-                            eval_str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), eval));
+                            eval_str.push_str(&format!(
+                                "{} : {}\n",
+                                mv.as_uci_notation(),
+                                display_eval(eval)
+                            ));
                         }
                     };
 
@@ -105,7 +109,10 @@ impl Bot {
             eval_str.push('\n');
         }
 
-        eval_str.push_str(&format!("Current eval: {}", evaluate_board(&self.board)));
+        eval_str.push_str(&format!(
+            "Current eval: {}",
+            display_eval(evaluate_board(&self.board))
+        ));
 
         eval_str
     }

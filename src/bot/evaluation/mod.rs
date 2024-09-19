@@ -15,7 +15,7 @@ pub fn evaluate_board(board: &Board) -> Eval {
 
     score += evaluate_pieces(board);
 
-    (score / 100) * color.perspective() as Eval
+    score * color.perspective() as Eval
 }
 
 ///  Rook + Bishop + Knight + Queen:

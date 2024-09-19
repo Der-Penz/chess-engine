@@ -15,7 +15,7 @@ pub fn is_mate_score(score: Eval) -> bool {
 }
 
 pub fn display_eval(eval: Eval) -> String {
-    let t = if is_mate_score(eval) {
+    if is_mate_score(eval) {
         let mate_in = (MATE - eval.abs()) as f32 / 2.0;
         if eval > 0 {
             format!("mate {}", mate_in.ceil() as i32)
@@ -23,8 +23,6 @@ pub fn display_eval(eval: Eval) -> String {
             format!("mate -{}", mate_in.ceil() as i32)
         }
     } else {
-        format!("cp {}", eval)
-    };
-    println!("{}", t);
-    t
+        format!("cp {}", eval as f64 / 100.0)
+    }
 }
