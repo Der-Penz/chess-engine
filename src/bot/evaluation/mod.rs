@@ -3,64 +3,22 @@ mod piece_square_table;
 use eval::Eval;
 use piece_square_table::read_p_sq_table;
 
-use crate::game::{
-    bit_manipulation::iter_set_bits,
-    board::move_gen::{LegalMoveList, MoveGeneration},
-    castle_rights::CastleRights,
-    Color, PieceType, Square,
-};
+use crate::game::{bit_manipulation::iter_set_bits, Color, PieceType, Square};
 
 use super::Board;
 
-const SCORE_CASTLE_RIGHT: Eval = 10;
-const CASTLE_SCORE_BY_INDEX: [Eval; 16] = [
-    0,                      //0000
-    SCORE_CASTLE_RIGHT,     //0001
-    SCORE_CASTLE_RIGHT,     //0010
-    SCORE_CASTLE_RIGHT * 2, //0011
-    -SCORE_CASTLE_RIGHT,    //0100
-    0,                      //0101
-    0,                      //0110
-    SCORE_CASTLE_RIGHT,     //0111
-    -SCORE_CASTLE_RIGHT,    //1000
-    0,                      //1001
-    0,                      //1010
-    SCORE_CASTLE_RIGHT,     //1011
-    SCORE_CASTLE_RIGHT * 2, //1100
-    -SCORE_CASTLE_RIGHT,    //1101
-    -SCORE_CASTLE_RIGHT,    //1110
-    0,                      //1111
-];
-
-const MOBILITY_SCORE: Eval = 1;
-
 /// Evaluates the board state and returns a score in the perspective of the side to move.
-pub fn evaluate_board(board: &Board, precomputed_moves: Option<&LegalMoveList>) -> Eval {
+pub fn evaluate_board(board: &Board) -> Eval {
     let mut score = 0;
 
-    let board_state = board.cur_state();
     let color = board.side_to_move();
 
     score += evaluate_pieces(board);
-    // score += evaluate_castle(&board_state.castling_rights);
 
-    //mobility score
-    // let move_count = match precomputed_moves {
-    //     Some(moves) => moves.len() as Eval,
-    //     None => MoveGeneration::generate_legal_moves(board).len() as Eval,
-    // };
-    // score += (move_count >> MOBILITY_SCORE) * color.perspective() as Eval;
-
-    //score is from the perspective of the white player so we need to negate if it is black to movee
     (score / 100) * color.perspective() as Eval
 }
 
-#[inline(always)]
-fn evaluate_castle(castle_rights: &CastleRights) -> Eval {
-    CASTLE_SCORE_BY_INDEX[castle_rights.as_u8() as usize]
-}
-
-///  Rook + Bishop + Knight + Queen :
+///  Rook + Bishop + Knight + Queen:
 const END_GAME_MATERIAL_START: Eval = 2050;
 
 fn calc_endgame_factor(sum: i32) -> f32 {

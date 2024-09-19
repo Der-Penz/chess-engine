@@ -95,7 +95,7 @@ impl Bot {
                             result.color_lost().unwrap()
                         )),
                         _ => {
-                            let eval = -evaluate_board(&self.board, None);
+                            let eval = -evaluate_board(&self.board);
                             eval_str.push_str(&format!("{} : {}\n", mv.as_uci_notation(), eval));
                         }
                     };
@@ -105,10 +105,7 @@ impl Bot {
             eval_str.push('\n');
         }
 
-        eval_str.push_str(&format!(
-            "Current eval: {}",
-            evaluate_board(&self.board, None)
-        ));
+        eval_str.push_str(&format!("Current eval: {}", evaluate_board(&self.board)));
 
         eval_str
     }

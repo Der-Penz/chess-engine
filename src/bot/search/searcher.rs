@@ -395,7 +395,7 @@ impl Searcher {
             return DRAW;
         }
 
-        let mut eval = evaluate_board(&self.board, Some(&moves));
+        let mut eval = evaluate_board(&self.board);
         if eval >= beta {
             return beta;
         }
