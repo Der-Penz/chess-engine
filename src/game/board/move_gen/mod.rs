@@ -101,7 +101,7 @@ impl MoveGeneration {
                         let en_passant = attacks_pawn_en_passant(
                             sq,
                             data.color,
-                            board.cur_state().en_passant.as_ref(),
+                            board.cur_state().en_passant.clone(),
                             data.king_sq,
                             data.enemy,
                             data.ally,
@@ -147,17 +147,10 @@ impl MoveGeneration {
             match piece.ptype() {
                 PieceType::Pawn => {
                     let pawn_move = moves_pawn(sq, data.enemy, data.ally, data.color);
+                    let pawn_attacks = attacks_pawn(sq, data.enemy, data.ally, data.color);
                     legal_moves.create_and_add_pawn_moves(
                         sq,
-                        pawn_move & masks.push_capture_mask,
-                        data.color,
-                        move_type_mask,
-                    );
-
-                    let attacks = attacks_pawn(sq, data.enemy, data.ally, data.color);
-                    legal_moves.create_and_add_pawn_moves(
-                        sq,
-                        attacks & masks.push_capture_mask,
+                        (pawn_attacks | pawn_move) & masks.push_capture_mask,
                         data.color,
                         move_type_mask,
                     );
@@ -172,7 +165,7 @@ impl MoveGeneration {
                     let en_passant = attacks_pawn_en_passant(
                         sq,
                         data.color,
-                        board.cur_state().en_passant.as_ref(),
+                        board.cur_state().en_passant.clone(),
                         data.king_sq,
                         data.enemy,
                         data.ally,
@@ -307,6 +300,7 @@ pub fn attacks_king(sq: Square, ally: u64) -> u64 {
     attacks::ATTACK_PATTERN_KING[sq] & !ally
 }
 
+#[inline(always)]
 fn moves_king_castle_queen_side(sq: Square, occupied: u64, attacked: u64, color: Color) -> u64 {
     if sq != CastleType::KING_SOURCE[color] {
         return 0;
@@ -326,6 +320,7 @@ fn moves_king_castle_queen_side(sq: Square, occupied: u64, attacked: u64, color:
     }
 }
 
+#[inline(always)]
 fn moves_king_castle_king_side(sq: Square, occupied: u64, attacked: u64, color: Color) -> u64 {
     if sq != CastleType::KING_SOURCE[color] {
         return 0;
@@ -367,7 +362,7 @@ fn moves_pawn_double_push(sq: Square, occupied: u64, color: Color) -> u64 {
 fn attacks_pawn_en_passant(
     sq: Square,
     color: Color,
-    en_passant: Option<&Square>,
+    en_passant: Option<Square>,
     king_sq: Square,
     enemy: u64,
     ally: u64,

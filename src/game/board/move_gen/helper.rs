@@ -1,5 +1,5 @@
 use crate::game::{
-    bit_manipulation::{bit_scan_lsb, north_east, north_west, south_east, south_west},
+    bit_manipulation::{bit_scan_lsb, drop_lsb, north_east, north_west, south_east, south_west},
     Board, Color, PieceType, Square,
 };
 
@@ -95,17 +95,17 @@ impl MoveGenerationMasks {
         }
 
         //Knight attacks
-        for knight_sq in
-            board.get_piece_positions(PieceType::Knight.as_colored_piece(data.color_opp))
-        {
-            self.king_danger |= attacks_knight(knight_sq, 0);
+        let mut knight_pos = *board.get_bb_for(PieceType::Knight.as_colored_piece(data.color_opp));
+        while knight_pos != 0 {
+            let sq = drop_lsb(&mut knight_pos);
+            self.king_danger |= attacks_knight(sq, 0);
         }
 
         //if we have no sliding pieces, we can skip
         if *board.bb_sliders[data.color_opp] != 0 {
             let occupied_without_king = data.occupied & !data.king_mask;
 
-            //Sliding attacks
+            // Sliding attacks
             for sq in board.get_piece_positions(PieceType::Bishop.as_colored_piece(data.color_opp))
             {
                 self.king_danger |= attacks_bishop(sq, occupied_without_king, 0);

@@ -15,8 +15,8 @@ use move_gen::{attacks_bishop, attacks_knight, attacks_pawn, attacks_rook, MoveG
 use zobrist::ZOBRIST;
 
 use super::{
-    castle_rights::CastleType, color::Color, move_notation::Move, piece::Piece,
-    piece_type::PieceType, square::Square,
+    bit_manipulation::bit_scan_lsb, castle_rights::CastleType, color::Color, move_notation::Move,
+    piece::Piece, piece_type::PieceType, square::Square,
 };
 #[derive(Clone)]
 pub struct Board {
@@ -145,10 +145,10 @@ impl Board {
     }
 
     pub fn get_king_pos(&self, color: Color) -> Square {
-        self.bb_pieces[color][PieceType::King]
-            .get_occupied()
-            .next()
-            .expect(&format!("{} King is missing", color))
+        if *self.bb_pieces[color][PieceType::King] == 0 {
+            panic!("{} King is missing", color);
+        }
+        Square::new(bit_scan_lsb(*self.bb_pieces[color][PieceType::King]))
     }
 
     pub fn get_piece_positions(&self, piece: Piece) -> impl Iterator<Item = Square> {

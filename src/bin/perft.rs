@@ -42,7 +42,7 @@ fn main() {
         Board::default()
     };
 
-    let multithreaded = false;
+    let multithreaded = std::env::var("MULTITHREADED").is_ok_and(|var| var == "1");
 
     match mode {
         PerftMode::NodeCount => {

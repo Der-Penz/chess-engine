@@ -38,6 +38,7 @@ impl LegalMoveList {
         self.count += 1;
     }
 
+    #[inline(always)]
     /// Adds multiple moves to the move list from a given source square with a given flag
     pub(super) fn create_and_add_moves(
         &mut self,
@@ -57,6 +58,7 @@ impl LegalMoveList {
         }
     }
 
+    #[inline(always)]
     /// Adds pawn moves to the move list for a given source and destination square
     /// handles promotions as well
     pub(super) fn create_and_add_pawn_moves(

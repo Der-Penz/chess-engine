@@ -8,6 +8,7 @@ pub struct Square(u8);
 impl Square {
     pub const NUM: usize = 64;
 
+    #[inline(always)]
     pub fn new(square: u8) -> Square {
         if square < 64 {
             Square(square)
@@ -15,6 +16,8 @@ impl Square {
             panic!("Invalid square")
         }
     }
+
+    #[inline(always)]
 
     pub fn valid(square: u8) -> bool {
         square < 64
@@ -38,16 +41,19 @@ impl Square {
         (0u8..64u8).map(|square| Square::new(square))
     }
 
+    #[inline(always)]
     /// Bit shifts the square to the corresponding u64 mask
     pub fn to_mask(&self) -> u64 {
         0b1 << self.0
     }
 
+    #[inline(always)]
     /// zero indexed
     pub fn rank(&self) -> u8 {
         self.0 / 8
     }
 
+    #[inline(always)]
     /// zero indexed
     pub fn file(&self) -> u8 {
         self.0 % 8
@@ -61,6 +67,7 @@ impl Square {
         FILES[self.file() as usize].to_string()
     }
 
+    #[inline(always)]
     pub fn square_value(&self) -> u8 {
         self.0
     }
