@@ -1,6 +1,8 @@
 use itertools::Itertools;
 use thiserror::Error;
 
+use super::Color;
+
 /// newtype for a square on the chess board
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Square(u8);
@@ -80,6 +82,14 @@ impl Square {
             Some(Square::new((new_file + new_rank * 8) as u8))
         } else {
             None
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match (self.file() % 2, self.rank() % 2) {
+            (0, 0) | (1, 1) => Color::Black,
+            (0, 1) | (1, 0) => Color::White,
+            _ => unreachable!(),
         }
     }
 }

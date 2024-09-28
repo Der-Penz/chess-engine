@@ -368,7 +368,7 @@ impl Searcher {
     fn quiescence_search(
         &mut self,
         ply_from_root: u8,
-        ply_remaining: u8,
+        mut ply_remaining: u8,
         mut alpha: Eval,
         beta: Eval,
     ) -> Eval {
@@ -395,6 +395,11 @@ impl Searcher {
             return DRAW;
         }
 
+        //check extensions
+        if moves.get_masks().in_check {
+            ply_remaining += 1;
+        }
+
         let mut eval = evaluate_board(&self.board);
         if eval >= beta {
             return beta;
@@ -403,7 +408,7 @@ impl Searcher {
             alpha = eval;
         }
 
-        if ply_remaining == 0 {
+        if ply_remaining == 0 || ply_from_root >= MAX_QS_DEPTH {
             return eval;
         }
 
