@@ -255,59 +255,6 @@ impl PGNParser {
         };
 
         Err(FromSANError::InvalidMove)
-
-        // //must be at least 2 characters
-        // if cleaned_san.len() < 2 {
-        //     return Err(FromSANError::InvalidMove);
-        // }
-
-        // todo!("Implement the rest of the move_from_san function");
-
-        // let mov = legal_moves
-        //     .iter()
-        //     .find(|m| {
-        //         let source = m.source();
-        //         let dest = m.dest();
-        //         let moved_piece = board.get_sq_piece(source).unwrap().ptype();
-
-        //         //pawn move starts with the file
-        //         match cleaned_san.chars().next().unwrap() {
-        //             file @ 'a'..='h' => {
-        //                 if moved_piece != PieceType::Pawn {
-        //                     return false;
-        //                 }
-
-        //                 let file = file as u8 - 'a' as u8;
-        //                 if source.file() != file {
-        //                     return false;
-        //                 }
-
-        //                 //TODO
-        //                 return false;
-        //             }
-        //             //regular move
-        //             _ => {
-        //                 let piece = PieceType::from(
-        //                     cleaned_san.chars().next().unwrap().to_ascii_lowercase(),
-        //                 );
-
-        //                 if moved_piece != piece {
-        //                     return false;
-        //                 }
-        //                 let san_dest = Square::try_from(&cleaned_san[cleaned_san.len() - 2..]);
-
-        //                 match san_dest {
-        //                     Ok(san_dest) => san_dest == dest,
-        //                     Err(_) => false,
-        //                 }
-        //             }
-        //         }
-
-        //         false
-        //     })
-        //     .ok_or(FromSANError::InvalidMove);
-
-        // mov.cloned()
     }
 
     /// Convert the game to PGN (Portable Game Notation).
@@ -356,11 +303,14 @@ impl PGNParser {
     }
 
     pub fn from_pgn(pgn: &str) -> Result<PGNData, FromSANError> {
-        let (tags, moves) = pgn.split_once("\n\n").ok_or(FromSANError::ParseError)?;
+        let mut pgn_iter = pgn.lines();
 
         let mut tags_map = HashMap::new();
-        for tag in tags.split('\n') {
-            let (key, value) = tag.split_once(" ").ok_or(FromSANError::ParseError)?;
+        while let Some(line) = pgn_iter.next() {
+            if !line.starts_with('[') {
+                break;
+            }
+            let (key, value) = line.split_once(" ").ok_or(FromSANError::ParseError)?;
             let key = key.trim();
             let value = value.trim();
             tags_map.insert(
@@ -368,12 +318,15 @@ impl PGNParser {
                 value[..value.len() - 1].trim_matches('"').to_string(),
             );
         }
+
         let mut board = tags_map
             .get("FEN")
             .map_or_else(|| Ok(Board::default()), |fen| Board::from_fen(fen))
             .map_err(|_| FromSANError::ParseError)?;
 
         let mut move_history = Vec::new();
+
+        let moves = pgn_iter.collect::<String>();
         let moves = moves.trim().split(|c| c == ' ' || c == '\n');
 
         let mut skip_comment = false;
